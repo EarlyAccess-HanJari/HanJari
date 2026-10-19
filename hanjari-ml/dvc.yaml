@@ -1,0 +1,36 @@
+# DVC 파이프라인: 수집 로그 → 학습 데이터 → 라이트 모델.  dvc repro = 바뀐 단계만 다시, dvc metrics show = 모델 성적
+# 실행 전에 Python 3.11 환경(requirements.txt)을 켜 둘 것. 수집 로그(data/api_logs)는 오라클에서 가져온 것.
+stages:
+  dataset:
+    cmd: python src/build_dataset.py
+    deps:
+      - src/build_dataset.py
+      - data/api_logs
+      - data/processed/sb02_hourly.csv
+      - data/processed/sb02_trips.csv
+      - data/processed/jr03_hourly.csv
+      - data/processed/jr03_trips.csv
+    outs:
+      - data/processed/dataset.csv
+  model:
+    cmd: python src/serve.py export-lite
+    deps:
+      - src/serve.py
+      - src/train.py
+      - src/build_dataset.py
+      - data/processed/dataset.csv
+      - data/processed/calendar.csv
+      - data/processed/class_starts.csv
+      - data/api_logs
+    outs:
+      - models/lite/point.json:
+          cache: false   # 라이트 모델은 팀원이 바로 쓰도록 git 에 그대로
+      - models/lite/quantile.json:
+          cache: false
+      - models/lite/k0.json:
+          cache: false
+      - models/lite/meta.json:
+          cache: false
+    metrics:
+      - models/lite/metrics.json:
+          cache: false

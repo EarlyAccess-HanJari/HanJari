@@ -1,0 +1,9 @@
+@COL@/data/api_logs/collect.log @REPO@/reports/alerts.log {
+    weekly
+    rotate 8
+    compress
+    missingok
+    notifempty
+    copytruncate
+    su @USER@ @USER@
+}

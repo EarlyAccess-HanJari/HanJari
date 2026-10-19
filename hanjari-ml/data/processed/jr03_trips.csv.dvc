@@ -1,0 +1,5 @@
+outs:
+- md5: af61ae779d4babebad4839c45c8c2331
+  size: 26360631
+  hash: md5
+  path: jr03_trips.csv

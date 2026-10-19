@@ -1,0 +1,16 @@
+[Unit]
+Description=Hanjari bus collector (성북02·종로03)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=@USER@
+WorkingDirectory=@COL@
+ExecStart=/usr/bin/python3 -u src/collect.py
+Restart=always
+RestartSec=30
+StandardOutput=append:@COL@/data/api_logs/collect.log
+StandardError=append:@COL@/data/api_logs/collect.log
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,12 @@
+[Unit]
+Description=Hanjari collector watchdog (stale data, API errors, disk)
+OnFailure=hanjari-fail@%n.service
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/hanjari-ml/src
+ExecStart=/home/ubuntu/hanjari-ml/.venv/bin/python watchdog.py
+MemoryMax=200M
+Nice=10
+TimeoutStartSec=5min

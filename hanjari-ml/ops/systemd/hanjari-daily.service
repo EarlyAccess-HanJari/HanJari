@@ -1,0 +1,19 @@
+[Unit]
+Description=Hanjari daily close (data check, monitor, retrain, gate, deploy, cleanup)
+OnFailure=hanjari-fail@%n.service
+
+[Service]
+Type=oneshot
+User=@USER@
+WorkingDirectory=@REPO@/src
+Environment=PYTHONUNBUFFERED=1
+ExecStart=@REPO@/.venv/bin/python daily.py
+# 새 모델 교체 뒤 바로 백엔드가 다시 읽게(재학습이 2시간 넘어 03:00 고정 재시작보다 늦게 끝나던 문제, 10-18). 백엔드 없는 설치에선 무시
+ExecStartPost=-+/bin/systemctl try-restart hanjari-web
+# 수집기를 지키는 제한: 메모리 500M 부터 느려지고 650M 에서 이 작업만 종료, CPU 1코어, 최저 우선순위
+MemoryHigh=500M
+MemoryMax=650M
+CPUQuota=100%
+Nice=19
+IOSchedulingClass=idle
+TimeoutStartSec=4h

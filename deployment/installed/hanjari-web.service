@@ -1,0 +1,22 @@
+# 한자리 백엔드(API + 화면). 운영 서버(수집기 있는 곳) 기준. 코드는 pm/jeongwon 브랜치 backend/·frontend/(빌드 dist) → ~/hanjari-web
+# 설치: sudo cp ops/systemd/hanjari-web.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable --now hanjari-web
+# 새 모델 반영: hanjari-daily 가 끝나면 재시작(ExecStartPost). 예전 03:00 hanjari-web-restart.timer 는 10-18 에 없앰
+# 로그: journalctl -u hanjari-web -f
+# 테스트 서버(수집기 없음)에선 HANJARI_MODE=sample 로, HANJARI_ML 줄은 지우고 경로를 그 서버 폴더로
+[Unit]
+Description=Hanjari web (FastAPI + frontend)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/hanjari-web/backend
+Environment=HANJARI_MODE=latest
+Environment=HANJARI_ML=/home/ubuntu/hanjari-ml
+Environment=PYTHONIOENCODING=utf-8
+ExecStart=/home/ubuntu/hanjari-web/backend/.venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

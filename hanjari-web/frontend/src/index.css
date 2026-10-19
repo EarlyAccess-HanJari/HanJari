@@ -1,0 +1,38 @@
+:root {
+  --bg: #F1F4F8;
+  --card: #FFFFFF;
+  --ink: #111B2E;
+  --ink-2: #3A4558;
+  --muted: #536075;
+  --line: #D5DCE6;
+  --line-2: #DEE4EC;
+  --line-3: #E3E8EF;
+  --chip: #EAEFF5;
+  --blue: #1D4F91;
+  --blue-bg: #E3ECF8;
+  --navy: #0E2A52;
+  --sky: #B9CCE8;
+  --seat: #FFC23D;
+  --warn-bg: #FFF0D6;
+  --warn: #7A4300;
+  --bad: #8E1F17;
+  --bad-line: #C8372B;
+  --route-sb02: #1D4F91;
+  --route-jr03: #0F6D77;
+  --font: "IBM Plex Sans KR", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--font);
+  color: var(--ink);
+  background: var(--bg);
+  line-height: 1.45;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+button:disabled { cursor: default; opacity: .45; }
+input { font: inherit; }
+:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+#root { max-width: 480px; margin: 0 auto; min-height: 100dvh; }

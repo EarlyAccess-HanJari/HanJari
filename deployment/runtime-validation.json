@@ -1,0 +1,76 @@
+{
+  "python": "3.12.14",
+  "platform": "win32",
+  "mode": "sample",
+  "versions": {
+    "numpy": "2.4.6",
+    "pandas": "3.0.5",
+    "xgboost": "3.2.0",
+    "scikit-learn": "1.9.0",
+    "fastapi": "0.142.2",
+    "uvicorn": "0.54.0",
+    "scipy": "1.17.1",
+    "starlette": "1.7.0",
+    "pydantic": "2.13.5"
+  },
+  "external_bus_api_calls": 0,
+  "checks": [
+    {
+      "url": "/api/health",
+      "status": 200
+    },
+    {
+      "url": "/",
+      "status": 200
+    },
+    {
+      "url": "/api/predict?n=0",
+      "status": 200,
+      "result_count": 6
+    },
+    {
+      "url": "/api/predict?n=3",
+      "status": 200,
+      "result_count": 6
+    },
+    {
+      "url": "/api/predict?n=40",
+      "status": 200,
+      "result_count": 6
+    },
+    {
+      "url": "/api/predict?n=-1",
+      "status": 400
+    },
+    {
+      "url": "/api/predict?n=41",
+      "status": 400
+    },
+    {
+      "url": "/api/predict?n=abc",
+      "status": 422
+    },
+    {
+      "url": "/api/predict",
+      "status": 422
+    },
+    {
+      "url": "/favicon.svg",
+      "status": 200
+    },
+    {
+      "url": "/assets/index-VKA9A9bA.js",
+      "status": 200
+    },
+    {
+      "url": "/assets/index-DeOQMkCD.css",
+      "status": 200
+    }
+  ],
+  "test_harness_adaptation": "XGBoost loaded identical model bytes in memory because native Windows path canonicalization was blocked by the Codex sandbox; exported application source was not changed.",
+  "model_buffer_loads": [
+    "point.json",
+    "quantile.json",
+    "k0.json"
+  ]
+}

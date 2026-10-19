@@ -1,0 +1,39 @@
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+credentials.json
+
+# Local environments and generated files
+.venv/
+venv/
+node_modules/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.DS_Store
+Thumbs.db
+*.log
+*.bak*
+catboost_info/
+.dvc/cache/
+.dvc/tmp/
+.dvc/config.local
+
+# Collected data and model history
+**/data/api_logs/
+**/data/raw/
+**/data/processed/dataset.csv
+**/data/processed/days/
+**/models/versions/
+reports/
+archives/
+backups/
+
+# Keep frontend/dist alongside its verified local source.

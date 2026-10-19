@@ -1,0 +1,6 @@
+.badge {
+  display: inline-flex; align-items: center;
+  padding: 5px 10px; border-radius: 8px;
+  font-size: 13px; font-weight: 600; white-space: nowrap;
+  background: var(--lv-bg); color: var(--lv-fg);
+}

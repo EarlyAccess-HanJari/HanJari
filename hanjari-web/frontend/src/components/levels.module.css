@@ -1,0 +1,6 @@
+/* 단계별 색. 배지·결과 카드가 같이 쓴다 (var(--lv-*)) */
+.ok    { --lv-bg: #E3ECF8; --lv-fg: #123E7A; --lv-bar: #1D5FC0; }
+.tight { --lv-bg: #FFF0D6; --lv-fg: #7A4300; --lv-bar: #D98A0B; }
+.hard  { --lv-bg: #FDE3E0; --lv-fg: #8E1F17; --lv-bar: #C8372B; }
+.early { --lv-bg: #E7EBF0; --lv-fg: #34414F; --lv-bar: #34414F; }
+.hold  { --lv-bg: #EDEBE7; --lv-fg: #4A4640; --lv-bar: #4A4640; }

@@ -1,0 +1,88 @@
+schema: '2.0'
+stages:
+  dataset:
+    cmd: python src/build_dataset.py
+    deps:
+    - path: data/api_logs
+      hash: md5
+      md5: 5b3384dd3b8550a6e496fa410f50e610.dir
+      size: 938622227
+      nfiles: 33526
+    - path: data/processed/jr03_hourly.csv
+      hash: md5
+      md5: 46438083127bc0c06ea9a96463f41729
+      size: 2459045
+    - path: data/processed/jr03_trips.csv
+      hash: md5
+      md5: af61ae779d4babebad4839c45c8c2331
+      size: 26360631
+    - path: data/processed/sb02_hourly.csv
+      hash: md5
+      md5: baa46796a6d4295969b4e41c0ee4f274
+      size: 2714383
+    - path: data/processed/sb02_trips.csv
+      hash: md5
+      md5: 7d4864621f5d07cb960496817cc3a9f1
+      size: 32958431
+    - path: src/build_dataset.py
+      hash: md5
+      md5: 20300c93a598a76d6a851a3a88204366
+      size: 23205
+    outs:
+    - path: data/processed/dataset.csv
+      hash: md5
+      md5: 5bb89c221f1056e5811b74b7aaeb9297
+      size: 7670493
+  model:
+    cmd: python src/serve.py export-lite
+    deps:
+    - path: data/api_logs
+      hash: md5
+      md5: 5b3384dd3b8550a6e496fa410f50e610.dir
+      size: 938622227
+      nfiles: 33526
+    - path: data/processed/calendar.csv
+      hash: md5
+      md5: a6f37222a759a7a9c72e263b180bf8eb
+      size: 38385
+    - path: data/processed/class_starts.csv
+      hash: md5
+      md5: 510425f4abfd89836482ca63306a48ec
+      size: 1276
+    - path: data/processed/dataset.csv
+      hash: md5
+      md5: 5bb89c221f1056e5811b74b7aaeb9297
+      size: 7670493
+    - path: src/build_dataset.py
+      hash: md5
+      md5: 20300c93a598a76d6a851a3a88204366
+      size: 23205
+    - path: src/serve.py
+      hash: md5
+      md5: 49f886626ea4d732f9889f4a6cf16318
+      size: 14562
+    - path: src/train.py
+      hash: md5
+      md5: 86cd9b3e8914cb9c9fc26c18a4d99d6c
+      size: 14214
+    outs:
+    - path: models/lite/k0.json
+      hash: md5
+      md5: e55e33448616fc74e0bc46eef35ee053
+      size: 1366682
+    - path: models/lite/meta.json
+      hash: md5
+      md5: d0880710d52001f26ceb5d3899679942
+      size: 374580
+    - path: models/lite/metrics.json
+      hash: md5
+      md5: b18a0f0cbc330190e60436a24c9cf3a7
+      size: 164
+    - path: models/lite/point.json
+      hash: md5
+      md5: 030c530b2e6635ad458724a5a3d21025
+      size: 1741646
+    - path: models/lite/quantile.json
+      hash: md5
+      md5: acdafaa4d0f25b52793c78740b1a680a
+      size: 36801503

@@ -1,0 +1,5 @@
+outs:
+- md5: 7d4864621f5d07cb960496817cc3a9f1
+  size: 32958431
+  hash: md5
+  path: sb02_trips.csv

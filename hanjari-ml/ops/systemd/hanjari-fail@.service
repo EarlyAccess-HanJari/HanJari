@@ -1,0 +1,8 @@
+[Unit]
+Description=Hanjari failure alert for %i
+
+[Service]
+Type=oneshot
+User=@USER@
+WorkingDirectory=@REPO@/src
+ExecStart=@REPO@/.venv/bin/python notify.py "%i 실패(systemd) — journalctl -u %i 확인"

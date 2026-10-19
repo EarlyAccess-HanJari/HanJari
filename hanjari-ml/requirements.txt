@@ -1,0 +1,11 @@
+# Python 3.11. 버전이 다르면 학습 결과가 미세하게 달라질 수 있어 고정
+numpy==2.4.6
+pandas==3.0.5
+xgboost==3.2.0
+scikit-learn==1.9.0  # xgboost 의 XGBRegressor 가 필요로 함
+# 모델 비교 실험(src/exp_models.py, src/sweep.py)
+lightgbm==4.7.0
+catboost==1.2.10
+# 기능흐름도 생성(docs/build_flowchart.py)
+python-pptx==1.0.2
+lxml==6.1.3

@@ -1,0 +1,832 @@
+{
+  "captured_at": "2026-10-19T00:22:35.903516+00:00",
+  "files": [
+    {
+      "source": "/home/ubuntu/hanjari/data/processed/holidays.csv",
+      "path": "hanjari/data/processed/holidays.csv",
+      "source_sha256": "b818c5fe9915e4ad2c74469520fd8ee4e3b8f5329a84c5b27bc443496945863f",
+      "export_sha256": "b818c5fe9915e4ad2c74469520fd8ee4e3b8f5329a84c5b27bc443496945863f",
+      "size": 2404,
+      "modified_utc": "2026-10-01T05:44:46.803257+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari/src/collect.py",
+      "path": "hanjari/src/collect.py",
+      "source_sha256": "309eb93eda35f942130471865917789b43b9a486966a430f2af7479cd31f9388",
+      "export_sha256": "309eb93eda35f942130471865917789b43b9a486966a430f2af7479cd31f9388",
+      "size": 7932,
+      "modified_utc": "2026-10-01T09:35:42.656849+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-web/frontend/dist/index.html",
+      "path": "hanjari-web/frontend/dist/index.html",
+      "source_sha256": "3d45fbf388c50c52c18d5a8343a916f1228949e12408014ea3364e4397159da8",
+      "export_sha256": "3d45fbf388c50c52c18d5a8343a916f1228949e12408014ea3364e4397159da8",
+      "size": 1623,
+      "modified_utc": "2026-10-05T08:08:12+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-web/frontend/dist/icons.svg",
+      "path": "hanjari-web/frontend/dist/icons.svg",
+      "source_sha256": "b45fa506195cfcdef406ba9f0c77b36ddc1a7c224040926ec70abc2fdea7b93a",
+      "export_sha256": "b45fa506195cfcdef406ba9f0c77b36ddc1a7c224040926ec70abc2fdea7b93a",
+      "size": 5031,
+      "modified_utc": "2026-10-04T15:44:23+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-web/frontend/dist/favicon.svg",
+      "path": "hanjari-web/frontend/dist/favicon.svg",
+      "source_sha256": "2ed4f3998550ff188364f33db89121076b26859de57aa075631a3acfb95db879",
+      "export_sha256": "2ed4f3998550ff188364f33db89121076b26859de57aa075631a3acfb95db879",
+      "size": 549,
+      "modified_utc": "2026-10-04T16:57:30+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-web/frontend/dist/og.png",
+      "path": "hanjari-web/frontend/dist/og.png",
+      "source_sha256": "397f03136ca9a1a60546a3ba9a812698c06dafde4055c8018dedf59e8ccbcc73",
+      "export_sha256": "397f03136ca9a1a60546a3ba9a812698c06dafde4055c8018dedf59e8ccbcc73",
+      "size": 26416,
+      "modified_utc": "2026-10-04T19:04:13+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-web/frontend/dist/assets/index-VKA9A9bA.js",
+      "path": "hanjari-web/frontend/dist/assets/index-VKA9A9bA.js",
+      "source_sha256": "3391d38ae53fb6664ec9d4c10ea593e9221729f295d937e7a933a0fa15fff7b1",
+      "export_sha256": "3391d38ae53fb6664ec9d4c10ea593e9221729f295d937e7a933a0fa15fff7b1",
+      "size": 240301,
+      "modified_utc": "2026-10-05T08:08:12+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-web/frontend/dist/assets/index-DeOQMkCD.css",
+      "path": "hanjari-web/frontend/dist/assets/index-DeOQMkCD.css",
+      "source_sha256": "a29de4c8e1ebe0dcfd6951ed9a7681fd7abe60a2ac34f633990eaa51291bbc18",
+      "export_sha256": "a29de4c8e1ebe0dcfd6951ed9a7681fd7abe60a2ac34f633990eaa51291bbc18",
+      "size": 8655,
+      "modified_utc": "2026-10-05T08:08:12+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-web/backend/requirements.txt",
+      "path": "hanjari-web/backend/requirements.txt",
+      "source_sha256": "9486d6c4377db06c41378ad2eefdcef65c06b4af583006b1dfe5bc7d6a5cde37",
+      "export_sha256": "9486d6c4377db06c41378ad2eefdcef65c06b4af583006b1dfe5bc7d6a5cde37",
+      "size": 229,
+      "modified_utc": "2026-10-04T17:24:54+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-web/backend/main.py",
+      "path": "hanjari-web/backend/main.py",
+      "source_sha256": "7e56bf53b7371815cdb43d06ca9dc0a3aefce3fed340a258ed934f2da442cef6",
+      "export_sha256": "7e56bf53b7371815cdb43d06ca9dc0a3aefce3fed340a258ed934f2da442cef6",
+      "size": 2819,
+      "modified_utc": "2026-10-04T17:25:11+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-web/backend/.gitignore",
+      "path": "hanjari-web/backend/.gitignore",
+      "source_sha256": "57a8ad0e62346f7b0f2e261d59a7b90f1310043424bcb9d229208f183f1940d9",
+      "export_sha256": "57a8ad0e62346f7b0f2e261d59a7b90f1310043424bcb9d229208f183f1940d9",
+      "size": 20,
+      "modified_utc": "2026-10-04T17:24:54+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-web/backend/README.md",
+      "path": "hanjari-web/backend/README.md",
+      "source_sha256": "3cfcfa2852e0597f1f17a9bde16bc8e4d36961f9add7517d4b95fae7a89eabe5",
+      "export_sha256": "3cfcfa2852e0597f1f17a9bde16bc8e4d36961f9add7517d4b95fae7a89eabe5",
+      "size": 1429,
+      "modified_utc": "2026-10-04T17:27:50+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/requirements.txt",
+      "path": "hanjari-ml/requirements.txt",
+      "source_sha256": "83bc4ed1eecfc402170c0a099b688f04159e965f22700083d0a980d2eae4e91c",
+      "export_sha256": "83bc4ed1eecfc402170c0a099b688f04159e965f22700083d0a980d2eae4e91c",
+      "size": 371,
+      "modified_utc": "2026-09-30T09:17:07+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/.env.example",
+      "path": "hanjari-ml/.env.example",
+      "source_sha256": "38ee562d3114f3be83c1b9ad8e11cf6dc28c2072bebbc8ac5374381bbb0800a9",
+      "export_sha256": "38ee562d3114f3be83c1b9ad8e11cf6dc28c2072bebbc8ac5374381bbb0800a9",
+      "size": 129,
+      "modified_utc": "2026-09-30T08:40:52+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/.dvcignore",
+      "path": "hanjari-ml/.dvcignore",
+      "source_sha256": "1d8052e9672c44c62dc27a4df73ced356f20cb9c18d1a7b5aa09249309609583",
+      "export_sha256": "1d8052e9672c44c62dc27a4df73ced356f20cb9c18d1a7b5aa09249309609583",
+      "size": 139,
+      "modified_utc": "2026-09-30T09:41:11+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/.gitignore",
+      "path": "hanjari-ml/.gitignore",
+      "source_sha256": "3c9bdfb3f8b3b9fd9e4c4b519b87a80424ad065439f4db0e447375ae82d9ff30",
+      "export_sha256": "3c9bdfb3f8b3b9fd9e4c4b519b87a80424ad065439f4db0e447375ae82d9ff30",
+      "size": 238,
+      "modified_utc": "2026-10-01T00:42:12+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/dvc.lock",
+      "path": "hanjari-ml/dvc.lock",
+      "source_sha256": "d7a0ad2a3a62ae68a336722113713dd58720ea0bff7b41921c71d7cbb80e8904",
+      "export_sha256": "d7a0ad2a3a62ae68a336722113713dd58720ea0bff7b41921c71d7cbb80e8904",
+      "size": 2393,
+      "modified_utc": "2026-09-30T09:57:07+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/README.md",
+      "path": "hanjari-ml/README.md",
+      "source_sha256": "05bc1b79ed2fa2ab74ead391c5457899e1c11590a583b79b4f643ec771cceff0",
+      "export_sha256": "05bc1b79ed2fa2ab74ead391c5457899e1c11590a583b79b4f643ec771cceff0",
+      "size": 19438,
+      "modified_utc": "2026-10-19T00:13:18.155146+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/dvc.yaml",
+      "path": "hanjari-ml/dvc.yaml",
+      "source_sha256": "b5b2525910b80e2769f8861ef0f128b752083df20f9e104fba704b5cad14cc61",
+      "export_sha256": "b5b2525910b80e2769f8861ef0f128b752083df20f9e104fba704b5cad14cc61",
+      "size": 1231,
+      "modified_utc": "2026-09-30T09:41:10+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/data/sample/20260930/sb02_arr_131133.json",
+      "path": "hanjari-ml/data/sample/20260930/sb02_arr_131133.json",
+      "source_sha256": "6ca060187dc075b32adc48d2d8f1a729b0af120aa3ba788d53fcaf1a6c2e6195",
+      "export_sha256": "6ca060187dc075b32adc48d2d8f1a729b0af120aa3ba788d53fcaf1a6c2e6195",
+      "size": 60239,
+      "modified_utc": "2026-09-30T08:53:17+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/data/sample/20260930/jr03_pos_131133.json",
+      "path": "hanjari-ml/data/sample/20260930/jr03_pos_131133.json",
+      "source_sha256": "092307710559e402a45ddcf60e38f825ce5dd4ee303c6c0535b1cfbf7a6ae889",
+      "export_sha256": "092307710559e402a45ddcf60e38f825ce5dd4ee303c6c0535b1cfbf7a6ae889",
+      "size": 3551,
+      "modified_utc": "2026-09-30T08:53:17+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/data/sample/20260930/sb02_pos_131133.json",
+      "path": "hanjari-ml/data/sample/20260930/sb02_pos_131133.json",
+      "source_sha256": "656628bbb83f28ea57a0c0d6ff8ae9050cc34faadeefdaf06f3602b2155ad589",
+      "export_sha256": "656628bbb83f28ea57a0c0d6ff8ae9050cc34faadeefdaf06f3602b2155ad589",
+      "size": 2609,
+      "modified_utc": "2026-09-30T08:53:17+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/data/sample/20260930/jr03_arr_131133.json",
+      "path": "hanjari-ml/data/sample/20260930/jr03_arr_131133.json",
+      "source_sha256": "acf6fff15dca9eb02640cd3df74ddd40908e22ea30c85d4ddf2977500ac46137",
+      "export_sha256": "acf6fff15dca9eb02640cd3df74ddd40908e22ea30c85d4ddf2977500ac46137",
+      "size": 48187,
+      "modified_utc": "2026-09-30T08:53:17+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/data/processed/sb02_hourly.csv",
+      "path": "hanjari-ml/data/processed/sb02_hourly.csv",
+      "source_sha256": "7e91adef6ae56525b58d6e35eb0721df44f2b71b3c18ffe6a7955c2824eadd6a",
+      "export_sha256": "7e91adef6ae56525b58d6e35eb0721df44f2b71b3c18ffe6a7955c2824eadd6a",
+      "size": 2714383,
+      "modified_utc": "2026-09-23T08:48:03+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/data/processed/jr03_trips.csv.dvc",
+      "path": "hanjari-ml/data/processed/jr03_trips.csv.dvc",
+      "source_sha256": "52a0d05ea4197474397fab8375d79b3961a98f20e48cfdf1b1fdec4c4ade06a1",
+      "export_sha256": "52a0d05ea4197474397fab8375d79b3961a98f20e48cfdf1b1fdec4c4ade06a1",
+      "size": 98,
+      "modified_utc": "2026-10-01T00:42:14+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/data/processed/sb02_hourly.csv.dvc",
+      "path": "hanjari-ml/data/processed/sb02_hourly.csv.dvc",
+      "source_sha256": "3759054b212cdeb3558b50b4bdcceaa9e4bc2b88226d8465e9dc4831f6cb68d6",
+      "export_sha256": "3759054b212cdeb3558b50b4bdcceaa9e4bc2b88226d8465e9dc4831f6cb68d6",
+      "size": 98,
+      "modified_utc": "2026-10-01T00:42:13+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/data/processed/class_starts.csv",
+      "path": "hanjari-ml/data/processed/class_starts.csv",
+      "source_sha256": "165efa24bb73ccaa5b620c515397f40af85f1c0cb38b0b8d065fff3441e5aa1f",
+      "export_sha256": "165efa24bb73ccaa5b620c515397f40af85f1c0cb38b0b8d065fff3441e5aa1f",
+      "size": 1551,
+      "modified_utc": "2026-10-05T06:18:51.028562+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/data/processed/holidays.csv",
+      "path": "hanjari-ml/data/processed/holidays.csv",
+      "source_sha256": "b818c5fe9915e4ad2c74469520fd8ee4e3b8f5329a84c5b27bc443496945863f",
+      "export_sha256": "b818c5fe9915e4ad2c74469520fd8ee4e3b8f5329a84c5b27bc443496945863f",
+      "size": 2404,
+      "modified_utc": "2026-09-23T07:37:15+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/data/processed/sb02_trips.csv.dvc",
+      "path": "hanjari-ml/data/processed/sb02_trips.csv.dvc",
+      "source_sha256": "3bedd252ae87a4bfefa72bcf1b9d1cb7f532fc827970328636c5374c04ad9dd2",
+      "export_sha256": "3bedd252ae87a4bfefa72bcf1b9d1cb7f532fc827970328636c5374c04ad9dd2",
+      "size": 98,
+      "modified_utc": "2026-10-01T00:42:13+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/data/processed/jr03_hourly.csv",
+      "path": "hanjari-ml/data/processed/jr03_hourly.csv",
+      "source_sha256": "5b0dc71b0fcd1b3bec7024a2f7e8f3fdc443401f7ecb79681f365bc9204c774a",
+      "export_sha256": "5b0dc71b0fcd1b3bec7024a2f7e8f3fdc443401f7ecb79681f365bc9204c774a",
+      "size": 2459045,
+      "modified_utc": "2026-09-23T08:54:12+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/data/processed/jr03_hourly.csv.dvc",
+      "path": "hanjari-ml/data/processed/jr03_hourly.csv.dvc",
+      "source_sha256": "10046efce735c85910eb749661640b2d197ebfbeea7af4f0be2b56dac39520ea",
+      "export_sha256": "10046efce735c85910eb749661640b2d197ebfbeea7af4f0be2b56dac39520ea",
+      "size": 98,
+      "modified_utc": "2026-10-01T00:42:14+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/data/processed/sb02_trips.csv",
+      "path": "hanjari-ml/data/processed/sb02_trips.csv",
+      "source_sha256": "bb2cb0c18939b51062007583db3414fd373fc28f0836b71c4b479bbe80ec20ca",
+      "export_sha256": "bb2cb0c18939b51062007583db3414fd373fc28f0836b71c4b479bbe80ec20ca",
+      "size": 32958431,
+      "modified_utc": "2026-09-23T08:53:57+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/data/processed/jr03_trips.csv",
+      "path": "hanjari-ml/data/processed/jr03_trips.csv",
+      "source_sha256": "39809a026b41409b715fa6ec6d75b85aad6a0d28e553eeae2750558862014b35",
+      "export_sha256": "39809a026b41409b715fa6ec6d75b85aad6a0d28e553eeae2750558862014b35",
+      "size": 26360631,
+      "modified_utc": "2026-09-23T08:59:01+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/data/processed/calendar.csv",
+      "path": "hanjari-ml/data/processed/calendar.csv",
+      "source_sha256": "50903f1e2a7d04740a3a34cd26ea88c5f5aa88cd6652ae8c8250ed8f86f11c25",
+      "export_sha256": "50903f1e2a7d04740a3a34cd26ea88c5f5aa88cd6652ae8c8250ed8f86f11c25",
+      "size": 38385,
+      "modified_utc": "2026-09-23T07:42:39+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/src/exp_models.py",
+      "path": "hanjari-ml/src/exp_models.py",
+      "source_sha256": "1da2242b53e0863824cf434239d5586f1a274133f045327d20af427b548c648c",
+      "export_sha256": "1da2242b53e0863824cf434239d5586f1a274133f045327d20af427b548c648c",
+      "size": 6324,
+      "modified_utc": "2026-09-30T03:00:53+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/src/serve.py",
+      "path": "hanjari-ml/src/serve.py",
+      "source_sha256": "905de93dd59ebfd96ebe9e7b79a497cae3f872489f4b5a69c78d6e013c142b95",
+      "export_sha256": "905de93dd59ebfd96ebe9e7b79a497cae3f872489f4b5a69c78d6e013c142b95",
+      "size": 16649,
+      "modified_utc": "2026-10-05T04:28:51+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/src/exp_boost.py",
+      "path": "hanjari-ml/src/exp_boost.py",
+      "source_sha256": "082fac4acea6a2a3cc9889552c709b0766b9b45276f6423eba62cd7890928232",
+      "export_sha256": "082fac4acea6a2a3cc9889552c709b0766b9b45276f6423eba62cd7890928232",
+      "size": 4284,
+      "modified_utc": "2026-10-01T00:51:09+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/src/exp_lite.py",
+      "path": "hanjari-ml/src/exp_lite.py",
+      "source_sha256": "c1dadca3170f20f729cd1928b518d63ae145f18dce1858ac077288e33d765acb",
+      "export_sha256": "c1dadca3170f20f729cd1928b518d63ae145f18dce1858ac077288e33d765acb",
+      "size": 2121,
+      "modified_utc": "2026-09-30T08:46:34+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/src/daily.py",
+      "path": "hanjari-ml/src/daily.py",
+      "source_sha256": "e20a378c5392d5360cf65d4d54dae9f035f89ccab596917e126540dee4c71703",
+      "export_sha256": "e20a378c5392d5360cf65d4d54dae9f035f89ccab596917e126540dee4c71703",
+      "size": 11832,
+      "modified_utc": "2026-10-05T04:26:40+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/src/baseline_csv.py",
+      "path": "hanjari-ml/src/baseline_csv.py",
+      "source_sha256": "ea31a8f5606a214069e32a2116ce2e5b9bda241e95150c4806e34d7b695fc64d",
+      "export_sha256": "ea31a8f5606a214069e32a2116ce2e5b9bda241e95150c4806e34d7b695fc64d",
+      "size": 3739,
+      "modified_utc": "2026-09-23T06:43:59+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/src/sweep.py",
+      "path": "hanjari-ml/src/sweep.py",
+      "source_sha256": "62b6ec4aef884a0ee74f1bed995800fb4207a705997fa193bb9550e13d17f772",
+      "export_sha256": "62b6ec4aef884a0ee74f1bed995800fb4207a705997fa193bb9550e13d17f772",
+      "size": 7113,
+      "modified_utc": "2026-09-23T10:57:22+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/src/watchdog.py",
+      "path": "hanjari-ml/src/watchdog.py",
+      "source_sha256": "a2fa81ed8698b2d87c51f21cbb2fdaa2ef3e0025603ad18d4ce1ba0506a9852b",
+      "export_sha256": "a2fa81ed8698b2d87c51f21cbb2fdaa2ef3e0025603ad18d4ce1ba0506a9852b",
+      "size": 3572,
+      "modified_utc": "2026-10-01T16:07:14+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/src/eval_days.py",
+      "path": "hanjari-ml/src/eval_days.py",
+      "source_sha256": "559d307825d55c2158d13069773f536a2de8ce5caf071b0427e25a485eea0279",
+      "export_sha256": "559d307825d55c2158d13069773f536a2de8ce5caf071b0427e25a485eea0279",
+      "size": 2639,
+      "modified_utc": "2026-09-25T08:26:34+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/src/build_dataset.py",
+      "path": "hanjari-ml/src/build_dataset.py",
+      "source_sha256": "a96fdf1a8ca89b1253dae7f628e52d5dc8ca735b593ed096d61115dc8fd5e8a2",
+      "export_sha256": "a96fdf1a8ca89b1253dae7f628e52d5dc8ca735b593ed096d61115dc8fd5e8a2",
+      "size": 24218,
+      "modified_utc": "2026-10-05T04:12:41+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/src/collect.py",
+      "path": "hanjari-ml/src/collect.py",
+      "source_sha256": "309eb93eda35f942130471865917789b43b9a486966a430f2af7479cd31f9388",
+      "export_sha256": "309eb93eda35f942130471865917789b43b9a486966a430f2af7479cd31f9388",
+      "size": 7932,
+      "modified_utc": "2026-10-01T05:42:07+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/src/build_calendar.py",
+      "path": "hanjari-ml/src/build_calendar.py",
+      "source_sha256": "52737554c8535964f374b77e134b50973a96e10f9070770b831922237e1aab40",
+      "export_sha256": "52737554c8535964f374b77e134b50973a96e10f9070770b831922237e1aab40",
+      "size": 4091,
+      "modified_utc": "2026-10-05T05:46:20+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/src/fetch_holidays.py",
+      "path": "hanjari-ml/src/fetch_holidays.py",
+      "source_sha256": "b75b9b8f9bf0f0d432c8fb640f9f3b68b104062e5060e43fcce4669259c556f4",
+      "export_sha256": "b75b9b8f9bf0f0d432c8fb640f9f3b68b104062e5060e43fcce4669259c556f4",
+      "size": 1558,
+      "modified_utc": "2026-09-23T07:37:13+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/src/predict.py",
+      "path": "hanjari-ml/src/predict.py",
+      "source_sha256": "ad37d0aebceed0252b4e3d35d2ca87ad469bfdaa5fdfddc6f89c6892b64c80f7",
+      "export_sha256": "ad37d0aebceed0252b4e3d35d2ca87ad469bfdaa5fdfddc6f89c6892b64c80f7",
+      "size": 2798,
+      "modified_utc": "2026-09-23T06:41:44+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/src/exp_small.py",
+      "path": "hanjari-ml/src/exp_small.py",
+      "source_sha256": "cf0cefde2eccbcffc32c5dfd55fc563f8a4717941605ad4592eef40306a40b92",
+      "export_sha256": "cf0cefde2eccbcffc32c5dfd55fc563f8a4717941605ad4592eef40306a40b92",
+      "size": 1410,
+      "modified_utc": "2026-10-01T05:41:11+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/src/extract_routes.py",
+      "path": "hanjari-ml/src/extract_routes.py",
+      "source_sha256": "8003a6d334fe7a1727d6b4b4d7d2cadb28f9268b29d65ae62140880d882be4a0",
+      "export_sha256": "8003a6d334fe7a1727d6b4b4d7d2cadb28f9268b29d65ae62140880d882be4a0",
+      "size": 3165,
+      "modified_utc": "2026-09-23T08:47:47+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/src/train.py",
+      "path": "hanjari-ml/src/train.py",
+      "source_sha256": "e2dc9507c0949d1c35ce7911481ed7d8344b6fb1feaa7d507f982af4b2cfd855",
+      "export_sha256": "e2dc9507c0949d1c35ce7911481ed7d8344b6fb1feaa7d507f982af4b2cfd855",
+      "size": 15568,
+      "modified_utc": "2026-10-18T08:45:22.968702+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/src/exp_bl.py",
+      "path": "hanjari-ml/src/exp_bl.py",
+      "source_sha256": "a6e387345c2cc2731cd8950e05e70f9a50e26d005c29d6131760814461d091bf",
+      "export_sha256": "a6e387345c2cc2731cd8950e05e70f9a50e26d005c29d6131760814461d091bf",
+      "size": 2827,
+      "modified_utc": "2026-10-05T04:39:40+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/src/pull_logs.sh",
+      "path": "hanjari-ml/src/pull_logs.sh",
+      "source_sha256": "a19ece9258688bddada43991d834ceb1a016919164d95351dbc18a8c80973828",
+      "export_sha256": "a19ece9258688bddada43991d834ceb1a016919164d95351dbc18a8c80973828",
+      "size": 773,
+      "modified_utc": "2026-09-28T08:30:06+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/src/notify.py",
+      "path": "hanjari-ml/src/notify.py",
+      "source_sha256": "c8424dcf0954b78b7746496562520844cf429e2e2cdec4eaea0a3d23aa25524b",
+      "export_sha256": "c8424dcf0954b78b7746496562520844cf429e2e2cdec4eaea0a3d23aa25524b",
+      "size": 1324,
+      "modified_utc": "2026-10-01T00:39:29+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/src/exp_subway.py",
+      "path": "hanjari-ml/src/exp_subway.py",
+      "source_sha256": "fcf6cd927df988840801d9c413fc274695d1ddd34de263360574ff53cceec451",
+      "export_sha256": "fcf6cd927df988840801d9c413fc274695d1ddd34de263360574ff53cceec451",
+      "size": 4454,
+      "modified_utc": "2026-09-30T04:54:44+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/models/lite/meta.json",
+      "path": "hanjari-ml/models/lite/meta.json",
+      "source_sha256": "5a186d28fcfb762b2bcf5b968726626315c4c887d348c4c1e0d97957685671fe",
+      "export_sha256": "5a186d28fcfb762b2bcf5b968726626315c4c887d348c4c1e0d97957685671fe",
+      "size": 739367,
+      "modified_utc": "2026-10-17T18:02:04.811154+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/models/lite/metrics.json",
+      "path": "hanjari-ml/models/lite/metrics.json",
+      "source_sha256": "c0a1bfb96d245ad9e6dc9a45e49d223b93c84fccc10462542532cae0c18ee081",
+      "export_sha256": "c0a1bfb96d245ad9e6dc9a45e49d223b93c84fccc10462542532cae0c18ee081",
+      "size": 167,
+      "modified_utc": "2026-10-17T18:02:04.822154+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/models/lite/k0.json",
+      "path": "hanjari-ml/models/lite/k0.json",
+      "source_sha256": "338c66a62ae556fc44a125bdc72f7250f4d61b519773a6a20f859051612de5b5",
+      "export_sha256": "338c66a62ae556fc44a125bdc72f7250f4d61b519773a6a20f859051612de5b5",
+      "size": 826280,
+      "modified_utc": "2026-10-17T18:01:38.298795+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/models/lite/point.json",
+      "path": "hanjari-ml/models/lite/point.json",
+      "source_sha256": "e21c67207bbcc5f740ba84d313f14dad03283fdab23400bd187b6fe6d41dc787",
+      "export_sha256": "e21c67207bbcc5f740ba84d313f14dad03283fdab23400bd187b6fe6d41dc787",
+      "size": 1098694,
+      "modified_utc": "2026-10-17T18:01:37.291782+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/models/lite/quantile.json",
+      "path": "hanjari-ml/models/lite/quantile.json",
+      "source_sha256": "86235d3d37c0d7638128edd4cfecc6ad262e2836c4b6c90f3b3f22f3a53d9e27",
+      "export_sha256": "86235d3d37c0d7638128edd4cfecc6ad262e2836c4b6c90f3b3f22f3a53d9e27",
+      "size": 9778226,
+      "modified_utc": "2026-10-17T18:01:38.202794+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/docs/PRD_v1.0_final.md",
+      "path": "hanjari-ml/docs/PRD_v1.0_final.md",
+      "source_sha256": "4c13c57e8f8565adfd91a5ac2451d4806023e2104bbb976dae3254c936ee1d24",
+      "export_sha256": "4c13c57e8f8565adfd91a5ac2451d4806023e2104bbb976dae3254c936ee1d24",
+      "size": 6865,
+      "modified_utc": "2026-09-23T05:45:30+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/docs/milestone.md",
+      "path": "hanjari-ml/docs/milestone.md",
+      "source_sha256": "41480c59dbf83be0ce0331a74c7229d02ae3dff3b845f3931d2936ac7f020cc2",
+      "export_sha256": "41480c59dbf83be0ce0331a74c7229d02ae3dff3b845f3931d2936ac7f020cc2",
+      "size": 3337,
+      "modified_utc": "2026-09-23T05:45:30+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/docs/DATA_SOURCES.md",
+      "path": "hanjari-ml/docs/DATA_SOURCES.md",
+      "source_sha256": "b7957d962307ccebcc5081d1af64f80065e0428a5d1420fadc3b6ad9056f0a4b",
+      "export_sha256": "b7957d962307ccebcc5081d1af64f80065e0428a5d1420fadc3b6ad9056f0a4b",
+      "size": 2204,
+      "modified_utc": "2026-09-23T05:45:30+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/docs/WBS.md",
+      "path": "hanjari-ml/docs/WBS.md",
+      "source_sha256": "8c03d2aecbc0340d656d3b8755d71da2112f2908460e0e8083e3f8a4cc855239",
+      "export_sha256": "8c03d2aecbc0340d656d3b8755d71da2112f2908460e0e8083e3f8a4cc855239",
+      "size": 4423,
+      "modified_utc": "2026-09-23T05:45:30+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/docs/DESIGN.md",
+      "path": "hanjari-ml/docs/DESIGN.md",
+      "source_sha256": "beedc654f2dab38d25309cd7ebff37b4675705797da359dfbcb0afb2b5257a5a",
+      "export_sha256": "beedc654f2dab38d25309cd7ebff37b4675705797da359dfbcb0afb2b5257a5a",
+      "size": 3383,
+      "modified_utc": "2026-09-23T06:33:10+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/ops/RUNBOOK.md",
+      "path": "hanjari-ml/ops/RUNBOOK.md",
+      "source_sha256": "fc76498491e3f59288c4b93e4de61ed0eae0c77fc82669600f4f5ed1647816ac",
+      "export_sha256": "fc76498491e3f59288c4b93e4de61ed0eae0c77fc82669600f4f5ed1647816ac",
+      "size": 5234,
+      "modified_utc": "2026-10-01T00:41:17+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/ops/install.sh",
+      "path": "hanjari-ml/ops/install.sh",
+      "source_sha256": "7003291a58d0a6d3a56621e0954a7217e21468d2a53f6cdaacd86c7bdf2cfbdf",
+      "export_sha256": "7003291a58d0a6d3a56621e0954a7217e21468d2a53f6cdaacd86c7bdf2cfbdf",
+      "size": 4008,
+      "modified_utc": "2026-10-01T05:42:29+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/ops/logrotate-hanjari",
+      "path": "hanjari-ml/ops/logrotate-hanjari",
+      "source_sha256": "29c2af0710455ec4125bf818b3417575d91ebf3bad1727cca4c117afce637c3a",
+      "export_sha256": "29c2af0710455ec4125bf818b3417575d91ebf3bad1727cca4c117afce637c3a",
+      "size": 166,
+      "modified_utc": "2026-10-01T00:40:27+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/ops/systemd/hanjari-daily.service",
+      "path": "hanjari-ml/ops/systemd/hanjari-daily.service",
+      "source_sha256": "b3d5f50a96b434a5b21e984da1b3933e97b9ee43d7d769bd12d9b8fdf79be4e6",
+      "export_sha256": "b3d5f50a96b434a5b21e984da1b3933e97b9ee43d7d769bd12d9b8fdf79be4e6",
+      "size": 735,
+      "modified_utc": "2026-10-19T00:13:02.598935+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/ops/systemd/hanjari-watchdog.timer",
+      "path": "hanjari-ml/ops/systemd/hanjari-watchdog.timer",
+      "source_sha256": "990218b3c4cf10d10bf7a813e233f2556a4ae8b6ed3aadb6657725fce0f431ec",
+      "export_sha256": "990218b3c4cf10d10bf7a813e233f2556a4ae8b6ed3aadb6657725fce0f431ec",
+      "size": 141,
+      "modified_utc": "2026-10-01T00:40:27+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/ops/systemd/hanjari-web.service",
+      "path": "hanjari-ml/ops/systemd/hanjari-web.service",
+      "source_sha256": "eaf09e209aa84f1bb892bb74195699094f6630ee8d173a665a5f79c15254d62a",
+      "export_sha256": "eaf09e209aa84f1bb892bb74195699094f6630ee8d173a665a5f79c15254d62a",
+      "size": 1079,
+      "modified_utc": "2026-10-19T00:13:03.382946+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/ops/systemd/hanjari-fail@.service",
+      "path": "hanjari-ml/ops/systemd/hanjari-fail@.service",
+      "source_sha256": "2d3a7bf673673929dddee5b0618dd9e24fa5487d12e955abbef4fd5f8f9b0ed2",
+      "export_sha256": "2d3a7bf673673929dddee5b0618dd9e24fa5487d12e955abbef4fd5f8f9b0ed2",
+      "size": 205,
+      "modified_utc": "2026-10-01T00:40:27+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/ops/systemd/hanjari-collect.service",
+      "path": "hanjari-ml/ops/systemd/hanjari-collect.service",
+      "source_sha256": "73e80ead994b03bb0dd7a6b8ed00d391a81d7dd9ebc3e5f2b8be5d2ec86ebaa8",
+      "export_sha256": "73e80ead994b03bb0dd7a6b8ed00d391a81d7dd9ebc3e5f2b8be5d2ec86ebaa8",
+      "size": 383,
+      "modified_utc": "2026-10-01T00:40:27+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/ops/systemd/hanjari-daily.timer",
+      "path": "hanjari-ml/ops/systemd/hanjari-daily.timer",
+      "source_sha256": "6bd7e86daa1852cc27bc15d5f77c685a5872f07af9a355f6c97a6f64b0effc10",
+      "export_sha256": "6bd7e86daa1852cc27bc15d5f77c685a5872f07af9a355f6c97a6f64b0effc10",
+      "size": 296,
+      "modified_utc": "2026-10-01T00:40:27+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/home/ubuntu/hanjari-ml/ops/systemd/hanjari-watchdog.service",
+      "path": "hanjari-ml/ops/systemd/hanjari-watchdog.service",
+      "source_sha256": "00bfd2dcbaad12cda9aac1c096efc4f2cba4220ea67145850d71ea1d6c67d98b",
+      "export_sha256": "00bfd2dcbaad12cda9aac1c096efc4f2cba4220ea67145850d71ea1d6c67d98b",
+      "size": 265,
+      "modified_utc": "2026-10-01T00:40:27+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/etc/systemd/system/hanjari-collect.service",
+      "path": "deployment/installed/hanjari-collect.service",
+      "source_sha256": "44174db5ab8d817bc8222528f477b1f346fc19894dfef8cd8ac0e67697ca0065",
+      "export_sha256": "44174db5ab8d817bc8222528f477b1f346fc19894dfef8cd8ac0e67697ca0065",
+      "size": 428,
+      "modified_utc": "2026-10-01T05:44:46.838257+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/etc/systemd/system/hanjari-daily.service",
+      "path": "deployment/installed/hanjari-daily.service",
+      "source_sha256": "54ff63b677e244b223cc7da0e4d469e611b46ad8d1cdb65cb42ce064590fe04c",
+      "export_sha256": "54ff63b677e244b223cc7da0e4d469e611b46ad8d1cdb65cb42ce064590fe04c",
+      "size": 769,
+      "modified_utc": "2026-10-18T08:23:29.095920+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/etc/systemd/system/hanjari-daily.timer",
+      "path": "deployment/installed/hanjari-daily.timer",
+      "source_sha256": "6bd7e86daa1852cc27bc15d5f77c685a5872f07af9a355f6c97a6f64b0effc10",
+      "export_sha256": "6bd7e86daa1852cc27bc15d5f77c685a5872f07af9a355f6c97a6f64b0effc10",
+      "size": 296,
+      "modified_utc": "2026-10-01T05:44:46.908258+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/etc/systemd/system/hanjari-fail@.service",
+      "path": "deployment/installed/hanjari-fail@.service",
+      "source_sha256": "80269011e2fe4013d920184158604e316df29bbe5f27a801cc62d26d2c080563",
+      "export_sha256": "80269011e2fe4013d920184158604e316df29bbe5f27a801cc62d26d2c080563",
+      "size": 239,
+      "modified_utc": "2026-10-01T05:44:46.983258+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/etc/systemd/system/hanjari-watchdog.service",
+      "path": "deployment/installed/hanjari-watchdog.service",
+      "source_sha256": "cf5c5288b838e61a65f496ff0ea36737380857fefcbab53cf978d74f9fb05ea8",
+      "export_sha256": "cf5c5288b838e61a65f496ff0ea36737380857fefcbab53cf978d74f9fb05ea8",
+      "size": 299,
+      "modified_utc": "2026-10-01T05:44:46.997259+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/etc/systemd/system/hanjari-watchdog.timer",
+      "path": "deployment/installed/hanjari-watchdog.timer",
+      "source_sha256": "990218b3c4cf10d10bf7a813e233f2556a4ae8b6ed3aadb6657725fce0f431ec",
+      "export_sha256": "990218b3c4cf10d10bf7a813e233f2556a4ae8b6ed3aadb6657725fce0f431ec",
+      "size": 141,
+      "modified_utc": "2026-10-01T05:44:47.012259+00:00",
+      "sanitized": false
+    },
+    {
+      "source": "/etc/systemd/system/hanjari-web.service",
+      "path": "deployment/installed/hanjari-web.service",
+      "source_sha256": "eaf09e209aa84f1bb892bb74195699094f6630ee8d173a665a5f79c15254d62a",
+      "export_sha256": "eaf09e209aa84f1bb892bb74195699094f6630ee8d173a665a5f79c15254d62a",
+      "size": 1079,
+      "modified_utc": "2026-10-19T00:13:04.161957+00:00",
+      "sanitized": false
+    }
+  ],
+  "redacted_files": [],
+  "secret_variable_names": [
+    "SEOUL_BUS_API_KEY",
+    "SEOUL_BUS_API_KEY_3",
+    "SEOUL_BUS_API_KEY_4",
+    "SEOUL_BUS_API_KEY_JR03"
+  ],
+  "symlinks": [],
+  "installed_versions": {
+    "web": {
+      "fastapi": "0.142.2",
+      "cloudpickle": "3.1.2",
+      "click": "8.5.0",
+      "pydantic": "2.13.5",
+      "anyio": "4.15.1",
+      "pandas": "3.0.5",
+      "six": "1.17.0",
+      "xgboost": "3.2.0",
+      "scipy": "1.17.1",
+      "joblib": "1.6.0",
+      "annotated-doc": "0.0.5",
+      "numpy": "2.4.6",
+      "pydantic_core": "2.46.5",
+      "h11": "0.16.0",
+      "starlette": "1.7.0",
+      "uvicorn": "0.54.0",
+      "annotated-types": "0.8.0",
+      "narwhals": "2.26.0",
+      "opentelemetry-api": "1.45.0",
+      "typing-inspection": "0.4.4",
+      "nvidia-nccl-cu12": "2.32.3",
+      "scikit-learn": "1.9.0",
+      "typing_extensions": "4.16.0",
+      "threadpoolctl": "3.7.0",
+      "idna": "3.20",
+      "python-dateutil": "2.9.0.post0"
+    },
+    "ml": {
+      "cloudpickle": "3.1.2",
+      "pandas": "3.0.5",
+      "six": "1.17.0",
+      "xgboost": "3.2.0",
+      "scipy": "1.17.1",
+      "joblib": "1.6.0",
+      "numpy": "2.4.6",
+      "narwhals": "2.26.0",
+      "nvidia-nccl-cu12": "2.32.3",
+      "scikit-learn": "1.9.0",
+      "threadpoolctl": "3.7.0",
+      "python-dateutil": "2.9.0.post0"
+    }
+  },
+  "changed_during_export": [],
+  "runtime_observation": {
+    "hanjari": {
+      "exists": true,
+      "symlink": false,
+      "resolved": "/home/ubuntu/hanjari/data/api_logs",
+      "latest_day": "20261019"
+    },
+    "hanjari-ml": {
+      "exists": true,
+      "symlink": true,
+      "resolved": "/home/ubuntu/hanjari/data/api_logs",
+      "latest_day": "20261019"
+    },
+    "web_runtime": [
+      "MainPID=136783",
+      "ExecMainStartTimestamp=Sun 2026-10-18 16:16:58 UTC",
+      "ActiveEnterTimestamp=Sun 2026-10-18 16:16:58 UTC"
+    ],
+    "system_python": "Python 3.10.12",
+    "web_python": "Python 3.11.16",
+    "ml_python": "Python 3.11.16",
+    "health": {
+      "status": "ok",
+      "mode": "latest"
+    },
+    "captured_at": "2026-10-19T00:25:12.112948+00:00"
+  },
+  "packaging_changes": {
+    "hanjari-ml/.gitignore": "Allow four exported reference CSV files to be tracked by Git."
+  },
+  "frontend_source_available": true,
+  "git_history_included": false,
+  "production_changed_by_export": false,
+  "frontend_source_available_on_server": false,
+  "frontend_source_added_from": "D:/Orca/hanjari-ai/frontend",
+  "frontend_source_verification": "frontend-match.json: all six production files byte-identical"
+}

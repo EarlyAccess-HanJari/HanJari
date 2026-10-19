@@ -1,0 +1,14 @@
+.card { background: var(--lv-bg); color: var(--lv-fg); border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 12px; transition: opacity .15s; }
+.card[aria-busy="true"] { opacity: .6; }
+.head { display: flex; align-items: center; gap: 10px; }
+.title { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+.p { margin-left: auto; text-align: right; line-height: 1.1; }
+.pLabel { font-size: 12px; font-weight: 500; }
+.pNum { font-family: var(--mono); font-size: 30px; font-weight: 600; letter-spacing: -0.03em; }
+.pUnit { font-size: 16px; font-weight: 600; }
+.track { height: 8px; border-radius: 4px; background: rgba(17, 27, 46, .1); overflow: hidden; }
+.fill { height: 8px; border-radius: 4px; background: var(--lv-bar); }
+.guide { margin: 0; font-size: 16px; line-height: 1.55; font-weight: 600; }
+.load { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 14px; border-top: 1px solid rgba(17, 27, 46, .12); padding-top: 12px; }
+.load b { font-weight: 700; }
+.why { margin: 0; font-size: 13px; line-height: 1.55; opacity: .85; }

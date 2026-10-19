@@ -1,0 +1,6 @@
+.wrap { display: flex; flex-direction: column; gap: 8px; }
+.title { margin: 8px 4px 0; font-size: 14px; font-weight: 600; color: var(--ink-2); }
+.item { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 60px; padding: 10px 16px; border-radius: 16px; border: 1px solid var(--line-2); background: var(--card); text-align: left; }
+.text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.name { font-size: 15px; font-weight: 600; }
+.sub { font-size: 13px; color: var(--muted); }

@@ -1,0 +1,19 @@
+.env
+data/raw/
+data/api_logs/
+data/processed/*
+!data/processed/calendar.csv
+!data/processed/class_starts.csv
+!data/processed/holidays.csv
+!data/processed/*.dvc
+!data/processed/.gitignore
+__pycache__/
+models/*
+!models/lite/
+catboost_info/
+
+# Keep the public reference tables in this server snapshot.
+!data/processed/sb02_hourly.csv
+!data/processed/sb02_trips.csv
+!data/processed/jr03_hourly.csv
+!data/processed/jr03_trips.csv

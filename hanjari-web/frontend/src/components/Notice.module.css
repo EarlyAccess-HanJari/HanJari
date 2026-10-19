@@ -1,0 +1,6 @@
+.box { background: var(--card); border-radius: 20px; padding: 32px 24px; display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+.icon { width: 36px; height: 36px; }
+.title { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+.body { margin: 0; font-size: 15px; line-height: 1.6; color: var(--ink-2); }
+.detail { margin: 0; font-size: 13px; color: var(--muted); word-break: break-all; }
+.btn { margin-top: 8px; height: 48px; padding: 0 22px; border-radius: 14px; border: 0; background: var(--ink); color: #fff; font-size: 16px; font-weight: 600; }

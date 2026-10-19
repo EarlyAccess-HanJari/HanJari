@@ -1,0 +1,5 @@
+outs:
+- md5: baa46796a6d4295969b4e41c0ee4f274
+  size: 2714383
+  hash: md5
+  path: sb02_hourly.csv

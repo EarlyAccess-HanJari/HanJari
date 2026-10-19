@@ -1,0 +1,5 @@
+outs:
+- md5: 46438083127bc0c06ea9a96463f41729
+  size: 2459045
+  hash: md5
+  path: jr03_hourly.csv

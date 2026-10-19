@@ -1,0 +1,12 @@
+.card { background: var(--card); border-radius: 20px; padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 12px; }
+.label { font-size: 16px; font-weight: 600; }
+.stepper { display: flex; align-items: center; gap: 10px; }
+.step { width: 56px; height: 56px; flex: none; border-radius: 16px; border: 1px solid var(--line); background: var(--bg); display: flex; align-items: center; justify-content: center; padding: 0; }
+.field { flex: 1; min-width: 0; display: flex; align-items: baseline; justify-content: center; gap: 4px; height: 56px; border-radius: 16px; border: 2px solid var(--ink); padding: 0 12px; }
+.fieldError { border-color: var(--bad-line); }
+.input { width: 80px; height: 52px; line-height: 52px; border: 0; outline: none; background: transparent; text-align: right; font-family: var(--mono); font-size: 34px; font-weight: 600; color: var(--ink); padding: 0; }
+.unit { font-size: 17px; font-weight: 600; width: 64px; }
+.quick { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.chip { height: 44px; border-radius: 12px; font-size: 15px; font-weight: 600; border: 1px solid var(--line); background: var(--card); }
+.chipOn { border: 2px solid var(--ink); background: var(--ink); color: #fff; }
+.error { margin: 0; font-size: 13px; color: var(--bad); font-weight: 600; }
