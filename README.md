@@ -29,35 +29,6 @@
 | AI | XGBoost · pandas · NumPy | 데이터 처리와 탑승 가능성 예측 |
 | 운영 | Oracle Cloud · Ubuntu · systemd | 서비스 실행과 수집·학습 작업 관리 |
 
-## 내 PC에서 실행하기
-
-Python 3.11이 필요합니다. 저장소를 내려받은 뒤 최상위 폴더에서 실행하세요.
-
-**Windows PowerShell**
-
-```powershell
-py -3.11 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements-runtime.txt
-.\.venv\Scripts\python.exe scripts/run_local.py
-```
-
-<details>
-<summary>macOS · Linux 실행 방법</summary>
-
-```sh
-python3.11 -m venv .venv
-.venv/bin/python -m pip install -r requirements-runtime.txt
-.venv/bin/python scripts/run_local.py
-```
-
-</details>
-
-브라우저에서 [http://127.0.0.1:8000](http://127.0.0.1:8000)을 열면 됩니다. 종료는 `Ctrl+C`입니다.
-
-기본 실행은 **API 키가 필요 없는 샘플 모드**입니다. 2026년 9월 30일의 저장 자료를 사용하므로 현재 버스 상황과는 다릅니다. 실시간 수집이나 자동 학습은 시작하지 않습니다.
-
-화면 수정과 빌드는 [프론트엔드 개발 안내](hanjari-web/frontend/README.md), 실시간 운영 설정은 [운영 안내](deployment/README.md)를 참고하세요.
-
 ## 팀 역할
 
 | 팀원 | 담당 |
@@ -73,7 +44,6 @@ python3.11 -m venv .venv
 
 - 익명 탑승 결과 기록 기능을 구현하고, 현장 평가로 예측 결과 확인
 - 정보가 없거나 수집이 지연된 상황의 안내 개선
-- 화면·서버 통합 테스트와 사용성 개선
 - 둘째 버스 도착 정보는 현재 미구현·보류 상태로, 후속 일정 검토
 
 ## 관련 자료
