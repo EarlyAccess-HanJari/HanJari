@@ -81,6 +81,3 @@ python3.11 -m venv .venv
 - [프론트엔드 개발 안내](hanjari-web/frontend/README.md)
 - [운영 안내](deployment/README.md)
 - [검증 결과](deployment/VALIDATION.md)
-- [프론트엔드와 배포 화면의 일치 확인](deployment/FRONTEND_MATCH.md)
-
-이 저장소는 운영 중인 코드를 바탕으로 새로 구성했습니다. 이전 개발 과정은 [기존 저장소](https://github.com/YONGJI04/hanjari-ai)에서 확인할 수 있습니다.
