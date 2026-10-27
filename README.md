@@ -21,7 +21,7 @@
 
 한성대학교 오픈소스 AI·SW 융합 프로젝트 · **팀 얼리액세스**
 
-[소개](#-프로젝트-소개) · [기능](#-주요-기능) · [실행](#-내-pc에서-실행하기) · [기술](#-기술-및-구조) · [OSS](#-오픈소스와-라이선스) · [검증](#-검증-목표) · [팀](#-팀-소개) · [일정](#-진행-계획) · [문서](#-개발-문서)
+[소개](#-프로젝트-소개) · [기능](#-주요-기능) · [실행](#-내-pc에서-실행하기) · [기술](#-기술-및-구조) · [OSS](#-오픈소스와-라이선스) · [검증](#-검증-목표) · [팀](#-팀-소개) · [일정](#-진행-계획)
 
 </div>
 
@@ -201,18 +201,6 @@ HanJari/
 | 15 | 12/7~12/13 | 최종 발표·제출, 회고 | ⏳ |
 
 <sub>✅ 완료 · 🔄 진행 중 · ⏳ 예정 (2026년 기준)</sub>
-
-## 📚 개발 문서
-
-| 분류 | 문서 |
-| --- | --- |
-| 기획 | [PRD](hanjari-ml/docs/PRD_v1.0_final.md) · [WBS](hanjari-ml/docs/WBS.md) · [마일스톤](hanjari-ml/docs/milestone.md) |
-| AI / Data | [AI 파트 안내](hanjari-ml/README.md) · [설계](hanjari-ml/docs/DESIGN.md) · [데이터 출처](hanjari-ml/docs/DATA_SOURCES.md) |
-| 개발 | [백엔드 안내](hanjari-web/backend/README.md) · [프론트엔드 안내](hanjari-web/frontend/README.md) · [파트별 작업 문서](docs/work) |
-| 운영 | [운영 안내](deployment/README.md) · [운영 매뉴얼](hanjari-ml/ops/RUNBOOK.md) · [검증 결과](deployment/VALIDATION.md) · [프론트엔드 일치 확인](deployment/FRONTEND_MATCH.md) |
-| 참여 | [기여 안내](CONTRIBUTING.md) · [오류 제보 및 개선 제안](https://github.com/EarlyAccess-HanJari/HanJari/issues) |
-
-이 저장소는 운영 중인 코드를 바탕으로 새로 구성했습니다. 이전 개발 과정은 [기존 저장소](https://github.com/YONGJI04/hanjari-ai)에서 확인할 수 있습니다.
 
 ---
 
