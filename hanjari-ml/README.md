@@ -3,48 +3,49 @@
 마을버스 정류장에서 **지금 오는 첫 번째 버스에 탈 수 있는지**를 확률로 알려주는 서비스의 AI 파트입니다.
 팀 얼리액세스 (황정원 PM · 최지용 AI·데이터 · 유민준 BE·OSS · 서재현 FE·QA), 한성대 오픈소스 AI·SW 융합 프로젝트.
 
-- 진행 기록(실험 결과 전부): [`TASKS.md`](TASKS.md)
 - 설계 초안: [`docs/DESIGN.md`](docs/DESIGN.md) · 데이터 출처: [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md)
 
 ---
 
 ## 0. 브랜치 사용법 (팀원 먼저 읽기)
 
-사람마다 브랜치가 있고, **각자 자기 브랜치·자기 폴더에서만** 작업합니다.
+작업마다 브랜치가 있고, **최신 main 에서 시작해 담당 폴더 중심으로** 작업합니다. 자세한 절차는 [공통 협업 안내](../CONTRIBUTING.md)를 따릅니다.
 
-> ⛔ **`main` 은 건드리지 마세요.** main 은 모두의 작업이 합쳐진 최종본(서비스·발표 기준)입니다.
-> 직접 push 하지 말고, 합치고 싶으면 **Pull Request 만 열기** → **지용이 확인하고 Merge** 합니다.
-> 각 브랜치 첫 화면 README 에 그 브랜치에서 할 일·일정(WBS)·사용법이 있어요.
+> ⛔ **`main` 에 직접 push 하지 마세요.** main 은 모두의 작업이 합쳐진 최종본(서비스·발표 기준)입니다.
+> 합치고 싶으면 **Pull Request 를 열고**, **팀원 한 명 이상이 검토**하고 화면·서버·예측 연결을 확인한 뒤 Merge 합니다.
+> 각 브랜치에서 할 일·작업 순서는 아래 표의 작업 안내에 있어요.
 
-| 브랜치 | 사람 | 담당 | 작업 폴더 |
+| 브랜치 | 사람 | 작업 | 작업 폴더 |
 |---|---|---|---|
 | `main` | 모두 | 합쳐진 최종본 (직접 push 금지) | — |
-| `ai/jiyong` | 최지용 | AI·데이터 (수집·모델·예측) | `src/`, `models/`, `docs/` |
-| `be/minjun` | 유민준 | 백엔드(FastAPI)·서버 배포 | `backend/` |
-| `fe/jaehyun` | 서재현 | 프론트엔드(React)·테스트 | `frontend/` |
-| `pm/jeongwon` | 황정원 | 기획·일정·문서 + **프론트·백엔드 연결**(API 명세·목업·연결 점검) | `pm/` |
+| `ai/prediction-improvement` | 최지용 | [예측 모델 개선](../docs/work/ai/README.md) | `hanjari-ml/` |
+| `be/boarding-record` | 유민준 | [익명 탑승 결과 기록](../docs/work/backend/README.md) | `hanjari-web/backend/` |
+| `fe/ui-improvement` | 서재현 | [화면 사용성 개선](../docs/work/frontend-ui/README.md) | `hanjari-web/frontend/` |
+| `fe/status-guidance` | 황정원 | [오류·지연 안내 개선](../docs/work/frontend-status/README.md) | `hanjari-web/frontend/` |
 
-팀원 브랜치(`be/`, `fe/`, `pm/`)는 기획 문서만 있는 깨끗한 상태에서 시작합니다(AI 코드 없음). 필요하면 ④로 main 을 가져오세요.
+모든 브랜치에 전체 코드가 들어 있습니다. 프론트엔드 두 브랜치는 같은 폴더를 쓰므로, **같은 파일을 고칠 때는 수정 범위를 먼저 상의**하세요.
 
 ```bash
-git clone https://github.com/YONGJI04/hanjari-ai.git && cd hanjari-ai
-git switch be/minjun                  # ① 내 브랜치로
-# ... backend/ 안에서 작업 ...
-git add backend && git commit -m "무엇을 했는지 한 줄"
-git push                              # ② 내 브랜치에 올리기
-# ③ GitHub → Pull requests → New → base: main ← compare: be/minjun → Create (Merge 는 지용이)
-git merge origin/main                 # ④ 다른 사람 작업(예: AI 모델)을 내 브랜치로 가져오기
+git clone https://github.com/EarlyAccess-HanJari/HanJari.git && cd HanJari
+git fetch origin
+git switch --track origin/ai/prediction-improvement   # ① 내 브랜치로 (처음 한 번, 이후엔 git switch 브랜치명)
+# ... hanjari-ml/ 안에서 작업 ...
+git add hanjari-ml && git commit -m "무엇을 했는지 한 줄"
+git push                                              # ② 내 브랜치에 올리기
+# ③ GitHub → Pull requests → New → base: main ← compare: ai/prediction-improvement → Create (검토 후 Merge)
+git fetch origin && git merge origin/main             # ④ 다른 사람 작업을 내 브랜치로 가져오기 (내 변경을 먼저 커밋)
 ```
-- **내 폴더 밖 파일은 지우거나 고치지 않기.** 브랜치에서 지운 파일은 합칠 때 main 에서도 지워집니다.
+- **다른 담당 폴더를 고칠 때는 해당 담당자와 먼저 상의하기.** 브랜치에서 지운 파일은 합칠 때 main 에서도 지워집니다.
 - API 키·비밀번호는 커밋 금지(`.env` 에만).
-- 백엔드가 AI 예측을 부를 때는 ④로 main 을 가져온 뒤 아래 7절 "결과 형식" 대로 `serve.predict_live` 를 씁니다.
+- 응답 항목을 바꾸면 프론트엔드·백엔드·AI 담당자가 먼저 합의합니다. 백엔드가 AI 예측을 부를 때는 아래 7절 "결과 형식" 대로 `serve.predict_live` 를 씁니다.
+- 운영 서버의 파일 수정·설치·재시작·배포는 별도 합의 없이 하지 않습니다.
 
 ---
 
 ## 1. 바로 돌려보기 (키·데이터 없이)
 
 ```bash
-git clone https://github.com/YONGJI04/hanjari-ai.git && cd hanjari-ai
+git clone https://github.com/EarlyAccess-HanJari/HanJari.git && cd HanJari/hanjari-ml
 python3.11 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
@@ -175,7 +176,7 @@ src/serve.py predict_live(N)  ← 백엔드가 부르는 함수
 
 - 버스가 바로 앞이면 거의 정확, 3정류장 이상 떨어지면 약 4.3명.
 - **약점: 수업 직전 역 앞 몰림.** 9시 수업 직전(08:46 전후) 한성대입구역을 지나는 버스는 조회 때 4명 → 도착 50~70명으로 폭증하는데 모델이 작게 잡습니다. 그래서 수업 직전에 1정류장 이상 떨어진 버스는 '여유'를 표시하지 않습니다(아래).
-- 실험 기록: 모델 계열(XGB·LightGBM·CatBoost·앙상블) 차이 ±0.03명, 지하철 시간표 피처 효과 없음, 이력 피처 효과 없음 → `TASKS.md`.
+- 실험 기록: 모델 계열(XGB·LightGBM·CatBoost·앙상블) 차이 ±0.03명, 지하철 시간표 피처 효과 없음, 이력 피처 효과 없음.
 
 ---
 
