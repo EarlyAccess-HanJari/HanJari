@@ -17,3 +17,6 @@ catboost_info/
 !data/processed/sb02_trips.csv
 !data/processed/jr03_hourly.csv
 !data/processed/jr03_trips.csv
+
+# 운영 성적 기록(서버 reports/ 사본: daily_metrics.csv·models.csv·daily/)은 올림 — 루트 .gitignore 의 reports/ 예외
+!reports/
