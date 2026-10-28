@@ -290,9 +290,12 @@ dvc push / pull    # 학습 데이터를 저장소(오라클 서버)와 주고�
 | `src/eval_days.py` | 날짜 분할 평가 |
 | `src/exp_models.py`, `exp_subway.py`, `exp_lite.py`, `sweep.py` | 실험(모델 계열·지하철·라이트·설정 스윕) |
 | `src/extract_routes.py`, `baseline_csv.py`, `fetch_holidays.py`, `build_calendar.py`, `predict.py` | 공공 CSV 추출·기준 모델·달력 |
-| `models/lite/` | 학습된 라이트 모델(XGB json 3개 + `meta.json`: 피처 목록·범주표·정원·기준·평균 표) |
+| `models/lite/` | 학습된 라이트 모델(XGB json 3개 + `meta.json`: 피처 목록·범주표·정원·기준·평균 표). 레포 사본은 운영 중인 10-27 학습본(수업일 24일, 날짜분할 오차 2.58명) |
 | `data/sample/` | 실제 버스 스냅샷 1장(키 없이 돌려보기용) |
 | `docs/build_flowchart.py` | 기능흐름도 pptx 생성 |
+| `reports/` | 운영 성적 기록(운영 서버 `~/hanjari-ml/reports` 사본, 10-28): 매일 채점 `daily_metrics.csv`, 모델 버전·합격 `models.csv`, 하루 마감 요약 `daily/` |
+| `TASKS.md` | AI 파트 진행 기록(실험·결정·운영 이력) |
+| `docs/original/` | 초기 기획 원본(PRD v0.9·WBS·마일스톤) |
 
 ## 10. 지키는 규칙
 - 조회 시점에 알 수 있는 정보만 입력으로 씁니다. 도착 이후 정보는 정답으로만.

@@ -1,0 +1,6 @@
+[core]
+    autostage = true
+    remote = oracle
+['remote "oracle"']
+    url = ssh://161.33.132.80/home/ubuntu/dvc-store
+    user = ubuntu
