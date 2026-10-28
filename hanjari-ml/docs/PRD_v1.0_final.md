@@ -1,3 +1,5 @@
+> 9/21 v1.0 기준 사본입니다. 최신판(v1.1, 2026-10-28, 13주차 완료 일정)은 레포 루트 `docs/plan/` 에 있습니다.
+
 **PRD(Product Requirements Document) **
 
 		
