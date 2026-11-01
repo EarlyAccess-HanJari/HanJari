@@ -1,19 +1,20 @@
 import { useEffect, useState } from "react";
 import type { PredictItem } from "../types";
-import { mmss, stopsAwayText } from "../utils/format";
+import { arrivalAt, mmss, stopsAwayText } from "../utils/format";
 import s from "./ArrivalCard.module.css";
 
 interface Props {
   item: PredictItem;
   stale: boolean;
-  fetchedAt: number;  // 응답을 받은 시각(ms). eta_sec 를 여기서부터 1초씩 줄인다
+  fetchedAt: number;  // 응답을 받은 시각(ms)
 }
 
 /** 도착 시간 1초 카운트다운.
- *  수집 스냅샷 간격(07~19시 27초, 19~22시 40초, 그 외 150초)만큼 실제와 어긋날 수 있음 — 새로고침 때마다 바로잡힘.
+ *  eta_sec 는 스냅샷(updated) 시각의 값이라 스냅샷 시각부터 센다 → 같은 스냅샷을 다시 받아도 숫자가 되감기지 않음.
  *  끄려면 false (받은 eta_sec 를 그대로 표시) */
 const COUNTDOWN = true;
-const SOON_SEC = 60;  // 남은 시간이 이보다 적으면(1분 미만) '곧 도착'
+const SOON_SEC = 60;    // 남은 시간이 이보다 적으면(1분 미만) '곧 도착'
+const JITTER_SEC = 15;  // 같은 버스의 도착 예정이 이만큼 안쪽으로만 바뀌면 무시 — 버스 API ETA 의 잔떨림에 숫자가 튀지 않게
 
 export default function ArrivalCard({ item, stale, fetchedAt }: Props) {
   const [now, setNow] = useState(() => Date.now());
@@ -23,8 +24,15 @@ export default function ArrivalCard({ item, stale, fetchedAt }: Props) {
     return () => clearInterval(t);
   }, []);
 
-  // 받은 시각 기준이라 스냅샷 나이(최대 약 27초)만큼은 실제보다 늦게 줄 수 있음 — 다음 새로고침에서 바로잡힘
-  const left = COUNTDOWN ? Math.max(0, item.eta_sec - Math.floor((now - fetchedAt) / 1000)) : item.eta_sec;
+  // 같은 정류장·같은 버스면 직전 도착 예정 시각을 이어 쓴다 (차이가 크면 새 값으로 바로잡음)
+  const key = `${item.route}-${item.stop}-${item.plate}`;
+  const at = arrivalAt(item, fetchedAt);
+  const [held, setHeld] = useState({ key, at });
+  const keep = held.key === key && Math.abs(held.at - at) <= JITTER_SEC * 1000;
+  if (!keep) setHeld({ key, at });  // 렌더 중 상태 맞추기(React 권장 방식) — 이번 렌더는 아래에서 새 값으로 바로 계산
+  const target = keep ? held.at : at;
+
+  const left = COUNTDOWN ? Math.max(0, Math.ceil((target - now) / 1000)) : item.eta_sec;
   const t = mmss(left);
   return (
     <section className={s.card} aria-label="지금 오는 버스" data-testid="arrival">
@@ -41,20 +49,20 @@ export default function ArrivalCard({ item, stale, fetchedAt }: Props) {
         </div>
       ) : (
       <div className={s.body}>
-        <span className={s.label}>지금 오는 버스</span>
-        <div className={s.row}>
-          <span className={s.eta}>
-            {left < SOON_SEC ? (
-              <span className={s.soon}>곧 도착</span>
-            ) : (
-              <>
-                <span className={s.num}>{t.m}</span><span className={s.unit}>분</span>
-                <span className={s.num}>{t.s}</span><span className={s.unit}>초</span>
-              </>
-            )}
-          </span>
+        <div className={s.labelRow}>
+          <span className={s.label}>지금 오는 버스</span>
           <span className={s.away}>{stopsAwayText(item.stops_away)}</span>
         </div>
+        <span className={s.eta}>
+          {left < SOON_SEC ? (
+            <span className={s.soon}>곧 도착</span>
+          ) : (
+            <>
+              <span className={s.num}>{t.m}</span><span className={s.unit}>분</span>
+              <span className={s.num}>{t.s}</span><span className={s.unit}>초</span>
+            </>
+          )}
+        </span>
         <span className={s.sub}>{item.plate} · 지금 {item.r_now}명 타고 있어요</span>
       </div>
       )}
