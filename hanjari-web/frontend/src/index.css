@@ -19,6 +19,20 @@
   --bad-line: #C8372B;
   --route-sb02: #1D4F91;
   --route-jr03: #0F6D77;
+  /* 디자인 규칙 — 글자·모서리·여백은 아래 값만 쓴다 (지도 앱처럼 숫자는 크게, 설명은 작고 흐리게) */
+  --fs-hero: 44px;  /* 도착 시간·확률 숫자 */
+  --fs-xl: 22px;    /* 단계 이름·정류장 이름 */
+  --fs-lg: 17px;    /* 카드 제목 */
+  --fs-md: 15px;    /* 본문·버튼 */
+  --fs-sm: 13px;    /* 보조 설명 */
+  --fs-xs: 12px;    /* 칩·라벨 */
+  --r-card: 20px;
+  --r-ctrl: 14px;
+  --gap: 12px;
+  --pad: 20px;
+  /* 핵심 카드 고정 높이 — 상태(단계·보류·입력 오류·로딩)가 바뀌어도 아래 입력칸이 움직이지 않게. 스켈레톤도 같은 값 */
+  --arrival-h: 138px;
+  --result-h: 245px;
   --font: "IBM Plex Sans KR", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, monospace;
 }

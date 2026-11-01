@@ -1,6 +1,7 @@
-/* 단계별 색. 배지·결과 카드가 같이 쓴다 (var(--lv-*)) */
-.ok    { --lv-bg: #E3ECF8; --lv-fg: #123E7A; --lv-bar: #1D5FC0; }
-.tight { --lv-bg: #FFF0D6; --lv-fg: #7A4300; --lv-bar: #D98A0B; }
-.hard  { --lv-bg: #FDE3E0; --lv-fg: #8E1F17; --lv-bar: #C8372B; }
-.early { --lv-bg: #E7EBF0; --lv-fg: #34414F; --lv-bar: #34414F; }
-.hold  { --lv-bg: #EDEBE7; --lv-fg: #4A4640; --lv-bar: #4A4640; }
+/* 단계별 색. 배지·결과 카드가 같이 쓴다 (var(--lv-*))
+   신호등 체계: 여유 초록 · 빠듯 노랑 · 어려움 빨강 · 판단 이름/보류 회색(확률을 말하지 않는 단계) */
+.ok    { --lv-bg: #E2F4E8; --lv-fg: #0F5A2E; --lv-bar: #1F9D55; }
+.tight { --lv-bg: #FFF2D2; --lv-fg: #6E4500; --lv-bar: #E0A100; }
+.hard  { --lv-bg: #FDE3E0; --lv-fg: #8E1F17; --lv-bar: #D93A2B; }
+.early { --lv-bg: #E7EBF0; --lv-fg: #34414F; --lv-bar: #6B7787; }
+.hold  { --lv-bg: #EDEBE7; --lv-fg: #4A4640; --lv-bar: #8A847B; }
