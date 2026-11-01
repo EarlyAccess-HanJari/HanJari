@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { fetchPredict } from "./api/predict";
+import { fetchPredict, USE_MOCK } from "./api/predict";
+import type { Scenario } from "./api/predict";
 import { N_MAX, N_MIN, ROUTES } from "./types";
 import type { ApiResult, RouteCode } from "./types";
 import { isStale, parseN } from "./utils/format";
@@ -11,6 +12,8 @@ import ResultCard from "./components/ResultCard";
 import OtherStops from "./components/OtherStops";
 import StopSheet from "./components/StopSheet";
 import Notice from "./components/Notice";
+import HeroSkeleton from "./components/HeroSkeleton";
+import DevSwitcher from "./components/DevSwitcher";
 import s from "./App.module.css";
 
 interface Sel { route: RouteCode; stop: string }
@@ -84,6 +87,15 @@ export default function App() {
 
   const retry = () => load(queryN);
 
+  // 개발용 상태 전환 — 목업은 요청마다 주소의 ?scenario 를 읽음
+  const devSwitch = (sc: Scenario | null) => {
+    const u = new URL(window.location.href);
+    if (sc) u.searchParams.set("scenario", sc); else u.searchParams.delete("scenario");
+    history.replaceState(null, "", u);
+    if (sc === "loading") setRes(null);
+    load(queryN);
+  };
+
   const pick = (route: RouteCode, stop: string) => {
     const v = { route, stop };
     setSel(v);
@@ -106,7 +118,8 @@ export default function App() {
 
   let body: ReactNode;
   if (!res) {
-    body = <>{input}<p className={s.loading}>버스 정보를 불러오는 중…</p></>;
+    // 첫 조회 전에도 결과가 올 자리를 같은 크기로 잡아 둠
+    body = <><div className={s.hero}><HeroSkeleton /></div>{input}</>;
   } else if (!res.ok) {
     body = res.error.kind === "bad_input"
       ? <>{input}<Notice kind="bad_input" detail={res.error.message} /></>
@@ -119,9 +132,12 @@ export default function App() {
   } else {
     body = (
       <>
-        <ArrivalCard item={mine} stale={stale} fetchedAt={fetchedAt} />
+        {/* 핵심 '지금 오는 버스에 탈 수 있을까?' — 도착 시간과 탑승 가능성을 한 카드에. 입력칸 위에 둬서 입력 안내가 떠도 밀리지 않음 */}
+        <div className={s.hero}>
+          <ArrivalCard item={mine} stale={stale} fetchedAt={fetchedAt} />
+          <ResultCard item={mine} invalid={n === null} busy={loading} />
+        </div>
         {input}
-        <ResultCard item={mine} invalid={n === null} busy={loading} />
         <OtherStops items={items.filter((i) => i.route === mine.route && i !== mine)}
           onPick={(i) => pick(i.route, i.stop)} />
       </>
@@ -135,6 +151,7 @@ export default function App() {
       <main className={s.main}>
         {body}
       </main>
+      {USE_MOCK && <DevSwitcher onSwitch={devSwitch} />}
       {sheetOpen && (
         <StopSheet route={sel.route} stop={sel.stop} onPick={pick} onClose={() => setSheetOpen(false)} />
       )}

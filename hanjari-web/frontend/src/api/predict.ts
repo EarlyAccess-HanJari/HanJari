@@ -1,4 +1,4 @@
-import type { ApiError, ApiResult, PredictResponse } from "../types";
+import type { ApiError, ApiResult, Level, PredictResponse } from "../types";
 import { N_MAX, N_MIN } from "../types";
 
 import mockN0 from "../mock/predict_n0.json";
@@ -23,11 +23,12 @@ export const TIMEOUT_MS = 8000;
 export const USE_MOCK = import.meta.env.VITE_MOCK === "1";
 
 /** 개발·QA 용 시나리오 (URL ?scenario=...). 목업 모드에서만 동작. */
-export type Scenario = "stale" | "wide" | "night" | "error" | "down" | "slow";
+export type Scenario = "stale" | "wide" | "night" | "error" | "down" | "slow" | "loading" | "ok" | "tight" | "hard";
+const SCENARIOS: readonly Scenario[] = ["stale", "wide", "night", "error", "down", "slow", "loading", "ok", "tight", "hard"];
 export function currentScenario(): Scenario | null {
   if (typeof window === "undefined") return null;
   const s = new URLSearchParams(window.location.search).get("scenario");
-  return (["stale", "wide", "night", "error", "down", "slow"] as const).includes(s as Scenario)
+  return SCENARIOS.includes(s as Scenario)
     ? (s as Scenario)
     : null;
 }
@@ -118,6 +119,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function fetchMock(n: number): Promise<ApiResult> {
   const sc = currentScenario();
+  if (sc === "loading") await new Promise(() => {});   // 응답 없음 — 스켈레톤 확인용
   await sleep(sc === "slow" ? TIMEOUT_MS + 500 : 300);
 
   switch (sc) {
@@ -133,6 +135,10 @@ async function fetchMock(n: number): Promise<ApiResult> {
       return { ok: true, data: withN(mockWide, n) };
     case "night":
       return { ok: true, data: withN(mockNight, n) };
+    case "ok":
+    case "tight":
+    case "hard":
+      return { ok: true, data: forceLevel(withN(mockN3, n), FORCE[sc]) };
   }
 
   const base = n <= 0 ? mockN0 : n <= 3 ? mockN3 : n <= 15 ? mockN15 : mockN30;
@@ -141,4 +147,15 @@ async function fetchMock(n: number): Promise<ApiResult> {
 
 function withN(m: unknown, n: number): PredictResponse {
   return { ...(m as PredictResponse), n_ahead: n };
+}
+
+/** 개발용: 모든 정류장을 한 단계로 강제 (DEV 상태 전환의 여유·빠듯·어려움) */
+const FORCE: Record<"ok" | "tight" | "hard", { level: Level; p: number }> = {
+  ok: { level: "여유 있음", p: 0.97 },
+  tight: { level: "빠듯함", p: 0.86 },
+  hard: { level: "어려울 수 있음", p: 0.32 },
+};
+
+function forceLevel(d: PredictResponse, f: { level: Level; p: number }): PredictResponse {
+  return { ...d, results: d.results.map((r) => ({ ...r, level: f.level, p_board: f.p })) };
 }

@@ -18,9 +18,24 @@ export default function Header({ route, stop, status, refreshing, onRefresh, onO
     <header className={s.header}>
       <div className={s.top}>
         <span className={s.brand}>
-          <Logo size={28} />
+          <Logo size={22} />
           <span className={s.wordmark}>한자리</span>
         </span>
+        <p className={`${s.status} ${s[status.tone]}`} aria-live="polite">{status.text}</p>
+      </div>
+      <div className={s.top}>
+        <button type="button" className={s.stopBtn} onClick={onOpenStops} aria-label={`정류장 바꾸기, 지금 ${st?.name ?? stop}`} data-testid="stop-switch">
+          <span className={s.meta}>
+            <span className={`${s.routeChip} ${s[route]}`}>{ROUTES[route].name}</span>
+            <span className={s.metaText}>등교 방향 · ARS {st?.ars}</span>
+          </span>
+          <span className={s.nameRow}>
+            <span className={s.name} data-testid="stop-name">{st?.name ?? stop}</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </span>
+        </button>
         <button type="button" className={s.refresh} onClick={onRefresh} disabled={refreshing}
           aria-label="버스 정보 새로고침" data-testid="refresh">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -28,19 +43,6 @@ export default function Header({ route, stop, status, refreshing, onRefresh, onO
           </svg>
         </button>
       </div>
-      <button type="button" className={s.stopBtn} onClick={onOpenStops} aria-label={`정류장 바꾸기, 지금 ${st?.name ?? stop}`} data-testid="stop-switch">
-        <span className={s.meta}>
-          <span className={`${s.routeChip} ${s[route]}`}>{ROUTES[route].name}</span>
-          <span className={s.metaText}>등교 방향 · ARS {st?.ars}</span>
-        </span>
-        <span className={s.nameRow}>
-          <span className={s.name} data-testid="stop-name">{st?.name ?? stop}</span>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M6 9l6 6 6-6" />
-          </svg>
-        </span>
-      </button>
-      <p className={`${s.status} ${s[status.tone]}`} aria-live="polite">{status.text}</p>
     </header>
   );
 }

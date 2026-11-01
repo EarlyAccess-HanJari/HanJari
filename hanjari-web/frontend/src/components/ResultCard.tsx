@@ -9,7 +9,7 @@ const GUIDE: Record<Level, string> = {
   "빠듯함": "탈 수도 있지만 장담하긴 어려워요.",
   "어려울 수 있음": "이번 버스는 타기 어려울 수 있어요. 다음 버스나 다른 방법도 생각해 보세요.",
   "판단하기 일러요": "버스가 가까워지면 다시 확인해 주세요.",
-  "확률 보류": "확률은 잠시 보류했어요. 위의 도착 정보만 참고해 주세요.",
+  "확률 보류": "확률은 잠시 보류했어요. 도착 정보만 참고해 주세요.",
 };
 
 interface Props {
@@ -23,7 +23,9 @@ export default function ResultCard({ item, invalid, busy }: Props) {
     return (
       <section className={`${s.card} ${lv.hold}`} aria-live="polite" data-testid="result">
         <div className={s.head}><HoldIcon /><h2 className={s.title}>인원을 확인해 주세요</h2></div>
-        <p className={s.why}>올바른 인원을 넣으면 바로 다시 계산해요.</p>
+        <div className={`${s.track} ${s.off}`} aria-hidden="true" />
+        <p className={s.guide}>올바른 인원을 넣으면 바로 다시 계산해요.</p>
+        <div className={s.detail} />
       </section>
     );
   }
@@ -39,22 +41,25 @@ export default function ResultCard({ item, invalid, busy }: Props) {
         <h2 className={s.title}>{item.level}</h2>
         {showP && (
           <div className={s.p}>
-            <div className={s.pLabel}>탈 확률</div>
-            <div><span className={s.pNum}>{p}</span><span className={s.pUnit}>%</span></div>
+            <span className={s.pLabel}>탈 확률</span>
+            <span className={s.pNum}>{p}</span><span className={s.pUnit}>%</span>
           </div>
         )}
       </div>
-      {showP && (
-        <div className={s.track} aria-hidden="true"><div className={s.fill} style={{ width: `${p}%` }} /></div>
-      )}
+      {/* 확률이 없는 단계도 막대 자리는 남겨 둠 (높이 고정) */}
+      <div className={`${s.track} ${showP ? "" : s.off}`} aria-hidden="true">
+        {showP && <div className={s.fill} style={{ width: `${p}%` }} />}
+      </div>
       <p className={s.guide}>{GUIDE[item.level]}</p>
-      {showP && (
-        <div className={s.load}>
-          <span>도착 때 예상 인원</span>
-          <span><b>약 {Math.round(item.load_pred)}명</b> ({Math.round(item.load_10)}~{Math.round(item.load_90)}명)</span>
-        </div>
-      )}
-      <p className={s.why}>{whyText(item)}</p>
+      <div className={s.detail}>
+        {showP && (
+          <div className={s.load}>
+            <span>도착 때 예상 인원</span>
+            <span><b>약 {Math.round(item.load_pred)}명</b> ({Math.round(item.load_10)}~{Math.round(item.load_90)}명)</span>
+          </div>
+        )}
+        <p className={s.why}>{whyText(item)}</p>
+      </div>
     </section>
   );
 }
