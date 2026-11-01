@@ -15,7 +15,11 @@ export default function AheadInput({ raw, n, error, onChange }: Props) {
   const set = (v: number) => onChange(String(Math.min(N_MAX, Math.max(N_MIN, v))));
   return (
     <section className={s.card}>
-      <label htmlFor="n-ahead" className={s.label}>내 앞에 기다리는 사람</label>
+      {/* 입력이 틀리면 제목 자리에 안내를 띄움 — 줄이 늘지 않아 위 카드·아래 줄이 밀리지 않음 */}
+      <div className={s.labelRow}>
+        <label htmlFor="n-ahead" className={error ? s.sr : s.label}>내 앞에 기다리는 사람</label>
+        {error && <p id="n-hint" className={s.error} role="alert" data-testid="n-hint">{error}</p>}
+      </div>
       <div className={s.stepper}>
         <button type="button" className={s.step} onClick={() => set(cur - 1)} disabled={n === N_MIN}
           aria-label="1명 줄이기" data-testid="n-minus">
@@ -38,7 +42,6 @@ export default function AheadInput({ raw, n, error, onChange }: Props) {
             aria-pressed={n === v} onClick={() => set(v)}>{v}명</button>
         ))}
       </div>
-      {error && <p id="n-hint" className={s.error} role="alert" data-testid="n-hint">{error}</p>}
     </section>
   );
 }

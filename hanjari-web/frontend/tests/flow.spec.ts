@@ -57,6 +57,7 @@ test("입력 검증: 글자·빈칸·범위 밖·경계값", async ({ page }) =>
 
 test("같은 노선 다른 정류장을 누르면 그 정류장으로 바뀐다", async ({ page }) => {
   await start(page);
+  await page.getByTestId("other-stops").click();                // 맨 아래 접힌 줄 → 목록
   await page.getByTestId("card-sb02-30").click();
   await expect(page.getByTestId("stop-name")).toHaveText("한성대입구역5번출구");
 });
@@ -66,6 +67,7 @@ test("정류장 이름을 눌러 다른 노선으로 바꿀 수 있다", async (
   await page.getByTestId("stop-switch").click();
   await page.getByTestId("stop-jr03-23").click();
   await expect(page.getByTestId("stop-name")).toHaveText("창신역4번출구");
+  await page.getByTestId("other-stops").click();
   await expect(page.getByTestId("card-jr03-19")).toBeVisible();
 });
 

@@ -1,5 +1,24 @@
-.app { display: flex; flex-direction: column; min-height: 100dvh; }
-.main { padding: 12px 16px 72px; display: flex; flex-direction: column; gap: var(--gap); }
-/* 도착 카드 + 결과 카드를 한 장처럼 */
-.hero { display: flex; flex-direction: column; border-radius: var(--r-card); overflow: hidden; box-shadow: 0 1px 3px rgba(17, 27, 46, .08); }
+/* 한 화면 고정 — 페이지 자체는 스크롤되지 않음.
+   스크롤이 없으니 모바일 브라우저 주소창·툴바가 나타났다 사라지며 화면이 덜컹이는 일도 없음.
+   높이는 dvh(주소창·키보드에 따라 바뀌는 실제 보이는 높이)라 기종마다 화면을 꽉 채움 */
+/* clip: hidden 과 달리 포커스·스크립트로도 밀리지 않음 (입력칸 포커스 때 화면 전체가 살짝 올라가는 것 방지) */
+.app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; overflow: clip; }
+.main { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--gap); padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
+/* 도착 + 탑승 가능성을 한 장처럼. 높이는 내용이 아니라 남는 공간으로 정함 →
+   단계·보류·로딩이 바뀌어도 아래 입력칸 위치는 화면 크기로만 정해짐.
+   공간이 모자라면(작은 폰·키보드) 카드 안에서만 스크롤 — 위쪽 핵심(시간·단계·안내)은 늘 보이고 부가 설명이 아래로 감 */
+.hero {
+  flex: 1 1 0; min-height: 0; max-height: 440px;
+  container-type: size;
+  display: flex; flex-direction: column;
+  overflow-y: auto; overscroll-behavior: contain;
+  border-radius: var(--r-card); background: var(--card); box-shadow: 0 1px 3px rgba(17, 27, 46, .08);
+}
+.hero > * { flex-shrink: 0; }  /* 카드가 눌려 잘리지 않게 — 모자라면 카드 안 스크롤 */
 .hero > section { border-radius: 0; }
+.dock { margin-top: auto; }
+/* 예외: 가로 모드처럼 아주 낮은 화면은 한 화면에 담을 수 없어 일반 스크롤 */
+@media (orientation: landscape) and (max-height: 560px) {
+  .app { height: auto; min-height: 100dvh; overflow: visible; }
+  .hero { flex: none; max-height: none; container-type: normal; overflow: visible; }
+}

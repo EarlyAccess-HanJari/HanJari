@@ -119,7 +119,7 @@ export default function App() {
   let body: ReactNode;
   if (!res) {
     // 첫 조회 전에도 결과가 올 자리를 같은 크기로 잡아 둠
-    body = <><div className={s.hero}><HeroSkeleton /></div>{input}</>;
+    body = <><div className={s.hero} data-testid="hero"><HeroSkeleton /></div>{input}<div className={s.dock}><OtherStops items={[]} onPick={() => {}} /></div></>;
   } else if (!res.ok) {
     body = res.error.kind === "bad_input"
       ? <>{input}<Notice kind="bad_input" detail={res.error.message} /></>
@@ -132,14 +132,16 @@ export default function App() {
   } else {
     body = (
       <>
-        {/* 핵심 '지금 오는 버스에 탈 수 있을까?' — 도착 시간과 탑승 가능성을 한 카드에. 입력칸 위에 둬서 입력 안내가 떠도 밀리지 않음 */}
-        <div className={s.hero}>
+        {/* 핵심 '지금 오는 버스에 탈 수 있을까?' — 도착 시간과 탑승 가능성을 한 카드에. 다른 정류장은 맨 아래 접어 둠 */}
+        <div className={s.hero} data-testid="hero">
           <ArrivalCard item={mine} stale={stale} fetchedAt={fetchedAt} />
           <ResultCard item={mine} invalid={n === null} busy={loading} />
         </div>
         {input}
-        <OtherStops items={items.filter((i) => i.route === mine.route && i !== mine)}
-          onPick={(i) => pick(i.route, i.stop)} />
+        <div className={s.dock}>
+          <OtherStops items={items.filter((i) => i.route === mine.route && i !== mine)}
+            onPick={(i) => pick(i.route, i.stop)} />
+        </div>
       </>
     );
   }

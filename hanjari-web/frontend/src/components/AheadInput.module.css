@@ -1,5 +1,7 @@
 .card { background: var(--card); border-radius: var(--r-card); padding: 16px var(--pad) 18px; display: flex; flex-direction: column; gap: 10px; }
+.labelRow { height: 22px; display: flex; align-items: center; min-width: 0; }
 .label { font-size: var(--fs-md); font-weight: 600; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .stepper { display: flex; align-items: center; gap: 8px; }
 .step { width: 52px; height: 52px; flex: none; border-radius: var(--r-ctrl); border: 1px solid var(--line); background: var(--bg); display: flex; align-items: center; justify-content: center; padding: 0; }
 .field { flex: 1; min-width: 0; display: flex; align-items: baseline; justify-content: center; gap: 4px; height: 52px; border-radius: var(--r-ctrl); border: 2px solid var(--ink); padding: 0 12px; }
@@ -9,4 +11,4 @@
 .quick { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
 .chip { height: 44px; border-radius: 12px; font-size: var(--fs-md); font-weight: 600; border: 1px solid var(--line); background: var(--card); }
 .chipOn { border: 2px solid var(--ink); background: var(--ink); color: #fff; }
-.error { margin: 0; font-size: var(--fs-sm); color: var(--bad); font-weight: 600; }
+.error { margin: 0; font-size: var(--fs-md); color: var(--bad); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

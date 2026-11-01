@@ -30,23 +30,25 @@
   --r-ctrl: 14px;
   --gap: 12px;
   --pad: 20px;
-  /* 핵심 카드 고정 높이 — 상태(단계·보류·입력 오류·로딩)가 바뀌어도 아래 입력칸이 움직이지 않게. 스켈레톤도 같은 값 */
+  /* 도착 카드 최소 높이 — 숫자 ↔ 보류 안내가 바뀌어도 아래 결과 카드 시작점이 같게 */
   --arrival-h: 138px;
-  --result-h: 245px;
   --font: "IBM Plex Sans KR", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, monospace;
 }
 
 * { box-sizing: border-box; }
+/* 삼성 인터넷 등의 강제 다크 모드가 신호등 색을 바꾸지 않게 — 색은 밝은 화면 기준으로만 설계됨 */
+html { color-scheme: light only; }
 html, body { margin: 0; padding: 0; }
 body {
   font-family: var(--font);
   color: var(--ink);
   background: var(--bg);
   line-height: 1.45;
+  overscroll-behavior: none;  /* 끝에서 더 당겨도 화면 전체가 튕기지 않게 */
 }
 button { font: inherit; color: inherit; cursor: pointer; }
 button:disabled { cursor: default; opacity: .45; }
 input { font: inherit; }
 :focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
-#root { max-width: 480px; margin: 0 auto; min-height: 100dvh; }
+#root { max-width: 480px; margin: 0 auto; }

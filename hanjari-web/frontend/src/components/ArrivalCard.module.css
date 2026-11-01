@@ -11,3 +11,12 @@
 .soon { font-size: 34px; font-weight: 700; letter-spacing: -0.03em; line-height: 52px; }
 .away { font-size: var(--fs-sm); font-weight: 600; background: var(--chip); padding: 4px 10px; border-radius: 8px; white-space: nowrap; }
 .sub { font-size: var(--fs-sm); color: var(--muted); }
+/* 작은 화면(핵심 카드 높이가 모자랄 때)엔 여백·숫자를 줄여 한 화면에 담음 */
+@container (max-height: 390px) {
+  .card { min-height: 0; }
+  .body { padding: 12px var(--pad); gap: 2px; }
+  .eta { height: 44px; }
+  .num, .soon { line-height: 44px; }
+  .num { font-size: 38px; }
+  .soon { font-size: 30px; }
+}
