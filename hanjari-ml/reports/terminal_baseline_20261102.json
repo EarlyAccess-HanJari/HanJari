@@ -1,0 +1,135 @@
+{
+  "route": "jr03",
+  "terminal_id": "100900039",
+  "terminal_sections": [
+    1,
+    30
+  ],
+  "dates": [
+    "20261030",
+    "20261102"
+  ],
+  "mode": "audit_only",
+  "applied_to_serving": false,
+  "applied_to_training": false,
+  "empty_checkpoint_verified": false,
+  "parameters": {
+    "max_source_age_sec": 60,
+    "min_independent_updates": 3,
+    "min_span_sec": 30,
+    "max_gap_sec": 90,
+    "stationary_radius_m": 15
+  },
+  "source_files": 14942,
+  "source_manifest_sha256": "8d034560285d207d6d3b65666e3633c2c24de80fe5c7211796326a8fb496c37b",
+  "errors": {
+    "invalid_or_missing_pair": 52
+  },
+  "terminal_rows": {
+    "zero": 916,
+    "positive": 43
+  },
+  "candidates": 90,
+  "positive_candidates": 5,
+  "candidate_max": 3,
+  "rejected": {
+    "insufficient_independent_updates": 81
+  },
+  "limitation": "정차 후보/가정별 보정량 검사. 노선 시작·끝/정차만으로 전원 하차 및 승차 전 빈 차를 입증하지 않음. 미태그 원인·실측 정확도 검증 아님.",
+  "zero_candidates": 85,
+  "positive_events": [
+    {
+      "vehicle_id": "100000070",
+      "plate": "서울75사3171",
+      "start": "2026-10-30T11:43:21",
+      "end": "2026-10-30T11:46:57",
+      "min_api_count": 3,
+      "max_api_count": 3,
+      "source_updates": 8,
+      "position_updates": 9,
+      "source_span_sec": 213.0,
+      "position_span_sec": 219.0,
+      "candidate_offset_max": 3,
+      "automatic_subtraction": 0,
+      "empty_verified": false
+    },
+    {
+      "vehicle_id": "100000070",
+      "plate": "서울75사3171",
+      "start": "2026-10-30T12:34:12",
+      "end": "2026-10-30T12:35:33",
+      "min_api_count": 1,
+      "max_api_count": 1,
+      "source_updates": 4,
+      "position_updates": 4,
+      "source_span_sec": 70.0,
+      "position_span_sec": 78.0,
+      "candidate_offset_max": 1,
+      "automatic_subtraction": 0,
+      "empty_verified": false
+    },
+    {
+      "vehicle_id": "100000070",
+      "plate": "서울75사3171",
+      "start": "2026-10-31T16:10:12",
+      "end": "2026-10-31T16:16:57",
+      "min_api_count": 1,
+      "max_api_count": 1,
+      "source_updates": 16,
+      "position_updates": 16,
+      "source_span_sec": 382.0,
+      "position_span_sec": 399.0,
+      "candidate_offset_max": 1,
+      "automatic_subtraction": 0,
+      "empty_verified": false
+    },
+    {
+      "vehicle_id": "100000070",
+      "plate": "서울75사3171",
+      "start": "2026-11-02T07:24:09",
+      "end": "2026-11-02T07:26:51",
+      "min_api_count": 1,
+      "max_api_count": 1,
+      "source_updates": 7,
+      "position_updates": 7,
+      "source_span_sec": 163.0,
+      "position_span_sec": 180.0,
+      "candidate_offset_max": 1,
+      "automatic_subtraction": 0,
+      "empty_verified": false
+    },
+    {
+      "vehicle_id": "100000013",
+      "plate": "서울70사5507",
+      "start": "2026-11-02T13:17:51",
+      "end": "2026-11-02T13:19:12",
+      "min_api_count": 1,
+      "max_api_count": 1,
+      "source_updates": 4,
+      "position_updates": 3,
+      "source_span_sec": 86.0,
+      "position_span_sec": 36.0,
+      "candidate_offset_max": 1,
+      "automatic_subtraction": 0,
+      "empty_verified": false
+    }
+  ],
+  "scope": "정차 후보 구간 수이며 독립 운행 수/빈 차 확인 수/미태그 확정 수가 아님.",
+  "user_assumption": "종점에서 전원 하차. 낙산공원은 노선 시작·끝이라는 이유로 선택됨; 승차 전 빈 차 시점을 관측했다는 제보는 없음.",
+  "example": {
+    "terminal_readings": [
+      6,
+      5,
+      5
+    ],
+    "candidate_offset_max": 5,
+    "later_raw_count": 28,
+    "scenario_if_residual_is_between_0_and_5": [
+      23,
+      28
+    ],
+    "automatic_subtraction": 0,
+    "meaning": "오직 종점 잔여분 가정에 따른 계산 예시이며, 실제 인원의 검증된 신뢰구간이 아님."
+  },
+  "timezone": "Asia/Seoul"
+}
