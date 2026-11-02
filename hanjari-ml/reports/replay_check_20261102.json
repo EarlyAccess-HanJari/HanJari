@@ -1,0 +1,23 @@
+{
+  "training_rows": 39871,
+  "by_route": {
+    "sb02": 19941,
+    "jr03": 19930
+  },
+  "source_status": {
+    "ok": 39871
+  },
+  "first": "20261030",
+  "last": "20261102",
+  "train_dates": [
+    "20261030",
+    "20261031"
+  ],
+  "test_date": "20261102",
+  "test_rows": 8746,
+  "finite_predictions": true,
+  "queue_probability_monotone": true,
+  "smoke_only": "실제 탑승 성능 검증 아님. 4일 원본으로 입력 정제·학습·예측 실행만 확인.",
+  "archive_sha256": "e199ba0153476e8bbee7777d616f5e96a8a7c0ab4afdac7d9b32d3402f30c7d1",
+  "source_schema": 2
+}

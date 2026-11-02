@@ -26,6 +26,10 @@ const MAX_SNAP_AGE_SEC = 180;  // 이보다 오래됐거나 미래로 보이면(
  *  eta_sec 는 스냅샷 시각(updated, KST "HH:MM:SS")의 남은 시간이라, 받은 시각이 아니라 스냅샷 시각에 더한다.
  *  받은 시각에 더하면 스냅샷 나이(최대 약 27초)만큼 새로고침마다 숫자가 출렁인다. */
 export function arrivalAt(i: PredictItem, fetchedAt: number): number {
+  if (i.updated_at) {
+    const snap = Date.parse(i.updated_at);
+    if (Number.isFinite(snap)) return snap + i.eta_sec * 1000;
+  }
   const [h, m, sec] = i.updated.split(":").map(Number);
   const snapSod = h * 3600 + m * 60 + sec;
   const nowSod = Math.floor(fetchedAt / 1000 + KST_OFFSET_SEC) % DAY_SEC;
@@ -48,6 +52,7 @@ export function parseN(raw: string, min: number, max: number): { n: number } | {
  *  확률 보류의 reason("평일 아님…", "N분 전 것…")은 그대로 읽혀서 그대로 쓴다. */
 export function whyText(i: PredictItem): string {
   if (i.level === "확률 보류") return i.reason;
+  if (i.load_pred == null || i.load_10 == null || i.load_90 == null || i.r_now == null) return "인원 정보를 확인하고 있어요.";
   if (i.level === "판단하기 일러요") {
     return `버스가 ${stopsAwayText(i.stops_away)}이라 도착 때 인원이 ${Math.round(i.load_10)}~${Math.round(i.load_90)}명으로 아직 폭이 넓어요.`;
   }
@@ -59,5 +64,5 @@ export function whyText(i: PredictItem): string {
 
 /** serve.py 가 스냅샷이 오래됐을 때 붙이는 reason("…N분 전 것…", "정보가 N초 전 것")으로 판별 */
 export function isStale(i: PredictItem): boolean {
-  return i.level === "확률 보류" && i.reason.includes("전 것");
+  return i.arrival_stale === true || (i.level === "확률 보류" && i.reason.includes("전 것"));
 }

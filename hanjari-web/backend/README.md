@@ -23,3 +23,7 @@ AI 예측(레포 `src/serve.py`, 모델 `models/lite/`)을 HTTP로 내준다. AI
 ## 주의
 - `serve.predict_live`가 모듈 전역을 바꿔치기해서 요청을 Lock 으로 한 번에 하나씩 처리한다 (동시 12건 = 순차 결과와 같음 확인)
 - 예측 1회 약 0.1초 (sample)
+
+## 2026-11-02 응답 계약
+
+보류 결과의 `load_pred`, `load_10`, `load_90`, `p_board`는 `null`입니다. `r_now`도 결측이면 `null`이며 0으로 대체하지 않습니다. `data_status`, `prediction_status`, `arrival_stale`, `vehicle_id`, `updated_at`, `source_updated`가 추가되었습니다. 정상 도착 안내는 유지하고 입력 불량·현장 미검증 인원 예측은 실행하지 않습니다. 완전한 스냅샷이 없으면 503입니다. [계약과 재개 절차](../../hanjari-ml/docs/CAPACITY_FIX_20261102.md)를 함께 검토하세요.

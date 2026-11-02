@@ -1,0 +1,72 @@
+{
+  "archive_sha256": "e199ba0153476e8bbee7777d616f5e96a8a7c0ab4afdac7d9b32d3402f30c7d1",
+  "files": 29827,
+  "errors": {
+    "api_header": 89
+  },
+  "source_schema": 2,
+  "first": "2026-10-30T00:00:00",
+  "last": "2026-11-02T18:28:48",
+  "timezone": "Asia/Seoul",
+  "routes": {
+    "jr03": {
+      "vehicle_snapshots": 38566,
+      "vehicles": 9,
+      "conflicting_counts": 2,
+      "identity_mismatches": 0,
+      "over50_snapshots": 49,
+      "over50_vehicles": 6,
+      "over50_episodes": 9,
+      "max_api_count": 60,
+      "over50_position_id_matches": 49,
+      "over50_provider_age_sec": [
+        1.0,
+        44.0
+      ],
+      "over50_position_age_sec": [
+        2.0,
+        44.0
+      ],
+      "target_rows": 22165,
+      "target_divisions": {
+        "2": 22165
+      },
+      "target_quality": {
+        "ok": 22165
+      },
+      "target_div0_zero": 0,
+      "target_over50": 25
+    },
+    "sb02": {
+      "vehicle_snapshots": 27071,
+      "vehicles": 5,
+      "conflicting_counts": 0,
+      "identity_mismatches": 0,
+      "over50_snapshots": 42,
+      "over50_vehicles": 2,
+      "over50_episodes": 4,
+      "max_api_count": 64,
+      "over50_position_id_matches": 42,
+      "over50_provider_age_sec": [
+        4.0,
+        32.0
+      ],
+      "over50_position_age_sec": [
+        3.0,
+        30.0
+      ],
+      "target_rows": 22164,
+      "target_divisions": {
+        "2": 22035,
+        "0": 129
+      },
+      "target_quality": {
+        "ok": 22035,
+        "passenger_unavailable": 129
+      },
+      "target_div0_zero": 129,
+      "target_over50": 2
+    }
+  },
+  "limitation": "API 원본 감사. 현장 실인원·탑승 성공률 검증 아님. 50 초과는 오류 판정이 아님."
+}

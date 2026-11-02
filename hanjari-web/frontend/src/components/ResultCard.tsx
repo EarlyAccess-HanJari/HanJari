@@ -29,8 +29,8 @@ export default function ResultCard({ item, invalid, busy }: Props) {
   }
 
   // F-04: 보류·판단 이른 단계에선 확률·예상 인원을 숨긴다
-  const showP = item.level !== "확률 보류" && item.level !== "판단하기 일러요";
-  const p = pct(item.p_board);
+  const showP = item.level !== "확률 보류" && item.level !== "판단하기 일러요" && item.p_board != null && Number.isFinite(item.p_board);
+  const p = item.p_board == null ? null : pct(item.p_board);
   return (
     <section className={`${s.card} ${LEVEL_CLASS[item.level]}`} aria-live="polite" aria-busy={busy}
       data-testid="result" data-level={item.level}>

@@ -18,6 +18,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 import xgboost as xgb
+import data_quality as DQ
 
 P = Path(__file__).resolve().parents[1] / "data/processed"
 DATASET = P / "dataset.csv"  # sweep.py 가 고정 스냅샷으로 바꿔 씀
@@ -36,8 +37,22 @@ def cap(route, bt):
 
 def capacity_policy():
     """확률 검증에 쓴 판단 기준. 정원표나 예측 후처리가 바뀌면 이전 검증을 재사용하지 않는다."""
-    return {"version": "fixed-unclipped-v1", "fallback": 33,
-            "values": [[r, b, c] for (r, b), c in sorted(CAPACITY.items())]}
+    return {"version": "verified-vehicles-unclipped-v2", "source_schema": DQ.SCHEMA_VERSION, "fallback": 33,
+            "calibration": "verified-school-nonwide-v1",
+            "values": [[r, b, c] for (r, b), c in sorted(CAPACITY.items())],
+            "vehicles": sorted([[v["route"], v["plate"], v["vehicle_id"], v["capacity"]]
+                                for v in DQ.boarding_policy()["vehicles"]])}
+
+
+def row_capacities(d):
+    """현장 확인 정원 우선. 미확인 차량의 잠정값은 오프라인 API 대리지표에만 쓴다."""
+    verified = verified_capacities(d)
+    return np.where(np.isfinite(verified), verified, [cap(r.route, r.bus_type) for r in d.itertuples()])
+
+
+def verified_capacities(d):
+    registry = {(v["route"], v["plate"], v["vehicle_id"]): v["capacity"] for v in DQ.boarding_policy()["vehicles"]}
+    return np.array([registry.get((r.route, r.plate, str(getattr(r, "vehicle_id", ""))), np.nan) for r in d.itertuples()])
 
 
 NS = np.arange(0, 41)
@@ -66,8 +81,19 @@ CAT_COLS = ["route", "stop", "bus_type", "weekday", "term", "exam", "holiday"]
 
 def features(d=None, cats=None):
     """d: build_dataset 행(없으면 dataset.csv). cats: 범주 → 코드 표(서비스는 학습 때 표를 그대로 써야 코드가 같음)."""
-    if d is None:
-        d = pd.read_csv(DATASET, dtype={"date": str, "stop": str, "bus_type": str})
+    training = d is None
+    if training:
+        d = pd.read_csv(DATASET, dtype={"date": str, "stop": str, "bus_type": str, "vehicle_id": str})
+    if "source_schema" not in d or not (d.source_schema == DQ.SCHEMA_VERSION).all():
+        raise ValueError("이전 검증 규칙의 데이터셋: 원본 로그에서 build_dataset.py 재빌드 필요")
+    if "data_status" not in d or not d.data_status.eq("ok").all() or d.r_now.isna().any():
+        raise ValueError("검증되지 않은 인원 입력은 학습/예측할 수 없음")
+    if not (np.isfinite(d.r_now) & (d.r_now >= 0) & (d.r_now % 1 == 0)).all():
+        raise ValueError("인원은 0 이상의 유한 정수여야 함")
+    if training and ("y" not in d or d.y.isna().any()):
+        raise ValueError("학습 정답이 비어 있음")
+    if "y" in d and d.y.notna().any() and not (np.isfinite(d.y) & (d.y >= 0) & (d.y % 1 == 0)).all():
+        raise ValueError("잘못된 학습 정답")
     d = d.astype({"date": str, "stop": str, "bus_type": str})
     cal = pd.read_csv(P / "calendar.csv", dtype=str)
     d = d.merge(cal[["date", "weekday", "term", "exam", "holiday"]], on="date", how="left")
@@ -104,12 +130,11 @@ def features(d=None, cats=None):
     d.attrs["cats"] = cats
     d["trip"] = d["date"] + d["route"] + d["stop"] + d["plate"] + d["arrive_time"]
     d["w"] = 1.0 / d.groupby("trip")["trip"].transform("size")
-    d["r_now"] = d["r_now"].fillna(0)
     # 규칙: 지금 재차 + 정차 중 미반영 몫 + 남은 구간 순승차(오늘 실측과 CSV 학기평균의 축소 평균).
     #   CSV 고정은 휴일(9/24 추석)에 persistence 보다 나빠짐 → 오늘 실측이 쌓일수록 CSV 에서 벗어나게.
     d["rule"] = d["r_now"] + d["q_eb"] + d["q_pending"].fillna(0)
     d["is_peak"] = (d["class_board_win"] >= PEAK_CLASSES).astype(int)
-    d["cap"] = [cap(r, b) for r, b in zip(d["route"], d["bus_type"])]
+    d["cap"] = row_capacities(d)
     d["fill_ratio"] = d["r_now"] / d["cap"]
     return d
 
@@ -120,7 +145,7 @@ def folds(d):
         key, blocks = d["date"], np.array_split(np.array(days), FOLDS + 2)
         note = f"날짜 블록 전진 검증 ({len(days)}일)"
     else:
-        start = d.groupby("trip")["time"].min().sort_values()
+        start = (d["date"] + " " + d["time"]).groupby(d["trip"]).min().sort_values()
         key, blocks = d["trip"], np.array_split(start.index.values, FOLDS + 2)
         note = f"⚠ 점검용(날짜 {len(days)}일): 운행 시간순 블록 전진 검증 — 성능 수치로 인용 금지"
     print(note)
@@ -130,7 +155,7 @@ def folds(d):
 
 
 def thresholds(df):
-    C = np.array([cap(r, b) for r, b in zip(df["route"], df["bus_type"])])[:, None]
+    C = row_capacities(df)[:, None]
     return C - NS[None, :] - 1 + df["off_csv"].values[:, None]
 
 
