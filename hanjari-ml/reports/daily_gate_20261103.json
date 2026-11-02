@@ -24,5 +24,20 @@
     "job_invoked": false,
     "old_report_preserved": true
   },
-  "field_accuracy_verified": false
+  "field_accuracy_verified": false,
+  "report_label_followup": {
+    "activated_at": "2026-11-02T17:16:53.190246+00:00",
+    "source_commit": "41fae5d4f6ea480add5be99101193ab35c4c1f2b",
+    "sha256": "0b258ba5289867c3f4e8cf799d10b59ec312511ade60ee1b2a2ffd441c08c2ee",
+    "replacements": [
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "training_logic_changed": false,
+    "job_invoked": false,
+    "prior_reports_preserved": true
+  }
 }
