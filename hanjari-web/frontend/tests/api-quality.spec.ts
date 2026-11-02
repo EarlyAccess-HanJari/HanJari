@@ -2,6 +2,9 @@ import { test, expect } from "@playwright/test";
 import fixture from "../src/mock/predict_n3.json" with { type: "json" };
 import { isPredictResponse } from "../src/api/contract";
 
+// 응답 주입 검사는 page.route를 거친다. 실제 SW 통신은 배포 스모크에서 별도로 확인한다.
+test.use({ serviceWorkers: "block" });
+
 const held = () => ({
   n_ahead: 3,
   results: fixture.results.map(i => ({ ...i, r_now: null, load_pred: null, load_10: null, load_90: null,
@@ -170,4 +173,59 @@ test("a new vehicle and a corrected ETA take effect without fifteen-second smoot
   await page.getByTestId("refresh").click();
   await page.clock.runFor(1_000);
   await expect(page.getByTestId("arrival")).toContainText(/1분4[45]초/);
+});
+
+test("fresh estimated count remains visible while boarding prediction is held", async ({ page }) => {
+  test.skip(process.env.VITE_MOCK !== "0", "VITE_MOCK=0으로 HTTP 경로 검사");
+  const body = held();
+  for (const item of body.results) Object.assign(item, { r_now: 22, data_status: "ok",
+    prediction_status: "field_validation_pending", reason: "탑승 예측을 점검하고 있어요" });
+  await page.route("**/api/predict?*", r => r.fulfill({ json: body }));
+  await page.goto("/");
+  await page.getByTestId("stop-jr03-23").click();
+  await expect(page.getByTestId("loads")).toContainText("약 22명");
+  await expect(page.getByTestId("loads")).toContainText("추정");
+  await expect(page.getByTestId("result")).not.toContainText(/\d+%/);
+});
+
+test("empty upstream outage is not called end of service and recovers automatically", async ({ page }) => {
+  test.skip(process.env.VITE_MOCK !== "0", "VITE_MOCK=0으로 HTTP 경로 검사");
+  await page.clock.install({ time: new Date("2026-11-02T17:42:00+09:00") });
+  let response: unknown = { n_ahead: 3, results: [], service: { mode: "latest", release: "test", data_status: "degraded",
+    routes: { jr03: { status: "missing", collected_at: null, age_sec: null } } } };
+  await page.route("**/api/predict?*", r => r.fulfill({ json: response }));
+  await page.goto("/");
+  await page.getByTestId("stop-jr03-23").click();
+  await page.clock.runFor(1_000);
+  await expect(page.getByTestId("notice-data_delayed")).toBeVisible();
+  await expect(page.getByTestId("notice-night")).toHaveCount(0);
+  response = held();
+  await page.clock.runFor(30_000);
+  await expect(page.getByTestId("arrival")).toBeVisible();
+});
+
+test("installed app entry and install guidance survive the release", async ({ page }) => {
+  await page.route("**/api/predict?*", r => r.fulfill({ json: held() }));
+  await page.goto("/");
+  await page.getByTestId("stop-jr03-23").click();
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("href", "/manifest.webmanifest");
+  await page.getByTestId("install-app").click();
+  await expect(page.getByRole("dialog", { name: "한자리를 홈 화면에" })).toBeVisible();
+  await page.getByRole("button", { name: "설치 안내 닫기" }).click();
+  await expect(page.getByRole("dialog")).not.toBeVisible();
+});
+
+test("connection restoration immediately refreshes the installed app", async ({ page }) => {
+  test.skip(process.env.VITE_MOCK !== "0", "VITE_MOCK=0으로 HTTP 경로 검사");
+  let requests = 0;
+  await page.route("**/api/predict?*", r => { requests++; return r.fulfill({ json: held() }); });
+  await page.goto("/");
+  await page.getByTestId("stop-jr03-23").click();
+  await expect(page.getByTestId("arrival")).toBeVisible();
+  await page.evaluate(() => window.dispatchEvent(new Event("offline")));
+  await expect(page.getByTestId("notice-offline")).toBeVisible();
+  const before = requests;
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  await expect(page.getByTestId("arrival")).toBeVisible();
+  await expect.poll(() => requests).toBeGreaterThan(before);
 });

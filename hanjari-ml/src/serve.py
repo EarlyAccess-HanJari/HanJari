@@ -171,6 +171,10 @@ def probability_hold(route, bus_type, r_now, meta, plate="", vehicle_id=""):
     return DQ.REASONS.get(issue) if issue else None
 
 
+class NoSnapshotError(RuntimeError):
+    pass
+
+
 def latest_snapshot(src, route=None):
     """최신 정상 도착 응답을 우선한다. 위치 파일 지연 때문에 지난 버스로 되돌아가지 않는다."""
     if route is None:
@@ -194,7 +198,7 @@ def latest_snapshot(src, route=None):
             if len(files) == 1 or pos.stem.rsplit("_", 1)[-1] == stamp:
                 files.append(pos)
         return stamp, files
-    raise RuntimeError("정상 도착 스냅샷이 없음(수집 또는 API 응답 확인 필요)")
+    raise NoSnapshotError("정상 도착 스냅샷이 없음(수집 또는 API 응답 확인 필요)")
 
 
 def exclude_departed(snap, now):
@@ -265,7 +269,7 @@ def predict_now(n_ahead, now=None, max_age=MAX_AGE):
     return results(rows, m, meta, n_ahead, now, max_age, lite=False)
 
 
-def predict_live(n_ahead, key=None, log_dir=None, model_dir=None):
+def predict_live(n_ahead, key=None, log_dir=None, model_dir=None, reference_now=None):
     """[라이트] 버스 API 를 지금 1번 불러 예측. key 없으면 .env 의 SEOUL_BUS_API_KEY.
     log_dir 를 주면 API 대신 그 폴더(수집 로그 날짜 폴더)의 **가장 최근 스냅샷**으로 — 점검용, 호출 없음."""
     check_n(n_ahead)
@@ -289,20 +293,27 @@ def predict_live(n_ahead, key=None, log_dir=None, model_dir=None):
                         raise RuntimeError(f"버스 API 오류({route} {kind}): {head.get('headerMsg')}")
                     (snap / f"{route}_{kind}_{now:%H%M%S}.json").write_bytes(body)
         else:  # 가장 최근 스냅샷 1장만 복사 — 실시간 호출 결과와 같은 입력
-            src = Path(log_dir)
-            snapshots = [latest_snapshot(src, route) for route in B.STOPS]
-            last = max(stamp for stamp, _ in snapshots)
+            sources = list(log_dir) if isinstance(log_dir, (list, tuple)) else [Path(log_dir)]
+            snapshots = []
+            for route in B.STOPS:
+                for src in sources:
+                    try:
+                        snapshots.append(latest_snapshot(Path(src), route))
+                        break
+                    except RuntimeError:
+                        continue  # 한 노선의 실패가 다른 노선의 새 응답을 가리지 않게
             snapshot_files = [f for _, files in snapshots for f in files]
-            snap = Path(tmp) / src.name
-            snap.mkdir()
+            if not snapshot_files:
+                raise NoSnapshotError("정상 도착 스냅샷이 없음(수집 또는 API 응답 확인 필요)")
             for f in snapshot_files:
-                (snap / f.name).write_bytes(f.read_bytes())
-            days = [str(snap)]
-            now = dt.datetime.strptime(src.name + last[:6], "%Y%m%d%H%M%S")
+                dest = Path(tmp) / f.parent.name
+                dest.mkdir(exist_ok=True)
+                (dest / f.name).write_bytes(f.read_bytes())
+            days = sorted(str(p) for p in Path(tmp).iterdir())
+            now = max(dt.datetime.strptime(f.parent.name + f.stem[-6:], "%Y%m%d%H%M%S") for f in snapshot_files)
         # 위치 API가 먼저 갱신되고 도착 API가 옛 차량을 유지하는 경우도 처리한다.
-        position_stamps = [dt.datetime.strptime(snap.name + f.stem[-6:], "%Y%m%d%H%M%S") for f in snap.glob("*_pos_*.json")]
-        now = max([now, *position_stamps])
-        passed = exclude_departed(snap, now)
+        now = reference_now or now
+        passed = set().union(*(exclude_departed(Path(day), now) for day in days))
         # 임시 폴더를 절대 경로로 넘김 — 예전엔 B.LOG 전역을 바꿨다 되돌려서 동시 요청이 꼬이고 B.LOG 가 지워진 폴더로 남았다(10-05 정원 발견)
         rows = [r for route in B.STOPS
                 for r in B.build(route, days, open_=True, hist_all=meta["hist_d"].get(route, {}), tab=meta["tab_d"][route])]
@@ -315,29 +326,46 @@ def predict_live(n_ahead, key=None, log_dir=None, model_dir=None):
 def predict_latest(n_ahead):
     """[운영 서버의 백엔드용] 수집기가 방금 저장한 스냅샷으로 예측 — 버스 API 를 따로 부르지 않음(한도 안 씀).
     스냅샷이 MAX_AGE 초보다 오래되면(수집 중단·새벽) 전부 '확률 보류'."""
-    today = max((p for p in B.LOG.glob("20*") if p.is_dir()), default=None)
-    if today is None:
-        raise RuntimeError("버스 수집 로그가 없음")
-    res = predict_live(n_ahead, log_dir=today)
-    for r in res:
-        snap = dt.datetime.strptime(today.name + r["updated"], "%Y%m%d%H:%M:%S")
-        now = dt.datetime.now(KST).replace(tzinfo=None)
-        age = (now - snap).total_seconds()
-        if age > MAX_AGE or age < -5:
-            hold_result(r, "collection_stale", f"버스 정보가 {age / 60:.0f}분 전 것(수집 확인 필요)")
-            r["arrival_stale"] = True
-        else:
-            made = DQ.source_time(r.get("source_updated"))
-            if made is not None and made.tzinfo is None and not -5 <= (now - made).total_seconds() <= MAX_AGE:
-                hold_result(r, "source_stale")
-                r.update(arrival_stale=True, data_status="source_stale")
-        check_arrival(r, now, r.get("arrival_status") == "passed")
-    return res
+    now = dt.datetime.now(KST).replace(tzinfo=None)
+    folders = sorted((p for p in B.LOG.glob("20*") if p.is_dir() and p.name <= now.strftime("%Y%m%d")), reverse=True)[:2]
+    if not folders:
+        raise NoSnapshotError("버스 수집 로그가 없음")
+    return predict_live(n_ahead, log_dir=folders, reference_now=now)
 
 
 def hold_result(result, issue, reason=None):
     result.update(level="확률 보류", reason=reason or DQ.REASONS[issue], prediction_status=issue,
                   load_pred=None, load_10=None, load_90=None, p_board=None)
+
+
+def source_health(now=None):
+    """프로세스 생존과 실제 데이터 갱신 상태를 분리한다. 추가 API 호출 없음."""
+    now = now or dt.datetime.now(KST).replace(tzinfo=None)
+    folders = sorted((p for p in B.LOG.glob("20*") if p.is_dir() and p.name <= now.strftime("%Y%m%d")), reverse=True)[:2]
+    routes = {}
+    sched = C.load_sched()
+    for route in B.STOPS:
+        entry = {"status": "missing", "collected_at": None, "age_sec": None}
+        for folder in folders:
+            try:
+                _, files = latest_snapshot(folder, route)
+            except RuntimeError:
+                continue
+            arr = files[0]
+            made = dt.datetime.strptime(arr.parent.name + arr.stem[-6:], "%Y%m%d%H%M%S")
+            age = (now - made).total_seconds()
+            entry.update(status="fresh" if -5 <= age <= MAX_AGE else "stale",
+                         collected_at=made.replace(tzinfo=KST).isoformat(), age_sec=round(age))
+            items = B.read_items(arr)
+            if entry["status"] == "fresh":
+                times = [DQ.source_time(it.get("mkTm")) for it in items]
+                if items and not any(t is not None and t.tzinfo is None and -5 <= (now - t).total_seconds() <= MAX_AGE for t in times):
+                    entry["status"] = "stale"
+            break
+        if not C.allowed(now, route, sched):
+            entry["status"] = "outside_service"
+        routes[route] = entry
+    return routes
 
 
 def results(rows, m, meta, n_ahead, now, max_age, lite):
@@ -361,12 +389,19 @@ def results(rows, m, meta, n_ahead, now, max_age, lite):
                       source_updated=r.get("source_updated"), data_status=status, arrival_stale=stale,
                       arrival_at=(arrival_base + dt.timedelta(seconds=int(r["eta"]))).replace(tzinfo=KST).isoformat(),
                       arrival_status="upcoming")
+        if stale or status != "ok":
+            result["r_now"] = None
         check_arrival(result, source_now)
         issue = result.get("prediction_status") or ("collection_stale" if age > MAX_AGE or age < -5 else status if status != "ok" else None)
         if not issue:
             issue = probability_issue(r["route"], r["bus_type"], r["r_now"], meta, r["plate"], r.get("vehicle_id", ""))
         if issue:
             hold_result(result, issue)
+            if stale:
+                # 배포 전에 열어 둔 화면도 '전 것'으로 지연을 알아본다. 새 화면은 구조화 상태를 쓴다.
+                source_age = (source_now - made).total_seconds() if made is not None and made.tzinfo is None else age
+                seconds = max(age, source_age, 0)
+                result["reason"] = f"정보가 {seconds:.0f}초 전 것이어서 갱신을 기다리고 있어요"
         else:
             indices.append(len(out))
             eligible.append(r)

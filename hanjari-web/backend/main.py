@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ML = Path(os.environ.get("HANJARI_ML", ROOT))
 DIST = ROOT / "frontend" / "dist"
 MODE = os.environ.get("HANJARI_MODE", "sample")
+RELEASE = os.environ.get("HANJARI_RELEASE", "development")
 if MODE not in ("sample", "latest"):
     raise SystemExit(f"HANJARI_MODE 는 sample 또는 latest (지금: {MODE})")
 
@@ -56,14 +57,18 @@ app = FastAPI(title="한자리 API", lifespan=lifespan)
 @app.middleware("http")
 async def prevent_prediction_cache(request, call_next):
     response = await call_next(request)
-    if request.url.path == "/api/predict":
+    if request.url.path.startswith("/api/"):
         response.headers["Cache-Control"] = "no-store"
+        response.headers["X-HanJari-Release"] = RELEASE
     return response
 
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "mode": MODE}
+    routes = serve.source_health() if MODE == "latest" else {}
+    return {"status": "ok", "mode": MODE, "release": RELEASE,
+            "data_status": "degraded" if any(r["status"] in ("missing", "stale") for r in routes.values()) else "ok",
+            "routes": routes}
 
 
 @app.get("/api/predict")
@@ -75,10 +80,12 @@ def predict(n: int):
         raise HTTPException(400, str(e))
     try:
         results = _predict(n)
+    except serve.NoSnapshotError:
+        results = []  # 수집 실패를 운행 종료나 웹 서버 장애로 안내하지 않는다.
     except Exception as e:  # 스냅샷 없음·버스 API 오류 등 — 프론트는 503 을 '서버 연결 안 됨'으로 보여줌
         log.exception("예측 실패")
         raise HTTPException(503, f"예측 실패: {e}")
-    return {"n_ahead": n, "results": results}
+    return {"n_ahead": n, "results": results, "service": health()}
 
 
 # /api 라우트 뒤에 붙여야 /api 가 가려지지 않음. 운영 서버에선 nginx 가 이 역할을 함

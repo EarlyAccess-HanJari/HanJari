@@ -17,6 +17,16 @@ RESTART_GAP = 30    # 분
 STATE = N.REPORTS / "watchdog.json"
 
 
+def collector_alive(now):
+    """API 장애/한도 대기 중인 살아 있는 수집기는 재시작하지 않는다."""
+    try:
+        state = json.loads((B.LOG / "collector_state.json").read_text())
+        heartbeat = dt.datetime.fromisoformat(state["heartbeat"]).astimezone(N.KST).replace(tzinfo=None)
+        return 0 <= (now - heartbeat).total_seconds() <= 600
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+
+
 def ok_header(f):
     try:
         return json.loads(f.read_bytes())["msgHeader"].get("headerCd") == "0"
@@ -40,7 +50,7 @@ def check(now):
         age = (now - dt.datetime.strptime(fs[-1].parent.name + fs[-1].stem[-6:], "%Y%m%d%H%M%S")).total_seconds() / 60 if fs else None
         if age is None or age > STALE:
             problems.append(f"{route} 새 데이터 없음({'이틀간 0개' if age is None else f'{age:.0f}분째'})")
-            stale = True
+            stale = not collector_alive(now)
         elif fs and not any(ok_header(f) for f in fs[-RECENT:]):
             problems.append(f"{route} 최근 {RECENT}개 모두 API 오류 응답(키·한도 확인)")
     free = shutil.disk_usage(B.LOG.resolve()).free / 1e9

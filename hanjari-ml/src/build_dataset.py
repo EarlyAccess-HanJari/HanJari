@@ -86,7 +86,10 @@ def snapshots(route, days=None):
 def read_items(path):
     with open(path) as f:
         body = json.load(f)
-    if str(body["msgHeader"].get("headerCd")) != "0":
+    code = str(body["msgHeader"].get("headerCd"))
+    if code == "4" and not (body.get("msgBody") or {}).get("itemList"):
+        return []  # 정상적인 '결과 없음' 뒤에 이전 버스를 다시 살리지 않는다.
+    if code != "0":
         raise ValueError("unsuccessful bus API response")
     items = body["msgBody"]["itemList"] or []
     if not isinstance(items, list) or not all(isinstance(i, dict) for i in items):

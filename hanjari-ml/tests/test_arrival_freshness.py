@@ -86,6 +86,9 @@ class ArrivalFreshness(unittest.TestCase):
         newer = json.loads((self.folder / "jr03_arr_174133.json").read_text())
         for it in newer["msgBody"]["itemList"]:
             it["mkTm"] = "2026-11-02 17:41:54.0"
+            for slot in "12":
+                if it.get("vehId" + slot) == "100000069":
+                    it["reride_Num" + slot] = "22"
             if it["staOrd"] == "23":
                 it.update(plainNo1="서울75사3170", vehId1="100000069", reride_Num1="22", traTime1="53", sectOrd1="23", busType1="0",
                           plainNo2="", vehId2="0", reride_Num2="", rerdie_Div2="0")
@@ -116,6 +119,36 @@ class ArrivalFreshness(unittest.TestCase):
             C.write_snapshot(path, b"complete new response")
         self.assertEqual(path.read_bytes(), b"complete new response")
         self.assertEqual(list(self.folder.glob("*.tmp")), [])
+
+    def test_partial_route_outage_does_not_hide_working_route(self):
+        for f in S.SAMPLE.glob("jr03_*.json"):
+            target = self.folder.parent / S.SAMPLE.name
+            target.mkdir(exist_ok=True)
+            shutil.copy(f, target / f.name)
+        got = S.predict_live(3, log_dir=target)
+        self.assertTrue(got)
+        self.assertEqual({r["route"] for r in got}, {"jr03"})
+
+    def test_empty_new_day_preserves_original_date_and_clears_stale_counts(self):
+        previous = self.folder.parent / S.SAMPLE.name
+        previous.mkdir()
+        for f in S.SAMPLE.glob("*.json"):
+            shutil.copy(f, previous / f.name)
+        got = S.predict_live(3, log_dir=[self.folder, previous], reference_now=dt.datetime(2026, 11, 2, 17, 40))
+        self.assertEqual(len(got), 6)
+        for row in got:
+            self.assertTrue(row["updated_at"].startswith("2026-09-30"))
+            self.assertTrue(row["arrival_stale"])
+            self.assertIsNone(row["r_now"])
+            self.assertIsNone(row["p_board"])
+            self.assertEqual(row["prediction_status"], "collection_stale")
+
+    def test_explicit_no_results_does_not_resurrect_an_older_arrival(self):
+        self.write("arr", "174039", [self.first])
+        empty = self.folder / "jr03_arr_174106.json"
+        empty.write_text(json.dumps({"msgHeader": {"headerCd": "4"}, "msgBody": {"itemList": None}}))
+        self.assertEqual(S.latest_snapshot(self.folder, "jr03")[0], "174106")
+        self.assertEqual(S.predict_live(3, log_dir=self.folder), [])
 
 
 if __name__ == "__main__":

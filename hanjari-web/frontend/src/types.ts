@@ -38,6 +38,10 @@ export interface PredictItem {
 export interface PredictResponse {
   n_ahead: number;
   results: PredictItem[];
+  service?: { mode: string; data_status: string; release: string; routes: Partial<Record<RouteCode, {
+    status: "fresh" | "stale" | "missing" | "outside_service";
+    collected_at: string | null; age_sec: number | null;
+  }>> };
 }
 
 export type ApiError =

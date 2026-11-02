@@ -44,6 +44,7 @@ export default function App() {
   const [res, setRes] = useState<ApiResult | null>(null);
   const [fetchedAt, setFetchedAt] = useState(0);  // 도착 시간 카운트다운 기준
   const [loading, setLoading] = useState(false);
+  const [online, setOnline] = useState(() => navigator.onLine);
   const reqId = useRef(0);
   const activeReq = useRef<number | null>(null);
   const activeN = useRef<number | null>(null);
@@ -97,7 +98,17 @@ export default function App() {
     return () => clearTimeout(t);
   }, [queryN, load]);
 
+  useEffect(() => {
+    const connected = () => { setOnline(true); load(queryN, true); };
+    const disconnected = () => setOnline(false);
+    window.addEventListener("online", connected);
+    window.addEventListener("offline", disconnected);
+    return () => { window.removeEventListener("online", connected); window.removeEventListener("offline", disconnected); };
+  }, [load, queryN]);
+
   const items = res?.ok ? res.data.results : [];
+  const sourceStatus = res?.ok ? res.data.service?.routes[sel.route]?.status : undefined;
+  const delayed = sourceStatus === "stale" || sourceStatus === "missing";
   const mine = items.find((i) => i.route === sel.route && i.stop === sel.stop) ?? null;
   const updated = mine?.source_updated?.match(/[ T](\d{2}:\d{2}:\d{2})/)?.[1] ?? mine?.updated;
   const state = mine ? arrivalState(mine, now, fetchedAt) : "upcoming";
@@ -108,7 +119,7 @@ export default function App() {
   const failing = res !== null && !res.ok && res.error.kind !== "bad_input";
   const refreshMs = failing ? ERROR_RETRY_MS : near ? NEAR_REFRESH_MS : AUTO_REFRESH_MS;
   useEffect(() => {
-    const visible = () => document.visibilityState === "visible";
+    const visible = () => document.visibilityState === "visible" && navigator.onLine;
     const t = setInterval(() => { if (visible()) load(queryN, true); }, refreshMs);
     const onVis = () => { if (visible()) load(queryN, true); };
     document.addEventListener("visibilitychange", onVis);
@@ -126,23 +137,29 @@ export default function App() {
   };
 
   const status =
-    loading ? { text: "새로 불러오는 중…", tone: "normal" as const }
+    !online ? { text: "인터넷 연결 끊김", tone: "bad" as const }
+    : loading ? { text: "새로 불러오는 중…", tone: "normal" as const }
     : res && !res.ok ? { text: "연결 실패", tone: "bad" as const }
-    : res && items.length === 0 ? { text: "운행 시간 아님", tone: "normal" as const }
+    : delayed ? { text: "버스 정보 갱신 지연", tone: "warn" as const }
+    : res && items.length === 0 ? { text: sourceStatus === "fresh" ? "도착 정보 확인 중" : "운행 시간 아님", tone: "normal" as const }
     : mine ? { text: `버스 정보 ${updated} 기준`, tone: state !== "upcoming" ? "warn" as const : "normal" as const }
     : { text: "", tone: "normal" as const };
 
   const input = <AheadInput raw={raw} n={n} error={inputError} onChange={onInput} />;
 
   let body: ReactNode;
-  if (!res) {
+  if (!online) {
+    body = <Notice kind="offline" />;
+  } else if (!res) {
     body = <><section className={s.card}>{input}</section><p className={s.loading}>버스 정보를 불러오는 중…</p></>;
   } else if (!res.ok) {
     body = res.error.kind === "bad_input"
       ? <><section className={s.card}>{input}</section><Notice kind="bad_input" detail={res.error.message} /></>
       : <Notice kind={res.error.kind} detail={res.error.kind === "unknown" ? res.error.message : undefined}
           onRetry={retry} retrying={loading} />;
-  } else if (items.length === 0) {
+  } else if (!mine && delayed) {
+    body = <Notice kind="data_delayed" onRetry={retry} retrying={loading} />;
+  } else if (items.length === 0 && sourceStatus !== "fresh") {
     body = <Notice kind="night" />;
   } else if (!mine) {
     body = <Notice kind="no_stop" onRetry={retry} retrying={loading} />;

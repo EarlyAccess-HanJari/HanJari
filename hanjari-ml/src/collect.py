@@ -8,7 +8,7 @@ data/api_logs/YYYYMMDD/{노선}_{arr,pos}_HHMMSS.json  (시각은 KST)
 실행: nohup python3 src/collect.py >> data/api_logs/collect.log 2>&1 &
 키: .env 의 SEOUL_BUS_API_KEY* 전부를 풀로 묶어 호출마다 돌아가며 사용. 간격 = 기본간격 × 노선수 ÷ 키수 (키당 한도 유지).
 """
-import datetime as dt, itertools, json, os, tempfile, time, urllib.parse, urllib.request
+import datetime as dt, hashlib, itertools, json, os, tempfile, time, urllib.parse, urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -46,8 +46,9 @@ def service_day(now):
 
 def day_type(day):
     try:
-        if day.strftime("%Y%m%d") in {l.split(",")[0] for l in open(HOLIDAYS)}:
-            return "sun"  # 공휴일은 일요일 시간표
+        with open(HOLIDAYS) as f:
+            if day.strftime("%Y%m%d") in {l.split(",")[0] for l in f}:
+                return "sun"  # 공휴일은 일요일 시간표
     except OSError:
         pass
     return {5: "sat", 6: "sun"}.get(day.weekday(), "wkd")
@@ -106,46 +107,111 @@ def fetch(url, k, route_id):
         return r.read()
 
 
+class UsageBudget:
+    """실패도 호출 전에 기록한다. 재시작해도 키별·서비스별 당일 사용량을 되돌리지 않는다."""
+    def __init__(self, ks, now):
+        self.day = now.strftime("%Y%m%d")  # 공급자 일일 한도는 KST 달력 날짜로 분리
+        self.path = LOG / "usage" / (self.day + ".json")
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.ids = {k: hashlib.sha256(k.encode()).hexdigest()[:16] for k in ks}
+        try:
+            self.used = json.loads(self.path.read_text())
+            if not isinstance(self.used, dict) or any(type(n) is not int or n < 0 for v in self.used.values() for n in v.values()):
+                raise ValueError("invalid usage ledger")
+        except FileNotFoundError:
+            # 이전 버전에서 넘어오는 날: 저장 성공 + 오류 로그를 보수적으로 배분한다.
+            totals = {kind: len(list((LOG / self.day).glob(f"*_{kind}_*.json"))) for kind in URLS}
+            restarts = 0
+            if (LOG / "collect.log").exists():
+                with (LOG / "collect.log").open() as f:
+                    for line in f:
+                        if not line.startswith(now.strftime("%Y-%m-%d")):
+                            continue
+                        if "start, keys" in line:
+                            restarts += 1
+                        parts = line.split()
+                        if len(parts) >= 4 and parts[1] in ROUTES and parts[2] in URLS:
+                            totals[parts[2]] += 1
+            margin = restarts + 16 if any(totals.values()) else 0
+            self.used = {ident: {kind: -(-n // len(ks)) + margin for kind, n in totals.items()} for ident in self.ids.values()}
+            self.save()
+        # 손상된 장부는 0으로 초기화하지 않는다. 수집기 실패로 감시 대상이 된다.
+
+    def save(self):
+        write_snapshot(self.path, json.dumps(self.used).encode())
+
+    def reserve(self, key, service):
+        values = self.used.setdefault(self.ids[key], {})
+        if values.get(service, 0) >= LIMIT:
+            return False
+        values[service] = values.get(service, 0) + 1
+        self.save()  # 전송 직후 죽어도 이 호출은 이미 반영되어 있음
+        return True
+
+
+def attempt(route, kind, key, now, budget, state, sched):
+    """한 번만 요청하고 실패 시 최대 5분까지 늦춘다. 상태에 키/URL/원문 오류를 넣지 않는다."""
+    name = route + ":" + kind
+    entry = state.setdefault("endpoints", {}).setdefault(name, {})
+    if now.timestamp() < entry.get("retry_after", 0):
+        return
+    if not budget.reserve(key, kind):
+        entry.update(status="budget_exhausted", retry_after=0)
+        return
+    entry["last_attempt"] = now.isoformat()
+    try:
+        body = fetch(URLS[kind], key, ROUTES[route])
+        data = json.loads(body)
+        code = str(data["msgHeader"]["headerCd"])
+        if code not in ("0", "4"):
+            raise ValueError("API header error")
+        directory = LOG / now.strftime("%Y%m%d")
+        directory.mkdir(parents=True, exist_ok=True)
+        write_snapshot(directory / f"{route}_{kind}_{now:%H%M%S}.json", body)
+        entry.update(status="ok", last_success=now.isoformat(), failures=0, retry_after=0, http_status=200)
+        if kind == "arr" and code == "0":
+            learn(sched, data["msgBody"]["itemList"] or [], route)
+            write_snapshot(SCHED, json.dumps(sched, ensure_ascii=False, indent=1).encode())
+    except Exception as e:
+        failures = entry.get("failures", 0) + 1
+        entry.update(status="upstream_error", failures=failures,
+                     retry_after=now.timestamp() + min(300, 30 * 2 ** min(failures, 4)),
+                     http_status=getattr(e, "code", None), error_type=type(e).__name__)
+        print(now.isoformat(), route, kind, type(e).__name__, getattr(e, "code", ""), flush=True)
+
+
 def main():
     ks = keys()
+    if not ks:
+        raise RuntimeError("버스 API 키가 없음")
     pool = itertools.cycle(ks)
     share = len(ROUTES) / len(ks)  # 키 하나가 한 틱에 부담하는 평균 호출 수 (서비스별)
     print(dt.datetime.now(KST).isoformat(), "start, keys =", len(ks), "share =", round(share, 3), flush=True)
     sched = load_sched()
-    used, used_day = {}, None  # 키별 오늘(운행일) 호출 수
+    budget = None
+    try:
+        state = json.loads((LOG / "collector_state.json").read_text())
+    except (OSError, ValueError):
+        state = {"endpoints": {}}
     while True:
         now = dt.datetime.now(KST)
-        if service_day(now)[0] != used_day:
-            used_day = service_day(now)[0]
-            # 재시작·서버 이전 때 0 부터 다시 세면 하루 한도를 넘음 → 오늘 이미 저장한 도착정보 파일 수(= 호출 수)로 이어서 셈
-            done = already_used(used_day)
-            used = {k: -(-done // len(ks)) for k in ks}
-            print(now.isoformat(), "오늘 이미 호출", done, "→ 키당", used[ks[0]], flush=True)
+        if budget is None or budget.day != now.strftime("%Y%m%d"):
+            budget = UsageBudget(ks, now)
+            print(now.isoformat(), "호출 장부 날짜", budget.day, flush=True)
         active = [r for r in ROUTES if allowed(now, r, sched)]
         if active:
-            d = LOG / now.strftime("%Y%m%d")
-            d.mkdir(parents=True, exist_ok=True)
             for route in active:
                 k = next(pool)
-                if used[k] >= LIMIT:
-                    continue
-                used[k] += 1
-                for name, url in URLS.items():
-                    try:
-                        body = fetch(url, k, ROUTES[route])
-                        data = json.loads(body)  # 깨진 응답은 저장 안 하고 로그만
-                        write_snapshot(d / f"{route}_{name}_{now:%H%M%S}.json", body)
-                        if name == "arr":
-                            before = json.dumps(sched, sort_keys=True)
-                            learn(sched, data["msgBody"]["itemList"] or [], route)
-                            if json.dumps(sched, sort_keys=True) != before:
-                                SCHED.write_text(json.dumps(sched, ensure_ascii=False, indent=1))
-                                print(now.isoformat(), "schedule", route, sched[route], flush=True)
-                    except Exception as e:
-                        print(now.isoformat(), route, name, repr(e), flush=True)
+                for kind in URLS:
+                    attempt(route, kind, k, now, budget, state, sched)
+            state["heartbeat"] = dt.datetime.now(KST).isoformat()
+            write_snapshot(LOG / "collector_state.json", json.dumps(state).encode())
             iv = interval(now.time(), share)
             time.sleep(iv - (time.time() % iv))
         else:
+            LOG.mkdir(parents=True, exist_ok=True)
+            state["heartbeat"] = now.isoformat()
+            write_snapshot(LOG / "collector_state.json", json.dumps(state).encode())
             time.sleep(60)
 
 
@@ -156,6 +222,8 @@ def write_snapshot(path, body):
         with tempfile.NamedTemporaryFile(dir=path.parent, suffix=".tmp", delete=False) as f:
             tmp = Path(f.name)
             f.write(body)
+            f.flush()
+            os.fsync(f.fileno())
         os.replace(tmp, path)
     finally:
         if tmp is not None:

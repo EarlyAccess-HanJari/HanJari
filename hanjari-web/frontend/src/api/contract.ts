@@ -9,6 +9,18 @@ export function isPredictResponse(d: unknown): d is PredictResponse {
   if (!d || typeof d !== "object") return false;
   const data = d as Record<string, unknown>;
   if (!integer(data.n_ahead) || data.n_ahead < N_MIN || data.n_ahead > N_MAX || !Array.isArray(data.results)) return false;
+  if (data.service !== undefined) {
+    if (!data.service || typeof data.service !== "object") return false;
+    const service = data.service as Record<string, unknown>;
+    if (!["mode", "data_status", "release"].every(k => typeof service[k] === "string") || !service.routes || typeof service.routes !== "object") return false;
+    for (const [route, value] of Object.entries(service.routes)) {
+      if (!Object.hasOwn(ROUTES, route) || !value || typeof value !== "object") return false;
+      const entry = value as Record<string, unknown>;
+      if (!["fresh", "stale", "missing", "outside_service"].includes(String(entry.status))) return false;
+      if (entry.age_sec !== null && (typeof entry.age_sec !== "number" || !Number.isFinite(entry.age_sec))) return false;
+      if (entry.collected_at !== null && (typeof entry.collected_at !== "string" || !Number.isFinite(Date.parse(entry.collected_at)))) return false;
+    }
+  }
   const seen = new Set<string>();
   return data.results.every((value: unknown) => {
     if (!value || typeof value !== "object") return false;
