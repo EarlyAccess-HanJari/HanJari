@@ -17,7 +17,9 @@ test("첫 방문엔 정류장 시트가 열리고 6곳이 전부 보인다", asy
 test("정류장을 고르면 한 화면에 도착 정보·인원 입력·결과가 보인다", async ({ page }) => {
   await start(page);
   await expect(page.getByTestId("stop-name")).toHaveText("녹십자약국");
-  await expect(page.getByTestId("arrival")).toContainText("서울70사6419");
+  await expect(page.getByTestId("arrival")).toContainText("남은 시간");
+  await expect(page.getByTestId("arrival")).not.toContainText("서울70사6419");
+  await expect(page.getByTestId("loads")).toContainText("도착 시 차내 인원");
   await expect(page.getByTestId("n-input")).toHaveValue("3");
   await expect(page.getByTestId("result")).toHaveAttribute("data-level", "여유 있음");
   await expect(page.getByText("버스 정보 13:11:33 기준")).toBeVisible();
@@ -27,6 +29,15 @@ test("인원을 바꾸면 결과가 바로 다시 계산된다", async ({ page }
   await start(page);
   await expect(page.getByTestId("result")).toHaveAttribute("data-level", "여유 있음");
   await page.getByRole("button", { name: "20명" }).click();     // 목업 n30 → 녹십자약국 '어려울 수 있음'
+  await expect(page.getByTestId("result")).toHaveAttribute("data-level", "어려울 수 있음");
+  await expect(page.getByTestId("result")).toContainText(/탑승 가능성 \d+%/);
+  await expect(page.getByTestId("result")).toContainText("이번 버스는 타기 힘들어요.");
+});
+
+test("빠른 선택 30명으로 입력과 결과가 갱신된다", async ({ page }) => {
+  await start(page);
+  await page.getByRole("button", { name: "30명", exact: true }).click();
+  await expect(page.getByTestId("n-input")).toHaveValue("30");
   await expect(page.getByTestId("result")).toHaveAttribute("data-level", "어려울 수 있음");
 });
 
@@ -84,8 +95,10 @@ test("마지막 정류장을 기억한다 (F5 후 시트 없이 바로 결과)",
 });
 
 // 아래는 가짜 시계로 시간을 건너뜀. 녹십자약국 목업 eta_sec = 100 (1분 40초)
+// 시계를 목업 스냅샷(13:11:33)과 먼 시각에 고정 → 받은 시각부터 셈. 실제 시각이 13:1x 일 때 결과가 바뀌지 않게
+const FAR_FROM_SNAPSHOT = { time: new Date("2026-09-30T08:00:00+09:00") };
 test("도착 시간이 1초씩 줄어든다", async ({ page }) => {
-  await page.clock.install();
+  await page.clock.install(FAR_FROM_SNAPSHOT);
   await start(page);
   await page.clock.runFor(1_000);
   await expect(page.getByTestId("arrival")).toContainText("1분40초");
@@ -94,7 +107,7 @@ test("도착 시간이 1초씩 줄어든다", async ({ page }) => {
 });
 
 test("30초마다 자동으로 다시 불러온다 (카운트다운이 새 값으로 바뀜)", async ({ page }) => {
-  await page.clock.install();
+  await page.clock.install(FAR_FROM_SNAPSHOT);
   await start(page);
   await page.clock.runFor(36_000);
   // 새로고침이 없었다면 1분 0x초까지 내려갔어야 함
@@ -104,10 +117,20 @@ test("30초마다 자동으로 다시 불러온다 (카운트다운이 새 값�
 test("남은 시간이 1분 미만이면 '곧 도착'", async ({ page }) => {
   // 화면이 안 보이는 상태로 만들어 자동 새로고침(카운트다운 되감기)을 막음
   await page.addInitScript(() => Object.defineProperty(document, "visibilityState", { get: () => "hidden" }));
-  await page.clock.install();
+  await page.clock.install(FAR_FROM_SNAPSHOT);
   await start(page);
   await page.clock.runFor(39_000);
   await expect(page.getByTestId("arrival")).toContainText(/1분0[01]초/);   // 60초 = 아직 숫자
   await page.clock.runFor(2_000);
   await expect(page.getByTestId("arrival")).toContainText("곧 도착");
+});
+
+// 카운트다운 출렁임: eta_sec 는 스냅샷(updated 13:11:33) 시각 값 → 받은 시각이 아니라 스냅샷 시각부터 센다
+test("같은 스냅샷을 다시 받아도 카운트다운이 되감기지 않는다", async ({ page }) => {
+  await page.clock.install({ time: new Date("2026-09-30T13:11:43+09:00") });  // 스냅샷 10초 뒤
+  await start(page);
+  await page.clock.runFor(1_000);
+  await expect(page.getByTestId("arrival")).toContainText(/1분(2[89]|30)초/);  // 100 − 10 − 1
+  await page.clock.runFor(32_000);                                           // 30초 자동 새로고침을 지나도
+  await expect(page.getByTestId("arrival")).toContainText("곧 도착");         // 예전엔 1분3x초로 되감김
 });

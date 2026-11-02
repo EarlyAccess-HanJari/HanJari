@@ -16,8 +16,8 @@ test("stale: '확률 보류' → 오래됨 안내 + 확률·도착 시간 숨김
   await expect(page.getByTestId("notice-stale")).toBeVisible();
   const result = page.getByTestId("result");
   await expect(result).toHaveAttribute("data-level", "확률 보류");
-  await expect(result).not.toContainText("탈 확률");
-  await expect(result).not.toContainText("예상 인원");
+  await expect(result).not.toContainText(/\d+%/);
+  await expect(page.getByTestId("loads")).not.toContainText(/\d/);
   await expect(result).toContainText("95분 전");                 // 보류 이유 노출
   // 오래된 정보면 도착 시간·정류장 수 대신 안내만 (몇 시간 전 버스를 카운트다운하지 않게)
   await expect(page.getByTestId("arrival")).toContainText("버스 위치를 확인할 수 없어요");
@@ -28,8 +28,9 @@ test("wide: '판단하기 일러요' → 확률 대신 예상 범위 안내", as
   await run(page, "wide");
   const result = page.getByTestId("result");
   await expect(result).toHaveAttribute("data-level", "판단하기 일러요");
-  await expect(result).not.toContainText("탈 확률");
+  await expect(result).not.toContainText(/\d+%/);
   await expect(result).toContainText("16~46명");
+  await expect(page.getByTestId("loads")).toContainText("16~46명");
 });
 
 test("night: 결과 없음 → 운행 시간 아님", async ({ page }) => {

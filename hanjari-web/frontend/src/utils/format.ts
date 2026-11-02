@@ -18,6 +18,22 @@ export function mmss(sec: number): { m: number; s: string } {
   return { m: Math.floor(sec / 60), s: String(sec % 60).padStart(2, "0") };
 }
 
+const DAY_SEC = 86_400;
+const KST_OFFSET_SEC = 9 * 3600;
+const MAX_SNAP_AGE_SEC = 180;  // 이보다 오래됐거나 미래로 보이면(폰 시계 어긋남·목업) 받은 시각 기준으로 셈
+
+/** 버스가 도착할 시각(ms).
+ *  eta_sec 는 스냅샷 시각(updated, KST "HH:MM:SS")의 남은 시간이라, 받은 시각이 아니라 스냅샷 시각에 더한다.
+ *  받은 시각에 더하면 스냅샷 나이(최대 약 27초)만큼 새로고침마다 숫자가 출렁인다. */
+export function arrivalAt(i: PredictItem, fetchedAt: number): number {
+  const [h, m, sec] = i.updated.split(":").map(Number);
+  const snapSod = h * 3600 + m * 60 + sec;
+  const nowSod = Math.floor(fetchedAt / 1000 + KST_OFFSET_SEC) % DAY_SEC;
+  const age = (nowSod - snapSod + DAY_SEC) % DAY_SEC;  // 자정 넘김 포함
+  const base = Number.isFinite(age) && age <= MAX_SNAP_AGE_SEC ? fetchedAt - age * 1000 : fetchedAt;
+  return base + i.eta_sec * 1000;
+}
+
 /** 문자열 입력 → 숫자 or 오류 메시지 */
 export function parseN(raw: string, min: number, max: number): { n: number } | { error: string } {
   const t = raw.trim();

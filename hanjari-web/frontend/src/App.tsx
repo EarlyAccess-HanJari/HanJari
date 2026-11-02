@@ -8,6 +8,7 @@ import Header from "./components/Header";
 import ArrivalCard from "./components/ArrivalCard";
 import AheadInput from "./components/AheadInput";
 import ResultCard from "./components/ResultCard";
+import LoadCompare from "./components/LoadCompare";
 import OtherStops from "./components/OtherStops";
 import StopSheet from "./components/StopSheet";
 import Notice from "./components/Notice";
@@ -106,10 +107,10 @@ export default function App() {
 
   let body: ReactNode;
   if (!res) {
-    body = <>{input}<p className={s.loading}>버스 정보를 불러오는 중…</p></>;
+    body = <><section className={s.card}>{input}</section><p className={s.loading}>버스 정보를 불러오는 중…</p></>;
   } else if (!res.ok) {
     body = res.error.kind === "bad_input"
-      ? <>{input}<Notice kind="bad_input" detail={res.error.message} /></>
+      ? <><section className={s.card}>{input}</section><Notice kind="bad_input" detail={res.error.message} /></>
       : <Notice kind={res.error.kind} detail={res.error.kind === "unknown" ? res.error.message : undefined}
           onRetry={retry} retrying={loading} />;
   } else if (items.length === 0) {
@@ -117,11 +118,16 @@ export default function App() {
   } else if (!mine) {
     body = <Notice kind="no_stop" onRetry={retry} retrying={loading} />;
   } else {
+    // 한 카드 안에서 위→아래: 남은 시간 → 탑승 가능성 → 차내 인원 → 대기 인원 입력
     body = (
       <>
-        <ArrivalCard item={mine} stale={stale} fetchedAt={fetchedAt} />
-        {input}
-        <ResultCard item={mine} invalid={n === null} busy={loading} />
+        <section className={s.card}>
+          <ArrivalCard item={mine} stale={stale} fetchedAt={fetchedAt} />
+          <ResultCard item={mine} invalid={n === null} busy={loading} />
+          <LoadCompare item={mine} stale={stale} />
+          <div className={s.divider} />
+          {input}
+        </section>
         <OtherStops items={items.filter((i) => i.route === mine.route && i !== mine)}
           onPick={(i) => pick(i.route, i.stop)} />
       </>

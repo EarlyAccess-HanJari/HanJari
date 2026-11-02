@@ -1,14 +1,11 @@
-.card { background: var(--lv-bg); color: var(--lv-fg); border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 12px; transition: opacity .15s; }
-.card[aria-busy="true"] { opacity: .6; }
-.head { display: flex; align-items: center; gap: 10px; }
-.title { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
-.p { margin-left: auto; text-align: right; line-height: 1.1; }
-.pLabel { font-size: 12px; font-weight: 500; }
-.pNum { font-family: var(--mono); font-size: 30px; font-weight: 600; letter-spacing: -0.03em; }
-.pUnit { font-size: 16px; font-weight: 600; }
-.track { height: 8px; border-radius: 4px; background: rgba(17, 27, 46, .1); overflow: hidden; }
-.fill { height: 8px; border-radius: 4px; background: var(--lv-bar); }
-.guide { margin: 0; font-size: 16px; line-height: 1.55; font-weight: 600; }
-.load { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 14px; border-top: 1px solid rgba(17, 27, 46, .12); padding-top: 12px; }
-.load b { font-weight: 700; }
-.why { margin: 0; font-size: 13px; line-height: 1.55; opacity: .85; }
+/* 최소 높이 104: 상태가 바뀌어도(로딩·보류·재계산) 아래 인원·입력칸 위치가 그대로 */
+.card { position: relative; min-height: 104px; background: var(--lv-bg); color: var(--ink); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; transition: opacity .15s; }
+.card[aria-busy="true"] .head .title, .card[aria-busy="true"] .track, .card[aria-busy="true"] .guide { opacity: .4; }
+.head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.title { display: flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.3; color: var(--lv-fg); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--lv-bar); flex: none; }
+.recalc { position: absolute; right: 14px; top: 17px; font-size: 12px; font-weight: 500; color: var(--ink-2); }
+.track { height: 6px; border-radius: 3px; background: var(--lv-track); overflow: hidden; }
+.fill { height: 6px; border-radius: 3px; background: var(--lv-bar); transition: width .3s; }
+.guide { margin: 0; font-size: 14px; line-height: 22px; font-weight: 500; }
+.why { margin: 0; font-size: 13px; line-height: 1.55; color: var(--ink-2); }

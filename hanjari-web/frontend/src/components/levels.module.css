@@ -1,6 +1,6 @@
 /* 단계별 색. 배지·결과 카드가 같이 쓴다 (var(--lv-*)) */
-.ok    { --lv-bg: #E3ECF8; --lv-fg: #123E7A; --lv-bar: #1D5FC0; }
-.tight { --lv-bg: #FFF0D6; --lv-fg: #7A4300; --lv-bar: #D98A0B; }
-.hard  { --lv-bg: #FDE3E0; --lv-fg: #8E1F17; --lv-bar: #C8372B; }
-.early { --lv-bg: #E7EBF0; --lv-fg: #34414F; --lv-bar: #34414F; }
-.hold  { --lv-bg: #EDEBE7; --lv-fg: #4A4640; --lv-bar: #4A4640; }
+.ok    { --lv-bg: #E9F6EF; --lv-fg: #0B7A43; --lv-bar: #0F9D58; --lv-track: #CFE9DA; }
+.tight { --lv-bg: #FDF3E6; --lv-fg: #A85B00; --lv-bar: #E08000; --lv-track: #F6DCB8; }
+.hard  { --lv-bg: #FDECEA; --lv-fg: #C2302A; --lv-bar: #E5342B; --lv-track: #F6C9C6; }
+.early { --lv-bg: #E7EBF0; --lv-fg: #34414F; --lv-bar: #34414F; --lv-track: #D5DCE6; }
+.hold  { --lv-bg: #EDEBE7; --lv-fg: #4A4640; --lv-bar: #4A4640; --lv-track: #DDD9D2; }

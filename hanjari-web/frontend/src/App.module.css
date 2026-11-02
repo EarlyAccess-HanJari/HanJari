@@ -1,3 +1,5 @@
 .app { display: flex; flex-direction: column; min-height: 100dvh; }
-.main { padding: 4px 16px 28px; display: flex; flex-direction: column; gap: 12px; }
+.main { padding: 4px 14px 28px; display: flex; flex-direction: column; gap: 10px; }
 .loading { margin: 8px 4px; color: var(--muted); font-size: 14px; }
+.card { background: var(--card); border-radius: 16px; padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 12px; }
+.divider { height: 1px; background: var(--line-3); }
