@@ -1,0 +1,88 @@
+{
+  "snapshots": 14913,
+  "issues": [],
+  "old_schedule": {
+    "jr03": {
+      "wkd": [
+        360,
+        1464
+      ],
+      "sat": [
+        360,
+        1479
+      ],
+      "sun": [
+        360,
+        1450
+      ]
+    },
+    "sb02": {
+      "wkd": [
+        351,
+        1445
+      ],
+      "sat": [
+        353,
+        1442
+      ],
+      "sun": [
+        355,
+        1445
+      ]
+    }
+  },
+  "new_schedule": {
+    "jr03": {
+      "wkd": [
+        360,
+        1464
+      ],
+      "sat": [
+        360,
+        1479
+      ],
+      "sun": [
+        360,
+        1450
+      ]
+    },
+    "sb02": {
+      "wkd": [
+        351,
+        1445
+      ],
+      "sat": [
+        353,
+        1442
+      ],
+      "sun": [
+        355,
+        1445
+      ]
+    }
+  },
+  "field_accuracy_verified": false,
+  "code_commit": "f67a56955729cfec8b282d01db19c84996370021",
+  "deployment": {
+    "activated_at": "2026-11-02T16:26:41.619804+00:00",
+    "commit": "f67a56955729cfec8b282d01db19c84996370021",
+    "sha256": "6f4327b183a933936d38ce1102666774405bc4fdb32b7cb77d9a2d8d7bf63848",
+    "previous_sha256": "95c82b2fd992aec207315c19cdeb5f7042739b605fe702346715aca5d74b295b",
+    "files": [
+      "/home/ubuntu/hanjari/src/collect.py",
+      "/home/ubuntu/hanjari-ml/src/collect.py"
+    ],
+    "usage_preserved": true,
+    "requests_during_activation": 0,
+    "web_restarted": false,
+    "daily_interrupted": false,
+    "collector_pid": "264982",
+    "heartbeat": "2026-11-03T01:26:39.797434+09:00"
+  },
+  "observed_field_types": {
+    "firstTm:str": 506926,
+    "lastTm:str": 506926
+  },
+  "malformed_timetable_observed_in_archive": false,
+  "verification": "Malformed optional fields were fault-injected; no claim that they caused the historical HTTP 503."
+}
