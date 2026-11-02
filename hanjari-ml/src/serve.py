@@ -9,7 +9,7 @@
 피처는 학습과 **같은 코드**(build_dataset.build(open_=True) → train.features)로 만든다 → 학습/서비스 어긋남 방지.
 단계(기능흐름도 F-04 순서):
   1. 확률 보류     — 정보가 오래됨 / 수업 없는 날(일요일·공휴일) / 그 칸(시간대×거리)에 기준을 정할 데이터 부족
-  2. 판단하기 일러요 — 도착재차 10~90% 구간이 WIDE 명보다 넓음
+  2. 판단하기 일러요 — 도착재차 10~90% 구간이 WIDE 명보다 넓고 탑승 경계가 그 안에 있음(결론이 갈릴 때만, 범위 전체가 한쪽이면 3~5 로)
   3. 여유 있음     — P ≥ 칸별 '여유' 기준(실제 탑승 97%, 수업 직전 98% 를 지킨 가장 낮은 P)
   4. 어려울 수 있음 — P ≤ 0.3
   5. 빠듯함        — 그 사이
@@ -122,7 +122,8 @@ def load(lite, src=None):
     return m, meta
 
 
-def level(p, q10, q90, k, peak, weekday_ok, th, age):
+def level(p, q10, q90, limit, k, peak, weekday_ok, th, age):
+    """limit: 도착 재차가 이 값 이하면 탑승 가능(앞 대기 인원·정원·하차 반영)."""
     if age > MAX_AGE:
         return "확률 보류", f"정보가 {age:.0f}초 전 것"
     if not weekday_ok:
@@ -131,7 +132,7 @@ def level(p, q10, q90, k, peak, weekday_ok, th, age):
     t, short = th[cell]
     if short:
         return "확률 보류", "이 시간대·거리는 검증 데이터 부족"
-    if q90 - q10 > WIDE:
+    if q90 - q10 > WIDE and q10 <= limit < q90:  # 11-02: 폭만 보면 3명 앞에서도 7.4% 보류, 경계가 범위 안일 때만 0.4%('여유' 정확도 유지, exp_band.py)
         return "판단하기 일러요", f"도착 인원 예상 폭이 {q10:.0f}~{q90:.0f}명으로 넓음"
     if t is not None and p >= t:
         return "여유 있음", f"P {p:.2f} ≥ 기준 {t:.2f}"
@@ -219,13 +220,14 @@ def results(rows, m, meta, n_ahead, now, max_age, lite):
     point, Pm, Q = T.predict(m, d, quantiles=True)
     qs = np.array(meta["qs"])
     th = {(p, s): (t, short) for p, s, t, short in meta["thresholds"]}
+    limits = T.thresholds(d)[:, n_ahead]
     out = []
     for i, r in enumerate(d.itertuples()):
         t_snap = dt.datetime.strptime(r.date + r.time, "%Y%m%d%H:%M:%S")
         age = (now - t_snap).total_seconds() if max_age is not None else 0
         q10, q90 = np.interp([0.1, 0.9], qs, Q[i])
         p = float(Pm[i, n_ahead])
-        lv, why = level(p, q10, q90, r.stops_away, r.is_peak == 1, not r.holiday and r.weekday != "일", th, age)
+        lv, why = level(p, q10, q90, limits[i], r.stops_away, r.is_peak == 1, not r.holiday and r.weekday != "일", th, age)
         out.append(dict(route=r.route, stop=r.stop, stop_name=NAMES[(r.route, r.stop)], plate=r.plate,
                         stops_away=int(r.stops_away), eta_sec=int(r.eta), r_now=int(r.r_now),
                         load_pred=round(float(point[i]), 1), load_10=round(float(q10), 1), load_90=round(float(q90), 1),
@@ -238,6 +240,9 @@ def demo(model_dir=None):
     run = lambda n: predict_live(n, log_dir=SAMPLE, model_dir=model_dir)
     res = run(0)
     assert res and all(r["level"] in LEVELS for r in res)
+    th = {("평소", s): (0.8, False) for s in T.SEGS}
+    assert level(0.97, 13, 36, 69, 1, False, True, th, 0)[0] == "여유 있음", "범위가 넓어도 전부 탈 수 있으면 보류하지 않음"
+    assert level(0.5, 13, 36, 25, 1, False, True, th, 0)[0] == "판단하기 일러요", "경계가 범위 안이면 보류"
     assert all(np.isfinite([r["p_board"], r["load_pred"]]).all() for r in res), "NaN 예측"
     assert all(0 <= r["load_10"] <= r["load_pred"] + 1e-6 or r["stops_away"] == 0 for r in res)
     for n in (0, 10, 30):  # 앞사람이 많을수록 확률은 줄기만 해야 함
