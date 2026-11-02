@@ -1,0 +1,28 @@
+{
+  "service_day": "20261102",
+  "started_at": "2026-11-03T01:00:08+09:00",
+  "finished_at": "2026-11-03T01:24:05+09:00",
+  "exit_status": 0,
+  "data_status": "FAIL",
+  "service_window_gap_minutes": {
+    "sb02": 204.0,
+    "jr03": 204.9
+  },
+  "retrained": false,
+  "web_pid_after_completion": 264494,
+  "web_started_at": "2026-11-03T01:20:13+09:00",
+  "web_restarted_by_daily": false,
+  "verification_source": "systemd state, daily journal and saved reports/daily/20261102.md",
+  "label_deployment": {
+    "activated_at": "2026-11-02T16:29:18.050739+00:00",
+    "path": "/home/ubuntu/hanjari-ml/src/daily.py",
+    "before_sha256": "a90fa723c722f80233e110cc3db5069b752b8067ba532dec51018f6c93b58879",
+    "sha256": "c8f32881b70a4ac3db7eef7ccb7f5c953ce0a1580bcc9ff580b4f14506f4872c",
+    "replacements": 4,
+    "change": "실제 탑승 → API 기준 계산 탑승",
+    "training_logic_changed": false,
+    "job_invoked": false,
+    "old_report_preserved": true
+  },
+  "field_accuracy_verified": false
+}
