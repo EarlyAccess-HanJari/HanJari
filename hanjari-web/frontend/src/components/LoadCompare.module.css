@@ -1,6 +1,7 @@
-.wrap { display: flex; justify-content: center; align-items: stretch; }
+.wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; border-top: 1px solid var(--line-3); padding-top: 20px; }
 .col { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 0 24px; }
 .sep { width: 1px; background: var(--line-3); margin: 2px 0; }
 .k { font-size: 12px; color: var(--muted); }
-.v { font-size: 15px; font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.v { font-size: 32px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.note { margin: 0; max-width: 300px; font-size: 13px; color: var(--muted); line-height: 1.6; text-align: center; }
 .em { font-weight: 700; color: var(--ink); }

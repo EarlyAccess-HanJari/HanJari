@@ -1,6 +1,5 @@
 import type { PredictItem } from "../types";
 import { arrivalAt, arrivalState, etaText } from "../utils/format";
-import LevelBadge from "./LevelBadge";
 import s from "./OtherStops.module.css";
 
 /** 같은 노선의 다른 탑승 정류장 — 한 정류장 앞뒤로 걸어가 볼지 판단용.
@@ -24,7 +23,7 @@ export default function OtherStops({ items, onPick, now, fetchedAt }: { items: P
                 <span className={s.name}>{i.stop_name}</span>
                 <span className={s.sub}>{state === "upcoming" ? `이 정류장에 ${eta === "곧 도착" ? eta : `${eta} 도착`}` : "도착 정보 갱신 중"}</span>
               </span>
-              <LevelBadge level={state === "upcoming" ? i.level : "확률 보류"} />
+              <span aria-hidden="true">›</span>
             </button>
           );
         })}

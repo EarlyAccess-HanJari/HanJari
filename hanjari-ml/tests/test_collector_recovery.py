@@ -58,12 +58,55 @@ class CollectorRecovery(unittest.TestCase):
         self.assertEqual(state["endpoints"]["jr03:arr"]["status"], "budget_exhausted")
 
     def test_legacy_errors_count_in_migration_and_corruption_does_not_reset(self):
-        (self.log / "collect.log").write_text("2026-11-02T17:40:00+09:00 jr03 arr <HTTPError 503>\n" * 20)
+        (self.log / "collect.log").write_text("".join(f"{self.now + dt.timedelta(seconds=30*i):%Y-%m-%dT%H:%M:%S}+09:00 jr03 arr HTTPError 503\n" for i in range(20)))
         budget = C.UsageBudget(["key"], self.now)
-        self.assertGreaterEqual(budget.used[budget.ids["key"]]["arr"], 20)
+        self.assertEqual(budget.used[budget.ids["key"]]["arr"], 0)
+        self.assertEqual(budget.prior[budget.ids["key"]]["arr"], dict(lower=20, upper=20, unlogged=1))
         budget.path.write_text("broken")
         with self.assertRaises(ValueError):
             C.UsageBudget(["key"], self.now)
+
+    def test_saved_response_and_error_after_save_count_as_one_request(self):
+        folder = self.log / "20261102"; folder.mkdir()
+        (folder / "jr03_arr_174000.json").write_text("{}")
+        (self.log / "collect.log").write_text("2026-11-02T17:40:00+09:00 jr03 arr ValueError\n")
+        got = C.replay_usage(self.log, "20261102", 4)
+        self.assertEqual(got["recorded_total"]["arr"], 1)
+
+    def test_restarts_keep_bounds_and_reserve_separate_from_new_attempts(self):
+        lines = []
+        for offset in (0, 600):
+            start = self.now + dt.timedelta(seconds=offset)
+            lines.append(f"{start.isoformat()} start, keys = 4 share = 0.5\n")
+            for i in range(5):
+                lines.append(f"{(start + dt.timedelta(seconds=i*30)).isoformat()} jr03 arr HTTPError 503\n")
+        (self.log / "collect.log").write_text("".join(lines))
+        keys = ["a", "b", "c", "d"]
+        original = self.log / "usage" / "20261102.json";original.parent.mkdir()
+        original.write_text(json.dumps({C.hashlib.sha256(k.encode()).hexdigest()[:16]: {"arr": 992, "pos": 992} for k in keys}))
+        still = C.UsageBudget(keys, self.now)
+        self.assertEqual(still.remaining("a", "arr"), 0)
+        fixed = C.UsageBudget(keys, self.now, reconcile=True, manual_calls={"a": {"arr": 2}})
+        self.assertEqual(fixed.prior[fixed.ids["a"]]["arr"], dict(lower=2, upper=4, unlogged=4))
+        self.assertEqual(fixed.remaining("a", "arr"), C.LIMIT - 8)
+        self.assertEqual(fixed.used[fixed.ids["a"]]["arr"], 0)
+        self.assertTrue(fixed.reserve("a", "arr"))
+        restored = C.UsageBudget(keys, self.now)
+        self.assertEqual(restored.remaining("a", "arr"), C.LIMIT - 9)
+        self.assertTrue(original.with_name(original.name + ".before-reconcile").exists())
+        with self.assertRaises(ValueError):
+            C.UsageBudget(keys, self.now, reconcile=True)
+
+    def test_changed_historical_key_pool_cannot_be_divided_by_new_key_count(self):
+        (self.log / "collect.log").write_text("2026-11-02T17:40:00+09:00 start, keys = 1 share = 2\n")
+        with self.assertRaises(ValueError):
+            C.UsageBudget(["a", "b"], self.now)
+
+    def test_exhausted_key_does_not_block_another_keys_remaining_budget(self):
+        budget = C.UsageBudget(["a", "b"], self.now)
+        with patch.object(C, "LIMIT", 1):
+            self.assertTrue(budget.reserve("a", "arr"))
+            self.assertEqual(budget.choose("a", "arr"), "b")
 
     def test_live_collector_in_upstream_outage_does_not_trigger_restart(self):
         (self.log / "collector_state.json").write_text(json.dumps({"heartbeat": self.now.isoformat()}))

@@ -107,45 +107,123 @@ def fetch(url, k, route_id):
         return r.read()
 
 
+def replay_usage(log, day, key_count):
+    """과거 라운드로빈 수집기의 요청 묶음을 복원한다. 평균에 임의 여유분을 더하지 않는다.
+
+    재시작/운행일 초기화 구간마다 각 키의 요청 수는 floor~ceil(묶음수/키수).
+    한 요청에서 파일 저장 후 오류 로그도 남았으면 한 번만 센다.
+    종료 직전 기록하지 못한 요청은 구간당 서비스별 최대 1회로 따로 보관한다.
+    """
+    groups, boundaries, counts = {}, {"000000", "240000"}, set()
+    for path in (log / day).glob("*.json"):
+        parts = path.stem.split("_")
+        if len(parts) == 3 and parts[0] in ROUTES and parts[1] in URLS:
+            groups.setdefault((parts[2], parts[0]), set()).add(parts[1])
+    journal = log / "collect.log"
+    if journal.exists():
+        with journal.open() as f:
+            for line in f:
+                if not line.startswith(dt.datetime.strptime(day, "%Y%m%d").strftime("%Y-%m-%d")):
+                    continue
+                parts = line.split()
+                stamp = parts[0][11:19].replace(":", "")
+                if "start, keys" in line:
+                    count = int(line.split("keys =", 1)[1].split()[0])
+                    counts.add(count)
+                    boundaries.add(stamp)
+                if "오늘 이미 호출" in line:
+                    boundaries.add(stamp)
+                if len(parts) >= 4 and parts[1] in ROUTES and parts[2] in URLS:
+                    groups.setdefault((stamp, parts[1]), set()).add(parts[2])
+    if counts and counts != {key_count}:
+        raise ValueError("키 구성이 바뀐 과거 기록은 균등 배분하여 복원할 수 없음")
+    bounds, segments = {kind: dict(lower=0, upper=0, unlogged=0) for kind in URLS}, []
+    cuts = sorted(boundaries)
+    for a, b in zip(cuts, cuts[1:]):
+        rows = [value for (stamp, _), value in groups.items() if a <= stamp < b]
+        if not rows:
+            continue
+        segment = dict(start=a, end=b, groups=len(rows))
+        for kind in URLS:
+            present = sum(kind in row for row in rows)
+            # 한쪽만 기록된 묶음도 같은 키가 선택됐으므로 누락 가능성을 상한에 포함한다.
+            bounds[kind]["lower"] += max(0, len(rows) // key_count - (len(rows) - present))
+            bounds[kind]["upper"] += -(-len(rows) // key_count)
+            bounds[kind]["unlogged"] += 1
+            segment[kind] = present
+        segments.append(segment)
+    return dict(kind="legacy_round_robin_bounds", day=day, key_count=key_count,
+                recorded_total={kind: sum(kind in row for row in groups.values()) for kind in URLS},
+                per_key_bounds=bounds, segments=segments)
+
+
 class UsageBudget:
-    """실패도 호출 전에 기록한다. 재시작해도 키별·서비스별 당일 사용량을 되돌리지 않는다."""
-    def __init__(self, ks, now):
-        self.day = now.strftime("%Y%m%d")  # 공급자 일일 한도는 KST 달력 날짜로 분리
+    """새 요청 예약 수와 과거 복원 범위·미기록 가능량을 분리한다."""
+    def __init__(self, ks, now, reconcile=False, manual_calls=None):
+        self.day = now.strftime("%Y%m%d")
         self.path = LOG / "usage" / (self.day + ".json")
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.ids = {k: hashlib.sha256(k.encode()).hexdigest()[:16] for k in ks}
         try:
-            self.used = json.loads(self.path.read_text())
-            if not isinstance(self.used, dict) or any(type(n) is not int or n < 0 for v in self.used.values() for n in v.values()):
-                raise ValueError("invalid usage ledger")
+            saved = json.loads(self.path.read_text())
         except FileNotFoundError:
-            # 이전 버전에서 넘어오는 날: 저장 성공 + 오류 로그를 보수적으로 배분한다.
-            totals = {kind: len(list((LOG / self.day).glob(f"*_{kind}_*.json"))) for kind in URLS}
-            restarts = 0
-            if (LOG / "collect.log").exists():
-                with (LOG / "collect.log").open() as f:
-                    for line in f:
-                        if not line.startswith(now.strftime("%Y-%m-%d")):
-                            continue
-                        if "start, keys" in line:
-                            restarts += 1
-                        parts = line.split()
-                        if len(parts) >= 4 and parts[1] in ROUTES and parts[2] in URLS:
-                            totals[parts[2]] += 1
-            margin = restarts + 16 if any(totals.values()) else 0
-            self.used = {ident: {kind: -(-n // len(ks)) + margin for kind, n in totals.items()} for ident in self.ids.values()}
+            saved = None
+        if reconcile or saved is None:
+            if reconcile and saved and saved.get("version") == 2:
+                raise ValueError("현재 예약 장부는 과거 로그로 재복원하지 않음")
+            self.origin = replay_usage(LOG, self.day, len(ks))
+            self.used = {ident: {kind: 0 for kind in URLS} for ident in self.ids.values()}
+            self.prior = {ident: {kind: dict(bound) for kind, bound in self.origin["per_key_bounds"].items()} for ident in self.ids.values()}
+            # 직접 수행한 진단 요청처럼 근거가 있는 별도 호출만 지정한다. 키는 파일에 저장하지 않는다.
+            for key, services in (manual_calls or {}).items():
+                for kind, n in services.items():
+                    if kind not in URLS or type(n) is not int or n < 0:
+                        raise ValueError("invalid manual call allowance")
+                    self.prior[self.ids[key]][kind]["unlogged"] += n
+            if reconcile and self.path.exists():
+                backup = self.path.with_name(self.path.name + ".before-reconcile")
+                if backup.exists():
+                    raise ValueError("reconciliation backup already exists")
+                backup.write_bytes(self.path.read_bytes())
             self.save()
-        # 손상된 장부는 0으로 초기화하지 않는다. 수집기 실패로 감시 대상이 된다.
+        elif saved.get("version") == 2:
+            self.used, self.prior, self.origin = saved["used"], saved["prior"], saved["origin"]
+        else:
+            # 이전 패딩 장부는 명시적 재검사 없이 낮추지 않는다.
+            self.used = {ident: {kind: 0 for kind in URLS} for ident in saved}
+            self.prior = {ident: {kind: dict(lower=0, upper=n, unlogged=0) for kind, n in services.items()} for ident, services in saved.items()}
+            self.origin = dict(kind="legacy_unverified", day=self.day)
+        if set(self.used) != set(self.ids.values()) or set(self.prior) != set(self.ids.values()):
+            raise ValueError("키 구성이 호출 장부와 다름")
+        for ident in self.used:
+            for kind in URLS:
+                bound = self.prior[ident][kind]
+                nums = [self.used[ident][kind], bound["lower"], bound["upper"], bound["unlogged"]]
+                if any(type(n) is not int or n < 0 for n in nums) or bound["lower"] > bound["upper"]:
+                    raise ValueError("invalid usage ledger")
 
     def save(self):
-        write_snapshot(self.path, json.dumps(self.used).encode())
+        write_snapshot(self.path, json.dumps(dict(version=2, day=self.day, used=self.used, prior=self.prior, origin=self.origin)).encode())
+
+    def remaining(self, key, service):
+        ident = self.ids[key]
+        before = self.prior[ident][service]
+        return max(0, LIMIT - before["upper"] - before["unlogged"] - self.used[ident][service])
+
+    def choose(self, preferred, service):
+        if self.remaining(preferred, service):
+            return preferred
+        return next((key for key in self.ids if self.remaining(key, service)), preferred)
+
+    def blocked_status(self):
+        uncertain = any(b["upper"] != b["lower"] or b["unlogged"] for services in self.prior.values() for b in services.values())
+        return "budget_estimated_limit" if uncertain else "budget_exhausted"
 
     def reserve(self, key, service):
-        values = self.used.setdefault(self.ids[key], {})
-        if values.get(service, 0) >= LIMIT:
+        if not self.remaining(key, service):
             return False
-        values[service] = values.get(service, 0) + 1
-        self.save()  # 전송 직후 죽어도 이 호출은 이미 반영되어 있음
+        self.used[self.ids[key]][service] += 1
+        self.save()  # 전송 직후 죽어도 예약한 호출은 이미 반영되어 있음
         return True
 
 
@@ -155,8 +233,9 @@ def attempt(route, kind, key, now, budget, state, sched):
     entry = state.setdefault("endpoints", {}).setdefault(name, {})
     if now.timestamp() < entry.get("retry_after", 0):
         return
+    key = budget.choose(key, kind)
     if not budget.reserve(key, kind):
-        entry.update(status="budget_exhausted", retry_after=0)
+        entry.update(status=budget.blocked_status(), retry_after=0)
         return
     entry["last_attempt"] = now.isoformat()
     try:

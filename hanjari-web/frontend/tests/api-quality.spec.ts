@@ -38,9 +38,8 @@ test("null count holds prediction while keeping arrival", async ({ page }) => {
   await page.route("**/api/predict?*", r => r.fulfill({ json: held() }));
   await page.goto("/");
   await page.getByTestId("stop-jr03-23").click();
-  await expect(page.getByTestId("result")).toHaveAttribute("data-level", "확률 보류");
-  await expect(page.getByTestId("result")).toContainText("차내 인원 정보를 확인할 수 없어요");
-  await expect(page.getByTestId("result")).not.toContainText(/\d+%/);
+  await expect(page.getByTestId("loads")).toContainText("현재 인원 정보를 확인할 수 없어요");
+  await expect(page.getByTestId("result")).toHaveCount(0);
   await expect(page.getByTestId("loads")).not.toContainText(/\d|null|NaN/);
   await expect(page.getByTestId("arrival")).not.toContainText("버스 위치를 확인할 수 없어요");
 });
@@ -118,7 +117,7 @@ test("source time anchors ETA and expired same response never revives the old bu
   await expect(page.getByTestId("arrival-checking")).toBeVisible();
   await expect(page.getByTestId("arrival")).not.toContainText("곧 도착");
   await expect(page.getByTestId("loads")).not.toContainText("53명");
-  await expect(page.getByTestId("result")).not.toContainText(/\d+%/);
+  await expect(page.getByTestId("result")).toHaveCount(0);
   await page.clock.runFor(10_000); // 같은 스냅샷을 다시 받아도 만료 상태 유지
   await expect(page.getByTestId("arrival-checking")).toBeVisible();
 });
@@ -155,7 +154,7 @@ test("response ages on screen even when the tab stops refreshing", async ({ page
   await expect(page.getByTestId("notice-stale")).toHaveCount(0);
   await page.clock.runFor(155_000);
   await expect(page.getByTestId("notice-stale")).toBeVisible();
-  await expect(page.getByTestId("result")).not.toContainText(/\d+%/);
+  await expect(page.getByTestId("result")).toHaveCount(0);
 });
 
 test("a new vehicle and a corrected ETA take effect without fifteen-second smoothing", async ({ page }) => {
@@ -185,7 +184,7 @@ test("fresh estimated count remains visible while boarding prediction is held", 
   await page.getByTestId("stop-jr03-23").click();
   await expect(page.getByTestId("loads")).toContainText("약 22명");
   await expect(page.getByTestId("loads")).toContainText("추정");
-  await expect(page.getByTestId("result")).not.toContainText(/\d+%/);
+  await expect(page.getByTestId("result")).toHaveCount(0);
 });
 
 test("empty upstream outage is not called end of service and recovers automatically", async ({ page }) => {

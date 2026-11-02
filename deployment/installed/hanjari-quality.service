@@ -1,0 +1,16 @@
+[Unit]
+Description=HanJari stored passenger data quality audit (read only)
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/hanjari-quality
+ExecStart=/home/ubuntu/hanjari-ml/.venv/bin/python src/quality_audit.py --logs /home/ubuntu/hanjari/data/api_logs --output-dir /home/ubuntu/hanjari-ml/reports/source-quality
+Nice=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/home/ubuntu/hanjari-ml/reports/source-quality
+Environment=PYTHONDONTWRITEBYTECODE=1
+IPAddressDeny=any
+TimeoutStartSec=180
