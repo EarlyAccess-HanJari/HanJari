@@ -13,13 +13,20 @@ import collect as C
 import data_quality as DQ
 import terminal_baseline as TB
 
-TERMINALS = {"jr03": ("100900039", (1, 30))}
+# 저장된 노선 응답의 stId/staOrd와 위치 응답의 lastStnId/sectOrd 기준.
+# 회차 지점이라는 사실만으로 전원 하차가 확인된 것은 아니다.
+TERMINALS = {
+    "jr03": {"naksan_park": ("낙산공원", "100900039", (1, 30))},
+    "sb02": {"hansung_gate": ("한성대정문", "107900256", (1, 38)),
+             "old_stone_museum": ("우리옛돌박물관.정법사", "107900329", (19,))},
+}
 
 
 class ShadowOffsets:
     """종점 잔여값을 뺀다는 가정을 회차 안에서만 검사한다. 운영 값으로 반환하지 않는다."""
-    def __init__(self, terminal_id, sections):
+    def __init__(self, terminal_id, sections, reset_points=()):
         self.terminal = TB.TerminalCandidates(terminal_id, sections)
+        self.reset_points = set(reset_points) | {(str(terminal_id), section) for section in sections}
         self.previous, self.anchors = {}, {}
         self.stats = Counter()
 
@@ -34,7 +41,7 @@ class ShadowOffsets:
                 self.stats["expired_after_gap_or_day"] += 1
         for key, row in current.items():
             prev = self.previous.get(key)
-            at_terminal = row["station_id"] == self.terminal.terminal_id and row["section"] in self.terminal.sections
+            at_terminal = (row["station_id"], row["section"]) in self.reset_points
             wrapped = prev and row["section"] is not None and prev[1] is not None and row["section"] < prev[1]
             if at_terminal or wrapped:
                 if self.anchors.pop(key, None):
@@ -44,7 +51,8 @@ class ShadowOffsets:
             key = event["vehicle_id"], event["plate"]
             row = current.get(key)
             end = dt.datetime.fromisoformat(event["end"])
-            if (row is not None and row["section"] is not None and row["section"] not in self.terminal.sections
+            if (row is not None and row["section"] is not None
+                    and (row["station_id"], row["section"]) not in self.reset_points
                     and 0 <= (now - end).total_seconds() <= 90):
                 self.anchors[key] = dict(offset=event["candidate_offset_max"], start=end)
                 self.stats["departure_candidates"] += 1
@@ -74,7 +82,10 @@ def audit_day(logs, day):
     routes = {}
     for route in B.STOPS:
         statuses, errors = Counter(), Counter()
-        tracker = ShadowOffsets(*TERMINALS[route]) if route in TERMINALS else None
+        terminals = TERMINALS.get(route, {})
+        reset_points = {(station, section) for _, station, sections in terminals.values() for section in sections}
+        trackers = {key: ShadowOffsets(station, sections, reset_points)
+                    for key, (_, station, sections) in terminals.items()}
         snapshots, switches, large_changes, previous = 0, 0, 0, {}
         counts, first, last = [], None, None
         for now, items in B.snapshots(route, [str(folder)]):
@@ -96,20 +107,30 @@ def audit_day(logs, day):
                 previous[stop] = now, vehicle, n
                 if n is not None:
                     counts.append(n)
-            if tracker:
+            if trackers:
                 try:
                     positions = B.read_items(folder / f"{route}_pos_{now:%H%M%S}.json")
                     rows = TB.observations(list(items.values()), positions, now)
                 except (OSError, ValueError, KeyError, TypeError):
                     rows = []
                     errors["position_pair_unavailable"] += 1
-                tracker.step(now, rows)
-        if tracker:
-            tracker.terminal.close()
-            positives = [e for e in tracker.terminal.events if e["candidate_offset_max"] > 0]
-            terminal = dict(status="shadow_only", qualified_windows=len(tracker.terminal.events),
+                for tracker in trackers.values():
+                    tracker.step(now, rows)
+        if trackers:
+            checkpoints, checks, positives = {}, Counter(), []
+            for key, tracker in trackers.items():
+                tracker.terminal.close()
+                candidates = [dict(e, checkpoint=key) for e in tracker.terminal.events if e["candidate_offset_max"] > 0]
+                name, station, sections = terminals[key]
+                checkpoints[key] = dict(name=name, station_id=station, sections=list(sections), empty_verified=False,
+                                        qualified_windows=len(tracker.terminal.events), positive_windows=len(candidates),
+                                        candidate_max=max((e["candidate_offset_max"] for e in candidates), default=0),
+                                        checks=dict(tracker.stats), rejected=dict(tracker.terminal.rejected))
+                checks.update(tracker.stats)
+                positives.extend(candidates)
+            terminal = dict(status="shadow_only", qualified_windows=sum(v["qualified_windows"] for v in checkpoints.values()),
                             positive_windows=len(positives), candidate_max=max((e["candidate_offset_max"] for e in positives), default=0),
-                            checks=dict(tracker.stats), errors=dict(errors), positive_candidates=positives)
+                            checks=dict(checks), errors=dict(errors), positive_candidates=positives, checkpoints=checkpoints)
         else:
             terminal = dict(status="terminal_not_configured")
         routes[route] = dict(snapshots=snapshots, first=first, last=last, target_statuses=dict(statuses),

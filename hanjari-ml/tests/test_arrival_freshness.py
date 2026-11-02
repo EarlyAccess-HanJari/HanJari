@@ -144,11 +144,30 @@ class ArrivalFreshness(unittest.TestCase):
             self.assertEqual(row["prediction_status"], "collection_stale")
 
     def test_explicit_no_results_does_not_resurrect_an_older_arrival(self):
-        self.write("arr", "174039", [self.first])
-        empty = self.folder / "jr03_arr_174106.json"
-        empty.write_text(json.dumps({"msgHeader": {"headerCd": "4"}, "msgBody": {"itemList": None}}))
-        self.assertEqual(S.latest_snapshot(self.folder, "jr03")[0], "174106")
-        self.assertEqual(S.predict_live(3, log_dir=self.folder), [])
+        for route in B.STOPS:
+            for empty_body in ({"msgBody": {"itemList": None}}, {"msgBody": None}, {}):
+                with self.subTest(route=route, body=empty_body):
+                    for f in self.folder.glob("*.json"):
+                        f.unlink()
+                    (self.folder / f"{route}_arr_174039.json").write_text(json.dumps(
+                        {"msgHeader": {"headerCd": "0"}, "msgBody": {"itemList": [self.first]}}))
+                    empty = self.folder / f"{route}_arr_174106.json"
+                    empty.write_text(json.dumps({"msgHeader": {"headerCd": "4"}, **empty_body}))
+                    self.assertEqual(S.latest_snapshot(self.folder, route)[0], "174106")
+                    self.assertEqual(S.predict_live(3, log_dir=self.folder), [])
+
+    def test_invalid_envelope_is_skipped_without_crashing_other_route(self):
+        for route in B.STOPS:
+            shutil.copy(next(S.SAMPLE.glob(f"{route}_arr_*.json")), self.folder / f"{route}_arr_174039.json")
+        for route in B.STOPS:
+            invalid = self.folder / f"{route}_arr_174106.json"
+            for payload in ({"msgHeader": None}, {"msgHeader": []},
+                            {"msgHeader": {"headerCd": "4"}, "msgBody": "broken"}):
+                with self.subTest(route=route, payload=payload):
+                    invalid.write_text(json.dumps(payload))
+                    self.assertEqual(S.latest_snapshot(self.folder, route)[0], "174039")
+                    self.assertEqual(len(S.predict_live(3, log_dir=self.folder)), 6)
+            invalid.unlink()
 
 
 if __name__ == "__main__":

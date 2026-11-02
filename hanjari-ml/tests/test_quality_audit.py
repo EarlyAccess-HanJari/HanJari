@@ -50,6 +50,31 @@ class QualityAudit(unittest.TestCase):
         self.assertFalse(report["applied_to_training"])
         self.assertFalse(report["field_accuracy_verified"])
         self.assertTrue(all(v["snapshots"]==1 for v in report["routes"].values()))
+        checkpoints = report["routes"]["sb02"]["terminal"]["checkpoints"]
+        self.assertEqual({v["station_id"] for v in checkpoints.values()}, {"107900256", "107900329"})
+        self.assertTrue(all(not v["empty_verified"] for v in checkpoints.values()))
+
+    def test_sb02_offset_clears_at_other_turnaround_without_section_wrap(self):
+        reset_points = {("107900256", 1), ("107900256", 38), ("107900329", 19)}
+        self.tracker = Q.ShadowOffsets("107900256", (1,38), reset_points=reset_points)
+
+        def step(sec, section, station, count=4):
+            now = self.start + dt.timedelta(seconds=sec)
+            row = dict(vehicle_id="107063707", plate="test", station_id=station, section=section,
+                       count=count, source_time=now, position_time=now, gps=(127.01,37.58))
+            return self.tracker.step(now, [row])
+
+        for sec in (0,30,60):
+            step(sec,1,"107900256")
+        self.assertEqual(step(90,2,"other",20)[0]["hypothetical_lower"],16)
+        self.assertEqual(step(120,19,"107900329",20),[])
+        self.assertEqual(step(150,20,"other",20),[])
+
+    def test_departure_candidate_cannot_be_created_at_other_checkpoint(self):
+        self.tracker = Q.ShadowOffsets("100900039", (1,30), reset_points={("other",19)})
+        self.anchor()
+        self.assertEqual(self.step(90,28,19),[])
+        self.assertEqual(self.step(120,28,20),[])
 
 
 if __name__ == "__main__":

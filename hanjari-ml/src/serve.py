@@ -215,7 +215,7 @@ def exclude_departed(snap, now):
                         positions[key] = made, v
         for f in snap.glob(f"{route}_arr_*.json"):
             body = json.loads(f.read_text())
-            for it in body["msgBody"]["itemList"] or []:
+            for it in B.response_items(body):
                 stop = B.num(it.get("staOrd"))
                 if stop not in B.STOPS[route]:
                     continue

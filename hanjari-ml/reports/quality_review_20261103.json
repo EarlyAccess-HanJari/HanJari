@@ -1,0 +1,746 @@
+{
+  "source_archive_sha256": "e199ba0153476e8bbee7777d616f5e96a8a7c0ab4afdac7d9b32d3402f30c7d1",
+  "source_cutoff": "2026-11-02T18:28:48+09:00",
+  "mode": "internal_only",
+  "applied_to_display": false,
+  "applied_to_training": false,
+  "field_accuracy_verified": false,
+  "summary": {
+    "sb02": {
+      "snapshots": 7442,
+      "qualified_windows": 48,
+      "positive_windows": 8,
+      "candidate_max": 4,
+      "invalidated_by_lower_api_count": 1
+    },
+    "jr03": {
+      "snapshots": 7471,
+      "qualified_windows": 90,
+      "positive_windows": 5,
+      "candidate_max": 3,
+      "invalidated_by_lower_api_count": 1
+    }
+  },
+  "days": [
+    {
+      "day": "20261030",
+      "created_at": "2026-11-03T00:24:41.780312+09:00",
+      "mode": "internal_only",
+      "applied_to_display": false,
+      "applied_to_training": false,
+      "field_accuracy_verified": false,
+      "routes": {
+        "sb02": {
+          "snapshots": 1960,
+          "first": "2026-10-30T00:00:00",
+          "last": "2026-10-30T23:57:30",
+          "target_statuses": {
+            "ok": 5816,
+            "passenger_unavailable": 64
+          },
+          "first_vehicle_switches": 447,
+          "same_vehicle_changes_ge20": 13,
+          "max_valid_api_count": 40,
+          "terminal": {
+            "status": "shadow_only",
+            "qualified_windows": 11,
+            "positive_windows": 4,
+            "candidate_max": 3,
+            "checks": {
+              "departure_candidates": 2,
+              "same_trip_observations": 71,
+              "cleared_at_next_trip": 2,
+              "positive_offset_observations": 33
+            },
+            "errors": {},
+            "positive_candidates": [
+              {
+                "vehicle_id": "107063707",
+                "plate": "서울70사6419",
+                "start": "2026-10-30T18:01:21",
+                "end": "2026-10-30T18:02:42",
+                "min_api_count": 3,
+                "max_api_count": 3,
+                "source_updates": 4,
+                "position_updates": 3,
+                "source_span_sec": 83.0,
+                "position_span_sec": 78.0,
+                "candidate_offset_max": 3,
+                "automatic_subtraction": 0,
+                "empty_verified": false,
+                "checkpoint": "hansung_gate"
+              },
+              {
+                "vehicle_id": "107063679",
+                "plate": "서울70사6597",
+                "start": "2026-10-30T07:22:21",
+                "end": "2026-10-30T07:23:42",
+                "min_api_count": 2,
+                "max_api_count": 2,
+                "source_updates": 4,
+                "position_updates": 3,
+                "source_span_sec": 84.0,
+                "position_span_sec": 60.0,
+                "candidate_offset_max": 2,
+                "automatic_subtraction": 0,
+                "empty_verified": false,
+                "checkpoint": "old_stone_museum"
+              },
+              {
+                "vehicle_id": "107063771",
+                "plate": "서울71사1601",
+                "start": "2026-10-30T12:04:30",
+                "end": "2026-10-30T12:06:45",
+                "min_api_count": 1,
+                "max_api_count": 1,
+                "source_updates": 5,
+                "position_updates": 4,
+                "source_span_sec": 127.0,
+                "position_span_sec": 120.0,
+                "candidate_offset_max": 1,
+                "automatic_subtraction": 0,
+                "empty_verified": false,
+                "checkpoint": "old_stone_museum"
+              },
+              {
+                "vehicle_id": "107063771",
+                "plate": "서울71사1601",
+                "start": "2026-10-30T16:52:03",
+                "end": "2026-10-30T16:52:57",
+                "min_api_count": 2,
+                "max_api_count": 11,
+                "source_updates": 3,
+                "position_updates": 3,
+                "source_span_sec": 39.0,
+                "position_span_sec": 51.0,
+                "candidate_offset_max": 2,
+                "automatic_subtraction": 0,
+                "empty_verified": false,
+                "checkpoint": "old_stone_museum"
+              }
+            ],
+            "checkpoints": {
+              "hansung_gate": {
+                "name": "한성대정문",
+                "station_id": "107900256",
+                "sections": [
+                  1,
+                  38
+                ],
+                "empty_verified": false,
+                "qualified_windows": 5,
+                "positive_windows": 1,
+                "candidate_max": 3,
+                "checks": {
+                  "departure_candidates": 1,
+                  "same_trip_observations": 38,
+                  "cleared_at_next_trip": 1
+                },
+                "rejected": {
+                  "insufficient_independent_updates": 30
+                }
+              },
+              "old_stone_museum": {
+                "name": "우리옛돌박물관.정법사",
+                "station_id": "107900329",
+                "sections": [
+                  19
+                ],
+                "empty_verified": false,
+                "qualified_windows": 6,
+                "positive_windows": 3,
+                "candidate_max": 2,
+                "checks": {
+                  "departure_candidates": 1,
+                  "same_trip_observations": 33,
+                  "positive_offset_observations": 33,
+                  "cleared_at_next_trip": 1
+                },
+                "rejected": {
+                  "insufficient_independent_updates": 259
+                }
+              }
+            }
+          }
+        },
+        "jr03": {
+          "snapshots": 1965,
+          "first": "2026-10-30T00:00:00",
+          "last": "2026-10-30T23:57:30",
+          "target_statuses": {
+            "ok": 5833,
+            "passenger_unavailable": 62
+          },
+          "first_vehicle_switches": 462,
+          "same_vehicle_changes_ge20": 10,
+          "max_valid_api_count": 53,
+          "terminal": {
+            "status": "shadow_only",
+            "qualified_windows": 26,
+            "positive_windows": 2,
+            "candidate_max": 3,
+            "checks": {
+              "departure_candidates": 19,
+              "same_trip_observations": 1576,
+              "expired_after_gap_or_day": 15,
+              "positive_offset_observations": 173,
+              "invalidated_by_lower_api_count": 1,
+              "cleared_at_next_trip": 3
+            },
+            "errors": {},
+            "positive_candidates": [
+              {
+                "vehicle_id": "100000070",
+                "plate": "서울75사3171",
+                "start": "2026-10-30T11:43:21",
+                "end": "2026-10-30T11:46:57",
+                "min_api_count": 3,
+                "max_api_count": 3,
+                "source_updates": 8,
+                "position_updates": 9,
+                "source_span_sec": 213.0,
+                "position_span_sec": 219.0,
+                "candidate_offset_max": 3,
+                "automatic_subtraction": 0,
+                "empty_verified": false,
+                "checkpoint": "naksan_park"
+              },
+              {
+                "vehicle_id": "100000070",
+                "plate": "서울75사3171",
+                "start": "2026-10-30T12:34:12",
+                "end": "2026-10-30T12:35:33",
+                "min_api_count": 1,
+                "max_api_count": 1,
+                "source_updates": 4,
+                "position_updates": 4,
+                "source_span_sec": 70.0,
+                "position_span_sec": 78.0,
+                "candidate_offset_max": 1,
+                "automatic_subtraction": 0,
+                "empty_verified": false,
+                "checkpoint": "naksan_park"
+              }
+            ],
+            "checkpoints": {
+              "naksan_park": {
+                "name": "낙산공원",
+                "station_id": "100900039",
+                "sections": [
+                  1,
+                  30
+                ],
+                "empty_verified": false,
+                "qualified_windows": 26,
+                "positive_windows": 2,
+                "candidate_max": 3,
+                "checks": {
+                  "departure_candidates": 19,
+                  "same_trip_observations": 1576,
+                  "expired_after_gap_or_day": 15,
+                  "positive_offset_observations": 173,
+                  "invalidated_by_lower_api_count": 1,
+                  "cleared_at_next_trip": 3
+                },
+                "rejected": {
+                  "insufficient_independent_updates": 20
+                }
+              }
+            }
+          }
+        }
+      },
+      "limitation": "API 내부 일관성과 종점 차감 가정 검사. 실인원·미태그 인원 확정 및 탑승 확률 검증이 아님."
+    },
+    {
+      "day": "20261031",
+      "created_at": "2026-11-03T00:24:45.938700+09:00",
+      "mode": "internal_only",
+      "applied_to_display": false,
+      "applied_to_training": false,
+      "field_accuracy_verified": false,
+      "routes": {
+        "sb02": {
+          "snapshots": 1959,
+          "first": "2026-10-31T00:00:00",
+          "last": "2026-10-31T23:57:30",
+          "target_statuses": {
+            "ok": 5813,
+            "passenger_unavailable": 64
+          },
+          "first_vehicle_switches": 359,
+          "same_vehicle_changes_ge20": 36,
+          "max_valid_api_count": 58,
+          "terminal": {
+            "status": "shadow_only",
+            "qualified_windows": 10,
+            "positive_windows": 1,
+            "candidate_max": 4,
+            "checks": {
+              "departure_candidates": 3,
+              "same_trip_observations": 84,
+              "cleared_at_next_trip": 1,
+              "expired_after_gap_or_day": 2
+            },
+            "errors": {},
+            "positive_candidates": [
+              {
+                "vehicle_id": "107063707",
+                "plate": "서울70사6419",
+                "start": "2026-10-31T17:10:30",
+                "end": "2026-10-31T17:12:18",
+                "min_api_count": 4,
+                "max_api_count": 4,
+                "source_updates": 5,
+                "position_updates": 4,
+                "source_span_sec": 114.0,
+                "position_span_sec": 81.0,
+                "candidate_offset_max": 4,
+                "automatic_subtraction": 0,
+                "empty_verified": false,
+                "checkpoint": "hansung_gate"
+              }
+            ],
+            "checkpoints": {
+              "hansung_gate": {
+                "name": "한성대정문",
+                "station_id": "107900256",
+                "sections": [
+                  1,
+                  38
+                ],
+                "empty_verified": false,
+                "qualified_windows": 8,
+                "positive_windows": 1,
+                "candidate_max": 4,
+                "checks": {
+                  "departure_candidates": 2,
+                  "same_trip_observations": 49,
+                  "cleared_at_next_trip": 1,
+                  "expired_after_gap_or_day": 1
+                },
+                "rejected": {
+                  "insufficient_independent_updates": 21
+                }
+              },
+              "old_stone_museum": {
+                "name": "우리옛돌박물관.정법사",
+                "station_id": "107900329",
+                "sections": [
+                  19
+                ],
+                "empty_verified": false,
+                "qualified_windows": 2,
+                "positive_windows": 0,
+                "candidate_max": 0,
+                "checks": {
+                  "departure_candidates": 1,
+                  "same_trip_observations": 35,
+                  "expired_after_gap_or_day": 1
+                },
+                "rejected": {
+                  "insufficient_independent_updates": 203
+                }
+              }
+            }
+          }
+        },
+        "jr03": {
+          "snapshots": 1965,
+          "first": "2026-10-31T00:00:00",
+          "last": "2026-10-31T23:57:30",
+          "target_statuses": {
+            "ok": 5832,
+            "passenger_unavailable": 63
+          },
+          "first_vehicle_switches": 374,
+          "same_vehicle_changes_ge20": 7,
+          "max_valid_api_count": 52,
+          "terminal": {
+            "status": "shadow_only",
+            "qualified_windows": 26,
+            "positive_windows": 1,
+            "candidate_max": 1,
+            "checks": {
+              "departure_candidates": 12,
+              "same_trip_observations": 831,
+              "cleared_at_next_trip": 6,
+              "expired_after_gap_or_day": 6
+            },
+            "errors": {},
+            "positive_candidates": [
+              {
+                "vehicle_id": "100000070",
+                "plate": "서울75사3171",
+                "start": "2026-10-31T16:10:12",
+                "end": "2026-10-31T16:16:57",
+                "min_api_count": 1,
+                "max_api_count": 1,
+                "source_updates": 16,
+                "position_updates": 16,
+                "source_span_sec": 382.0,
+                "position_span_sec": 399.0,
+                "candidate_offset_max": 1,
+                "automatic_subtraction": 0,
+                "empty_verified": false,
+                "checkpoint": "naksan_park"
+              }
+            ],
+            "checkpoints": {
+              "naksan_park": {
+                "name": "낙산공원",
+                "station_id": "100900039",
+                "sections": [
+                  1,
+                  30
+                ],
+                "empty_verified": false,
+                "qualified_windows": 26,
+                "positive_windows": 1,
+                "candidate_max": 1,
+                "checks": {
+                  "departure_candidates": 12,
+                  "same_trip_observations": 831,
+                  "cleared_at_next_trip": 6,
+                  "expired_after_gap_or_day": 6
+                },
+                "rejected": {
+                  "insufficient_independent_updates": 34
+                }
+              }
+            }
+          }
+        }
+      },
+      "limitation": "API 내부 일관성과 종점 차감 가정 검사. 실인원·미태그 인원 확정 및 탑승 확률 검증이 아님."
+    },
+    {
+      "day": "20261101",
+      "created_at": "2026-11-03T00:24:50.062600+09:00",
+      "mode": "internal_only",
+      "applied_to_display": false,
+      "applied_to_training": false,
+      "field_accuracy_verified": false,
+      "routes": {
+        "sb02": {
+          "snapshots": 1956,
+          "first": "2026-11-01T00:00:00",
+          "last": "2026-11-01T23:57:30",
+          "target_statuses": {
+            "ok": 5770,
+            "passenger_unavailable": 98
+          },
+          "first_vehicle_switches": 392,
+          "same_vehicle_changes_ge20": 8,
+          "max_valid_api_count": 33,
+          "terminal": {
+            "status": "shadow_only",
+            "qualified_windows": 19,
+            "positive_windows": 2,
+            "candidate_max": 2,
+            "checks": {
+              "departure_candidates": 5,
+              "same_trip_observations": 141,
+              "cleared_at_next_trip": 2,
+              "invalidated_by_lower_api_count": 1,
+              "positive_offset_observations": 29,
+              "expired_after_gap_or_day": 2
+            },
+            "errors": {},
+            "positive_candidates": [
+              {
+                "vehicle_id": "107063707",
+                "plate": "서울70사6419",
+                "start": "2026-11-01T11:13:39",
+                "end": "2026-11-01T11:15:00",
+                "min_api_count": 2,
+                "max_api_count": 2,
+                "source_updates": 4,
+                "position_updates": 4,
+                "source_span_sec": 86.0,
+                "position_span_sec": 81.0,
+                "candidate_offset_max": 2,
+                "automatic_subtraction": 0,
+                "empty_verified": false,
+                "checkpoint": "hansung_gate"
+              },
+              {
+                "vehicle_id": "107063771",
+                "plate": "서울71사1601",
+                "start": "2026-11-01T12:20:15",
+                "end": "2026-11-01T12:21:09",
+                "min_api_count": 1,
+                "max_api_count": 1,
+                "source_updates": 3,
+                "position_updates": 3,
+                "source_span_sec": 38.0,
+                "position_span_sec": 65.0,
+                "candidate_offset_max": 1,
+                "automatic_subtraction": 0,
+                "empty_verified": false,
+                "checkpoint": "old_stone_museum"
+              }
+            ],
+            "checkpoints": {
+              "hansung_gate": {
+                "name": "한성대정문",
+                "station_id": "107900256",
+                "sections": [
+                  1,
+                  38
+                ],
+                "empty_verified": false,
+                "qualified_windows": 13,
+                "positive_windows": 1,
+                "candidate_max": 2,
+                "checks": {
+                  "departure_candidates": 3,
+                  "same_trip_observations": 81,
+                  "cleared_at_next_trip": 2,
+                  "invalidated_by_lower_api_count": 1
+                },
+                "rejected": {
+                  "insufficient_independent_updates": 29
+                }
+              },
+              "old_stone_museum": {
+                "name": "우리옛돌박물관.정법사",
+                "station_id": "107900329",
+                "sections": [
+                  19
+                ],
+                "empty_verified": false,
+                "qualified_windows": 6,
+                "positive_windows": 1,
+                "candidate_max": 1,
+                "checks": {
+                  "departure_candidates": 2,
+                  "same_trip_observations": 60,
+                  "positive_offset_observations": 29,
+                  "expired_after_gap_or_day": 2
+                },
+                "rejected": {
+                  "insufficient_independent_updates": 198
+                }
+              }
+            }
+          }
+        },
+        "jr03": {
+          "snapshots": 1967,
+          "first": "2026-11-01T00:00:00",
+          "last": "2026-11-01T23:57:30",
+          "target_statuses": {
+            "passenger_unavailable": 72,
+            "ok": 5829
+          },
+          "first_vehicle_switches": 362,
+          "same_vehicle_changes_ge20": 1,
+          "max_valid_api_count": 38,
+          "terminal": {
+            "status": "shadow_only",
+            "qualified_windows": 10,
+            "positive_windows": 0,
+            "candidate_max": 0,
+            "checks": {
+              "departure_candidates": 6,
+              "same_trip_observations": 423,
+              "expired_after_gap_or_day": 4,
+              "cleared_at_next_trip": 2
+            },
+            "errors": {},
+            "positive_candidates": [],
+            "checkpoints": {
+              "naksan_park": {
+                "name": "낙산공원",
+                "station_id": "100900039",
+                "sections": [
+                  1,
+                  30
+                ],
+                "empty_verified": false,
+                "qualified_windows": 10,
+                "positive_windows": 0,
+                "candidate_max": 0,
+                "checks": {
+                  "departure_candidates": 6,
+                  "same_trip_observations": 423,
+                  "expired_after_gap_or_day": 4,
+                  "cleared_at_next_trip": 2
+                },
+                "rejected": {
+                  "insufficient_independent_updates": 13
+                }
+              }
+            }
+          }
+        }
+      },
+      "limitation": "API 내부 일관성과 종점 차감 가정 검사. 실인원·미태그 인원 확정 및 탑승 확률 검증이 아님."
+    },
+    {
+      "day": "20261102",
+      "created_at": "2026-11-03T00:24:53.477064+09:00",
+      "mode": "internal_only",
+      "applied_to_display": false,
+      "applied_to_training": false,
+      "field_accuracy_verified": false,
+      "routes": {
+        "sb02": {
+          "snapshots": 1567,
+          "first": "2026-11-02T00:00:00",
+          "last": "2026-11-02T18:28:48",
+          "target_statuses": {
+            "ok": 4636,
+            "passenger_unavailable": 65
+          },
+          "first_vehicle_switches": 344,
+          "same_vehicle_changes_ge20": 15,
+          "max_valid_api_count": 52,
+          "terminal": {
+            "status": "shadow_only",
+            "qualified_windows": 8,
+            "positive_windows": 1,
+            "candidate_max": 2,
+            "checks": {},
+            "errors": {},
+            "positive_candidates": [
+              {
+                "vehicle_id": "107063708",
+                "plate": "서울70사6421",
+                "start": "2026-11-02T12:03:09",
+                "end": "2026-11-02T12:05:24",
+                "min_api_count": 2,
+                "max_api_count": 2,
+                "source_updates": 5,
+                "position_updates": 5,
+                "source_span_sec": 115.0,
+                "position_span_sec": 99.0,
+                "candidate_offset_max": 2,
+                "automatic_subtraction": 0,
+                "empty_verified": false,
+                "checkpoint": "hansung_gate"
+              }
+            ],
+            "checkpoints": {
+              "hansung_gate": {
+                "name": "한성대정문",
+                "station_id": "107900256",
+                "sections": [
+                  1,
+                  38
+                ],
+                "empty_verified": false,
+                "qualified_windows": 5,
+                "positive_windows": 1,
+                "candidate_max": 2,
+                "checks": {},
+                "rejected": {
+                  "insufficient_independent_updates": 33
+                }
+              },
+              "old_stone_museum": {
+                "name": "우리옛돌박물관.정법사",
+                "station_id": "107900329",
+                "sections": [
+                  19
+                ],
+                "empty_verified": false,
+                "qualified_windows": 3,
+                "positive_windows": 0,
+                "candidate_max": 0,
+                "checks": {},
+                "rejected": {
+                  "insufficient_independent_updates": 239
+                }
+              }
+            }
+          }
+        },
+        "jr03": {
+          "snapshots": 1574,
+          "first": "2026-11-02T00:00:00",
+          "last": "2026-11-02T18:28:48",
+          "target_statuses": {
+            "passenger_unavailable": 51,
+            "ok": 4671
+          },
+          "first_vehicle_switches": 314,
+          "same_vehicle_changes_ge20": 10,
+          "max_valid_api_count": 60,
+          "terminal": {
+            "status": "shadow_only",
+            "qualified_windows": 28,
+            "positive_windows": 2,
+            "candidate_max": 1,
+            "checks": {
+              "departure_candidates": 19,
+              "same_trip_observations": 1708,
+              "expired_after_gap_or_day": 12,
+              "cleared_at_next_trip": 6
+            },
+            "errors": {},
+            "positive_candidates": [
+              {
+                "vehicle_id": "100000070",
+                "plate": "서울75사3171",
+                "start": "2026-11-02T07:24:09",
+                "end": "2026-11-02T07:26:51",
+                "min_api_count": 1,
+                "max_api_count": 1,
+                "source_updates": 7,
+                "position_updates": 7,
+                "source_span_sec": 163.0,
+                "position_span_sec": 180.0,
+                "candidate_offset_max": 1,
+                "automatic_subtraction": 0,
+                "empty_verified": false,
+                "checkpoint": "naksan_park"
+              },
+              {
+                "vehicle_id": "100000013",
+                "plate": "서울70사5507",
+                "start": "2026-11-02T13:17:51",
+                "end": "2026-11-02T13:19:12",
+                "min_api_count": 1,
+                "max_api_count": 1,
+                "source_updates": 4,
+                "position_updates": 3,
+                "source_span_sec": 86.0,
+                "position_span_sec": 36.0,
+                "candidate_offset_max": 1,
+                "automatic_subtraction": 0,
+                "empty_verified": false,
+                "checkpoint": "naksan_park"
+              }
+            ],
+            "checkpoints": {
+              "naksan_park": {
+                "name": "낙산공원",
+                "station_id": "100900039",
+                "sections": [
+                  1,
+                  30
+                ],
+                "empty_verified": false,
+                "qualified_windows": 28,
+                "positive_windows": 2,
+                "candidate_max": 1,
+                "checks": {
+                  "departure_candidates": 19,
+                  "same_trip_observations": 1708,
+                  "expired_after_gap_or_day": 12,
+                  "cleared_at_next_trip": 6
+                },
+                "rejected": {
+                  "insufficient_independent_updates": 14
+                }
+              }
+            }
+          }
+        }
+      },
+      "limitation": "API 내부 일관성과 종점 차감 가정 검사. 실인원·미태그 인원 확정 및 탑승 확률 검증이 아님."
+    }
+  ]
+}
