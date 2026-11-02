@@ -19,19 +19,19 @@
       python src/serve.py check        라이트 자체 점검 (호출 없음)
       python src/serve.py export-lite  라이트 모델 다시 학습 (수집 로그·원본 CSV 필요)
 """
-import datetime as dt, json, sys, tempfile
+import datetime as dt, json, math, sys, tempfile
+from numbers import Integral
 from pathlib import Path
-import numpy as np, pandas as pd, xgboost as xgb
 import build_dataset as B
 import collect as C
-import train as T
 import data_quality as DQ
+from feature_schema import GROUPS
 
 MODELS = B.ROOT / "models"
 SAMPLE = B.ROOT / "data/sample/20260930"  # 실제 스냅샷 1장(도착·위치 × 2노선) — 키 없이 돌려보기용
 # 수집 이력(최근 60~90분 다른 버스들)이 있어야 계산되는 피처 — 라이트 모델은 뺀다
 HISTORY = ["since_prev", "hw_ratio", "q_bias3", "q_prev", "q_today", "q_eb", "q_live2", "q_today2", "q_rate", "gap_sum"]
-FULL = sum(T.GROUPS.values(), [])
+FULL = sum(GROUPS.values(), [])
 LITE = [f for f in FULL if f not in HISTORY]
 
 
@@ -49,11 +49,14 @@ LEVELS = ["확률 보류", "판단하기 일러요", "여유 있음", "어려울
 
 
 def seg_name(k):
+    import train as T
     return next(n for n, (a, b) in T.SEGS.items() if a <= k <= b)
 
 
 def calibration_mask(d, Q, qs):
     """서비스에서 안내할 수 있는 확인 차량·요일·구간 폭으로만 '여유' 기준을 정한다."""
+    import numpy as np
+    import train as T
     caps = T.verified_capacities(d)
     widths = np.array([np.interp(0.9, qs, q) - np.interp(0.1, qs, q) for q in Q])
     return (np.isfinite(caps) & (d.r_now.values <= caps) & (widths <= WIDE)
@@ -62,6 +65,8 @@ def calibration_mask(d, Q, qs):
 
 def export(lite=False, until=None, out_dir=None):
     """until: 이 날짜(YYYYMMDD)까지만 학습(매일 작업·과거 재현용). 반환: meta (oof = 날짜 분할 예측 성적)."""
+    import numpy as np
+    import train as T
     d = T.features()
     if until:
         d = d[d.date <= until]
@@ -112,6 +117,8 @@ _M = {}
 
 
 def load(lite, src=None):
+    import numpy as np
+    import xgboost as xgb
     src = Path(src or (MODELS / "lite" if lite else MODELS))
     if src not in _M:
         meta = json.loads((src / "meta.json").read_text())
@@ -148,18 +155,19 @@ def level(p, q10, q90, k, peak, weekday_ok, th, age):
 
 
 def check_n(n_ahead):
-    if not isinstance(n_ahead, (int, np.integer)) or not 0 <= n_ahead <= T.NS[-1]:
-        raise ValueError(f"n_ahead 는 0~{T.NS[-1]} 정수")
+    if isinstance(n_ahead, bool) or not isinstance(n_ahead, Integral) or not 0 <= n_ahead <= 40:
+        raise ValueError("n_ahead 는 0~40 정수")
 
 
 def probability_issue(route, bus_type, r_now, meta, plate="", vehicle_id=""):
     issue = DQ.field_validation_issue(route, plate, str(vehicle_id))
     if issue:
         return issue
+    import train as T
     if meta.get("capacity_policy") != T.capacity_policy():
         return "model_unverified"
     capacity = DQ.verified_capacity(route, plate, str(vehicle_id))
-    if r_now is None or not np.isfinite(r_now) or r_now < 0:
+    if r_now is None or not math.isfinite(r_now) or r_now < 0:
         return "passenger_unavailable"
     if r_now > capacity:
         return "capacity_exceeded"
@@ -273,7 +281,11 @@ def predict_live(n_ahead, key=None, log_dir=None, model_dir=None, reference_now=
     """[라이트] 버스 API 를 지금 1번 불러 예측. key 없으면 .env 의 SEOUL_BUS_API_KEY.
     log_dir 를 주면 API 대신 그 폴더(수집 로그 날짜 폴더)의 **가장 최근 스냅샷**으로 — 점검용, 호출 없음."""
     check_n(n_ahead)
-    m, meta = load(True, model_dir)
+    if DQ.boarding_policy()["enabled"]:
+        m, meta = load(True, model_dir)
+    else:
+        # 인원·도착 안내에는 모델이 필요 없다. 보류 중 모델 파일/학습 라이브러리 장애도 전파하지 않는다.
+        m, meta = None, {"hist_d": {}, "tab_d": {route: {} for route in B.STOPS}}
     now = dt.datetime.now(KST).replace(tzinfo=None)
     with tempfile.TemporaryDirectory() as tmp:
         if log_dir is None:
@@ -325,12 +337,17 @@ def predict_live(n_ahead, key=None, log_dir=None, model_dir=None, reference_now=
 
 def predict_latest(n_ahead):
     """[운영 서버의 백엔드용] 수집기가 방금 저장한 스냅샷으로 예측 — 버스 API 를 따로 부르지 않음(한도 안 씀).
-    스냅샷이 MAX_AGE 초보다 오래되면(수집 중단·새벽) 전부 '확률 보류'."""
+    운행시간 밖 노선은 제외한다. 운행 중 스냅샷이 MAX_AGE 초보다 오래되면 전부 '확률 보류'."""
+    check_n(n_ahead)
     now = dt.datetime.now(KST).replace(tzinfo=None)
+    sched = C.load_sched()
+    active = {route for route in B.STOPS if C.allowed(now, route, sched)}
+    if not active:
+        return []
     folders = sorted((p for p in B.LOG.glob("20*") if p.is_dir() and p.name <= now.strftime("%Y%m%d")), reverse=True)[:2]
     if not folders:
         raise NoSnapshotError("버스 수집 로그가 없음")
-    return predict_live(n_ahead, log_dir=folders, reference_now=now)
+    return [row for row in predict_live(n_ahead, log_dir=folders, reference_now=now) if row["route"] in active]
 
 
 def hold_result(result, issue, reason=None):
@@ -408,6 +425,9 @@ def results(rows, m, meta, n_ahead, now, max_age, lite):
         out.append(result)
     if not eligible:
         return out  # 결측을 0으로 채우거나 미검증 입력에 모델을 실행하지 않는다.
+    import numpy as np
+    import pandas as pd
+    import train as T
     d = T.features(pd.DataFrame(eligible).assign(arrive_time=""), cats=meta["cats"])
     if lite:
         d = d.assign(rule=lite_rule(d))
@@ -434,6 +454,8 @@ def results(rows, m, meta, n_ahead, now, max_age, lite):
 
 def demo(model_dir=None):
     """라이트 점검 — data/sample 스냅샷으로(API 호출 없음). 매일 작업의 합격 판정에도 씀."""
+    import numpy as np
+    import train as T
     run = lambda n: predict_live(n, log_dir=SAMPLE, model_dir=model_dir)
     res = run(0)
     assert res and all(r["level"] in LEVELS for r in res)
