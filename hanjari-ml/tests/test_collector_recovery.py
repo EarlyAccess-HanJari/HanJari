@@ -214,6 +214,32 @@ class CollectorRecovery(unittest.TestCase):
                         self.assertNotIn("last_success",entry)
                         self.assertFalse(list((self.log / "20261102").glob("*.json")))
 
+    def test_invalid_optional_timetable_keeps_successful_arrival_and_no_retry_delay(self):
+        budget = C.UsageBudget(["key"], self.now)
+        for route in C.ROUTES:
+            for value in (None, 17, "not-a-time", "20261199051000", "20261102051099"):
+                for field in ("firstTm", "lastTm"):
+                    item = {"firstTm": "20261102055100", "lastTm": "20261103001000", field: value}
+                    body = json.dumps({"msgHeader": {"headerCd": "0"}, "msgBody": {"itemList": [item]}}).encode()
+                    state, sched = {}, {route: {"wkd": [351, 1450]}}
+                    with self.subTest(route=route, field=field, value=value), patch.object(C, "fetch", return_value=body):
+                        C.attempt(route, "arr", "key", self.now, budget, state, sched)
+                        entry = state["endpoints"][route+":arr"]
+                        self.assertEqual((entry["status"], entry["retry_after"]), ("ok", 0))
+                        self.assertEqual(sched, {route: {"wkd": [351, 1450]}})
+                        self.assertEqual((self.log / "20261102" / f"{route}_arr_174000.json").read_bytes(), body)
+
+    def test_timetable_learns_overnight_window_and_ignores_other_day_or_invalid_values(self):
+        # 금요일 운행의 자정 이후 막차를 토요일 시간표로 옮기지 않는다.
+        sched = {}
+        items = [{"firstTm": None, "lastTm": 3},
+                 {"firstTm": "20261106055100", "lastTm": "20261107001000"},
+                 {"firstTm": "", "lastTm": "20261207010000"},
+                 {"firstTm": "", "lastTm": "20261105010000"}]
+        with patch.object(C, "HOLIDAYS", self.log / "absent.csv"):
+            C.learn(sched, items, "sb02")
+        self.assertEqual(sched, {"sb02": {"wkd": [351, 1450]}})
+
 
 if __name__ == "__main__":
     unittest.main()
