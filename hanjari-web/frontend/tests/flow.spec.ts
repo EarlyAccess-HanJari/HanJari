@@ -14,14 +14,55 @@ test("첫 방문엔 정류장 시트가 열리고 6곳이 전부 보인다", asy
   }
 });
 
-test("정류장을 고르면 한 화면에 도착 정보와 현재 추정 인원가 보인다", async ({ page }) => {
+test("정류장을 고르면 한 화면에 도착 정보·인원 입력·결과가 보인다", async ({ page }) => {
   await start(page);
   await expect(page.getByTestId("stop-name")).toHaveText("녹십자약국");
   await expect(page.getByTestId("arrival")).toContainText("남은 시간");
-  await expect(page.getByTestId("loads")).toContainText("현재 차내 인원 · 추정");
-  await expect(page.getByTestId("n-input")).toHaveCount(0);
-  await expect(page.getByTestId("result")).toHaveCount(0);
+  await expect(page.getByTestId("loads")).toContainText("도착 시 차내 인원");
+  await expect(page.getByTestId("n-input")).toHaveValue("3");
+  await expect(page.getByTestId("result")).toHaveAttribute("data-level", "여유 있음");
   await expect(page.getByText("버스 정보 13:11:33 기준")).toBeVisible();
+});
+
+test("인원을 바꾸면 결과가 바로 다시 계산된다", async ({ page }) => {
+  await start(page);
+  await expect(page.getByTestId("result")).toHaveAttribute("data-level", "여유 있음");
+  await page.getByRole("button", { name: "20명" }).click();     // 목업 n30 → 녹십자약국 '어려울 수 있음'
+  await expect(page.getByTestId("result")).toHaveAttribute("data-level", "어려울 수 있음");
+  await expect(page.getByTestId("result")).toContainText(/탑승 가능성 \d+%/);
+  await expect(page.getByTestId("result")).toContainText("이번 버스는 타기 힘들어요.");
+});
+
+test("빠른 선택 30명으로 입력과 결과가 갱신된다", async ({ page }) => {
+  await start(page);
+  await page.getByRole("button", { name: "30명", exact: true }).click();
+  await expect(page.getByTestId("n-input")).toHaveValue("30");
+  await expect(page.getByTestId("result")).toHaveAttribute("data-level", "어려울 수 있음");
+});
+
+test("입력 검증: 글자·빈칸·범위 밖·경계값", async ({ page }) => {
+  await start(page);
+  const input = page.getByTestId("n-input");
+  const hint = page.getByTestId("n-hint");
+
+  await input.fill("abc");
+  await expect(hint).toContainText("숫자만");
+  await expect(page.getByTestId("result")).toContainText("인원을 확인해 주세요");
+
+  await input.fill("");
+  await expect(hint).toContainText("입력해 주세요");
+
+  await input.fill("41");
+  await expect(hint).toContainText("0~40");
+
+  await input.fill("40");
+  await expect(hint).toHaveCount(0);
+  await expect(page.getByTestId("n-plus")).toBeDisabled();      // 40 에서 더 못 늘림
+
+  await input.fill("0");
+  await expect(page.getByTestId("n-minus")).toBeDisabled();     // 0 에서 더 못 줄임
+  await page.getByTestId("n-plus").click();
+  await expect(input).toHaveValue("1");
 });
 
 test("같은 노선 다른 정류장을 누르면 그 정류장으로 바뀐다", async ({ page }) => {
@@ -41,7 +82,7 @@ test("정류장 이름을 눌러 다른 노선으로 바꿀 수 있다", async (
 test("새로고침 버튼이 동작한다", async ({ page }) => {
   await start(page);
   await page.getByTestId("refresh").click();
-  await expect(page.getByTestId("loads")).toBeVisible();
+  await expect(page.getByTestId("result")).toBeVisible();
 });
 
 test("마지막 정류장을 기억한다 (F5 후 시트 없이 바로 결과)", async ({ page }) => {
@@ -49,7 +90,7 @@ test("마지막 정류장을 기억한다 (F5 후 시트 없이 바로 결과)",
   await page.reload();
   await expect(page.getByTestId("stop-sb02-32")).toHaveCount(0);
   await expect(page.getByTestId("stop-name")).toHaveText("녹십자약국");
-  await expect(page.getByTestId("loads")).toBeVisible();
+  await expect(page.getByTestId("result")).toBeVisible();
 });
 
 // 아래는 가짜 시계로 시간을 건너뜀. 녹십자약국 목업 eta_sec = 100 (1분 40초)

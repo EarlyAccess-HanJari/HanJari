@@ -1,5 +1,5 @@
 // Bump this version when the offline page or its icon changes.
-const CACHE = "hanjari-offline-v3";
+const CACHE = "hanjari-offline-v2";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(["/offline.html", "/favicon.svg"])));

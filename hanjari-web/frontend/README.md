@@ -2,7 +2,7 @@
 
 담당: 서재현 · 황정원
 
-`src/`, `public/`, 빌드 설정, 잠금 파일, 목업과 테스트를 함께 보관합니다. `dist/`는 이 소스의 운영용 빌드입니다. 2026-11-02 운영 화면은 도착 시간과 현재 차내 추정 인원만 제공하며, 여유 인원·탑승 확률·미래 인원·앞 대기 인원 입력을 제거했습니다. 정상 인원에도 카드 집계의 한계를 안내합니다.
+2026년 10월 19일 로컬 원본을 운영용으로 빌드한 결과가 서버 배포 파일 6개와 SHA-256 기준으로 모두 일치했습니다. `src/`, `public/`, 빌드 설정, 잠금 파일, 목업과 테스트를 함께 보관합니다. `dist/`는 서버에서 내려받은 배포본입니다.
 
 ## 환경과 설치
 
@@ -33,7 +33,7 @@ npm run dev
 npm run dev:server
 ```
 
-기본 프록시 대상은 `http://127.0.0.1:8000`입니다. 화면은 기존 API와의 호환을 위해 상대 주소 `/api/predict?n=0`으로 요청합니다. 앞 대기 인원을 입력받거나 예측 필드를 표시하지 않습니다.
+기본 프록시 대상은 `http://127.0.0.1:8000`입니다. 화면은 상대 주소 `/api/predict?n=3`으로 요청하며, 앞 대기 인원은 0~40명을 입력합니다.
 
 ## 목업과 테스트
 
@@ -46,12 +46,12 @@ npx playwright install chromium
 npm test
 ```
 
-테스트는 현재 인원 표시·예측 표시 제거·정류장 전환·오류 안내, 반응형 배치, 스냅샷 시각을 반영한 카운트다운을 확인합니다. 최종 커밋 전 테스트와 운영용 빌드를 모두 실행합니다.
+테스트는 입력·정류장 전환·오류 안내, 로컬 UI의 반응형 배치, 스냅샷 시각을 반영한 카운트다운을 확인합니다. 최종 커밋 전 테스트와 운영용 빌드를 모두 실행합니다.
 
 `npm run mock:pull`과 해당 스크립트는 과거 작업용으로 남겨 두었습니다. 이전 저장소의 `pm/jeongwon` 브랜치에 의존하므로 새 저장소에서는 실행하지 않습니다. 현재 목업 파일은 이미 `src/mock/`에 포함되어 있습니다.
 
 ## 인원 정보 품질 검사
 
-`data_status`가 유효한 최신 `r_now`만 추정 인원으로 표시하고 `arrival_stale`로 도착 안내를 판단합니다. 예측 보류와 현재 인원 품질은 별개입니다. 실제 HTTP 응답 경로 검사는 `VITE_MOCK=0 npx playwright test tests/api-quality.spec.ts`, 목업 시나리오는 `VITE_MOCK=1 npx playwright test tests/scenarios.spec.ts tests/flow.spec.ts tests/countdown.spec.ts tests/layout.spec.ts`로 실행합니다. 두 실행 사이에 이전 Vite 개발 서버를 종료해 환경 변수가 섞이지 않게 합니다.
+보류 시 nullable 인원·확률을 숨기고 `arrival_stale`로 도착 안내를 판단합니다. 실제 HTTP 응답 경로 검사는 `VITE_MOCK=0 npx playwright test tests/api-quality.spec.ts`, 기존 목업 시나리오는 `VITE_MOCK=1 npx playwright test tests/scenarios.spec.ts tests/flow.spec.ts tests/countdown.spec.ts tests/layout.spec.ts`로 실행합니다. 두 실행 사이에 이전 Vite 개발 서버를 종료해 환경 변수가 섞이지 않게 합니다.
 
 도착 예정 시각은 API 제공 시각을 기준으로 계산합니다. 2정류장·2분 이내 또는 갱신 대기 중에는 서버 기록을 5초 간격으로 조회하고, ETA 만료/통과한 차량의 인원·확률은 최신 값처럼 유지하지 않습니다. 같은 응답을 다시 받아도 예정 시각은 연장되지 않으며 오래된 응답으로 되돌아가지 않습니다. 차량번호는 내부 식별에 사용합니다. 관련 HTTP 회귀 검사는 `tests/api-quality.spec.ts`의 자동 차량 전환·만료 시나리오입니다.
