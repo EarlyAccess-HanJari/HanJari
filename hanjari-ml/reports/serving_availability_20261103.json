@@ -1,0 +1,88 @@
+{
+  "code_commit": "014e3816af25e8a4e88bb693f11d6c34965f9189",
+  "local_fresh_process_sample_replay": {
+    "before": {
+      "elapsed_sec": 2.041,
+      "max_rss_kib": 427632,
+      "rows": 6,
+      "model_cache_entries": 1
+    },
+    "after": {
+      "elapsed_sec": 0.063,
+      "max_rss_kib": 21648,
+      "rows": 6,
+      "model_cache_entries": 0,
+      "heavy_modules_loaded": []
+    }
+  },
+  "production_after": {
+    "http": {
+      "at": "2026-11-02T16:20:26.125622+00:00",
+      "samples": [
+        {
+          "n": 0,
+          "http": 200,
+          "seconds": 0.902,
+          "rows": 0,
+          "release": "validation-20261103-v3"
+        },
+        {
+          "n": 3,
+          "http": 200,
+          "seconds": 0.427,
+          "rows": 0,
+          "release": "validation-20261103-v3"
+        },
+        {
+          "n": 40,
+          "http": 200,
+          "seconds": 0.38,
+          "rows": 0,
+          "release": "validation-20261103-v3"
+        }
+      ]
+    },
+    "resources": {
+      "at": "2026-11-02T16:21:03.427682+00:00",
+      "units": {
+        "hanjari-web": {
+          "MainPID": "264494",
+          "MemoryCurrent": "54169600",
+          "ActiveState": "active"
+        },
+        "hanjari-daily": {
+          "MainPID": "263151",
+          "MemoryCurrent": "508637184",
+          "ActiveState": "activating"
+        },
+        "hanjari-collect": {
+          "MainPID": "262417",
+          "MemoryCurrent": "630784",
+          "ActiveState": "active"
+        }
+      },
+      "web_memory": {
+        "VmHWM": "53392 kB",
+        "VmRSS": "43772 kB",
+        "VmSwap": "3576 kB"
+      }
+    },
+    "browser": {
+      "at": "2026-11-02T16:20:57.992Z",
+      "release": "validation-20261103-v3",
+      "stop": "창신역4번출구",
+      "notice": "지금은 버스가 다니지 않아요\n\n새벽 시간이라 도착 정보가 없어요. 운행이 시작되면 이 화면에서 바로 보여드릴게요.",
+      "jsErrors": [],
+      "cache": {
+        "controller": true,
+        "apiEntries": 0
+      }
+    }
+  },
+  "scope": "Local RSS/elapsed values measure module import plus saved sample processing in separate processes. Production checks are short observations, not a completed 10-hour result or passenger ground truth.",
+  "observed_timeouts_kst": [
+    "2026-11-03T01:02:26+09:00",
+    "2026-11-03T01:07:26+09:00"
+  ],
+  "cause_assessment": "20-second client read timeouts occurred while the scheduled daily task was active and memory/IO pressure was observed. This is correlated evidence, not proof of the exact cause of each timeout."
+}

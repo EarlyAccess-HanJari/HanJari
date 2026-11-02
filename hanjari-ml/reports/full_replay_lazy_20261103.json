@@ -1,0 +1,34 @@
+{
+  "started_at": "2026-11-02T16:14:19.574842+00:00",
+  "mode": "saved_source_replay",
+  "field_accuracy_verified": false,
+  "routes": {
+    "sb02": {
+      "counts": {
+        "snapshots": 7442,
+        "rows": 22164,
+        "compared_counts": 21304
+      },
+      "statuses": {
+        "ok": 22035,
+        "passenger_unavailable": 129
+      }
+    },
+    "jr03": {
+      "counts": {
+        "snapshots": 7471,
+        "rows": 22165,
+        "compared_counts": 20882
+      },
+      "statuses": {
+        "ok": 22165
+      }
+    }
+  },
+  "issues": [],
+  "finished_at": "2026-11-02T16:15:53.524768+00:00",
+  "source_manifest_sha256": "276a946b39cdf356cbdf3711cafe4894926231a5d7e8e4bc58f0722efe803354",
+  "source_archive_sha256": "e199ba0153476e8bbee7777d616f5e96a8a7c0ab4afdac7d9b32d3402f30c7d1",
+  "source_cutoff": "2026-11-02T18:28:48+09:00",
+  "code_commit": "014e3816af25e8a4e88bb693f11d6c34965f9189"
+}
