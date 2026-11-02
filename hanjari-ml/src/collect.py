@@ -8,7 +8,7 @@ data/api_logs/YYYYMMDD/{노선}_{arr,pos}_HHMMSS.json  (시각은 KST)
 실행: nohup python3 src/collect.py >> data/api_logs/collect.log 2>&1 &
 키: .env 의 SEOUL_BUS_API_KEY* 전부를 풀로 묶어 호출마다 돌아가며 사용. 간격 = 기본간격 × 노선수 ÷ 키수 (키당 한도 유지).
 """
-import datetime as dt, hashlib, itertools, json, os, tempfile, time, urllib.parse, urllib.request
+import datetime as dt, hashlib, itertools, json, os, tempfile, time, urllib.error, urllib.parse, urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -238,25 +238,52 @@ def attempt(route, kind, key, now, budget, state, sched):
         entry.update(status=budget.blocked_status(), retry_after=0)
         return
     entry["last_attempt"] = now.isoformat()
+    # 응답 본문/URL에는 키가 포함될 수 있다. 상태에는 단계·숫자 코드·본문 지문만 남긴다.
+    diagnostic_fields = ("failure_stage", "error_type", "api_header_code", "response_kind",
+                         "response_prefix_sha256", "response_sample_bytes")
+    for field in diagnostic_fields:
+        entry.pop(field, None)
+    stage, body, code = "request", None, None
     try:
         body = fetch(URLS[kind], key, ROUTES[route])
+        stage = "decode"
         data = json.loads(body)
+        stage = "api_header"
         code = str(data["msgHeader"]["headerCd"])
         if code not in ("0", "4"):
             raise ValueError("API header error")
+        stage = "snapshot_store"
         directory = LOG / now.strftime("%Y%m%d")
         directory.mkdir(parents=True, exist_ok=True)
         write_snapshot(directory / f"{route}_{kind}_{now:%H%M%S}.json", body)
         entry.update(status="ok", last_success=now.isoformat(), failures=0, retry_after=0, http_status=200)
         if kind == "arr" and code == "0":
+            stage = "schedule"
             learn(sched, data["msgBody"]["itemList"] or [], route)
             write_snapshot(SCHED, json.dumps(sched, ensure_ascii=False, indent=1).encode())
     except Exception as e:
         failures = entry.get("failures", 0) + 1
-        entry.update(status="upstream_error", failures=failures,
+        local = stage in ("snapshot_store", "schedule")
+        status = ("storage_error" if isinstance(e, OSError) else "processing_error") if local else "upstream_error"
+        entry.update(status=status, failures=failures, failure_stage=stage,
                      retry_after=now.timestamp() + min(300, 30 * 2 ** min(failures, 4)),
-                     http_status=getattr(e, "code", None), error_type=type(e).__name__)
-        print(now.isoformat(), route, kind, type(e).__name__, getattr(e, "code", ""), flush=True)
+                     http_status=getattr(e, "code", 200 if body is not None else None), error_type=type(e).__name__)
+        if code is not None and code.isascii() and code.isdecimal() and len(code) <= 4:
+            entry["api_header_code"] = code  # 제공사 코드와 HTTP 상태는 별개. 코드 의미를 추측하지 않는다.
+        if isinstance(e, urllib.error.HTTPError):
+            try:
+                body = e.read(8192)
+            except Exception:
+                body = None
+            finally:
+                e.close()
+        if body is not None:
+            sample = body[:8192]
+            beginning = sample.lstrip().lower()
+            form = "html" if beginning.startswith((b"<!doctype html", b"<html")) else "xml" if beginning.startswith(b"<") else "json" if beginning.startswith((b"{", b"[")) else "other"
+            entry.update(response_kind=form, response_prefix_sha256=hashlib.sha256(sample).hexdigest(), response_sample_bytes=len(sample))
+        print(now.isoformat(), route, kind, type(e).__name__, entry["http_status"], stage,
+              entry.get("api_header_code", ""), flush=True)
 
 
 def main():

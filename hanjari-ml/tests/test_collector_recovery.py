@@ -1,5 +1,6 @@
 """외부 API를 호출하지 않고 장애·재시작·복구·한도를 확인한다."""
 import datetime as dt
+import io
 import json
 from pathlib import Path
 import sys
@@ -116,6 +117,66 @@ class CollectorRecovery(unittest.TestCase):
             self.assertFalse(restart)
             _, restart = W.check((self.now + dt.timedelta(minutes=11)).replace(tzinfo=None))
             self.assertTrue(restart)
+
+    def test_http_failure_keeps_diagnostics_without_url_or_body_secrets(self):
+        budget = C.UsageBudget(["test-key"], self.now)
+        state = {}
+        body = b"<!DOCTYPE HTML><html>serviceKey=test-key</html>"
+        err = HTTPError("http://example/?serviceKey=test-key", 503, "test-key", {}, io.BytesIO(body))
+        with patch.object(C, "fetch", side_effect=err):
+            C.attempt("jr03", "arr", "test-key", self.now, budget, state, {})
+        entry = state["endpoints"]["jr03:arr"]
+        self.assertEqual((entry["status"], entry["failure_stage"], entry["http_status"], entry["response_kind"]),
+                         ("upstream_error", "request", 503, "html"))
+        self.assertEqual(entry["response_prefix_sha256"], C.hashlib.sha256(body).hexdigest())
+        self.assertNotIn("test-key", json.dumps(state))
+        self.assertNotIn("example", json.dumps(state))
+
+    def test_provider_code_is_separate_from_http_and_does_not_become_a_snapshot(self):
+        budget = C.UsageBudget(["test-key"], self.now)
+        state = {}
+        body = json.dumps({"msgHeader": {"headerCd": "7", "headerMsg": "test-key"}}).encode()
+        with patch.object(C, "fetch", return_value=body):
+            C.attempt("jr03", "arr", "test-key", self.now, budget, state, {})
+        entry = state["endpoints"]["jr03:arr"]
+        self.assertEqual((entry["failure_stage"], entry["http_status"], entry["api_header_code"]), ("api_header", 200, "7"))
+        self.assertFalse(list((self.log / "20261102").glob("*.json")))
+        self.assertNotIn("test-key", json.dumps(state))
+
+    def test_success_clears_previous_error_diagnostics(self):
+        budget = C.UsageBudget(["key"], self.now)
+        state = {"endpoints": {"jr03:arr": {"status": "upstream_error", "failure_stage": "request",
+                 "error_type": "HTTPError", "response_kind": "html", "api_header_code": "7", "response_prefix_sha256": "old", "response_sample_bytes": 1}}}
+        body = json.dumps({"msgHeader": {"headerCd": "0"}, "msgBody": {"itemList": []}}).encode()
+        with patch.object(C, "fetch", return_value=body):
+            C.attempt("jr03", "arr", "key", self.now, budget, state, {})
+        entry = state["endpoints"]["jr03:arr"]
+        self.assertEqual((entry["status"], entry["http_status"]), ("ok", 200))
+        for key in ("failure_stage", "error_type", "api_header_code", "response_kind", "response_prefix_sha256", "response_sample_bytes"):
+            self.assertNotIn(key, entry)
+
+    def test_local_storage_failure_is_not_reported_as_provider_failure(self):
+        budget = C.UsageBudget(["key"], self.now)
+        state = {}
+        body = json.dumps({"msgHeader": {"headerCd": "4"}, "msgBody": {"itemList": []}}).encode()
+        write = C.write_snapshot
+        def fail_snapshot(path, data):
+            if path.parent.name == "20261102":
+                raise OSError("disk full")
+            return write(path, data)
+        with patch.object(C, "fetch", return_value=body), patch.object(C, "write_snapshot", side_effect=fail_snapshot):
+            C.attempt("jr03", "arr", "key", self.now, budget, state, {})
+        entry = state["endpoints"]["jr03:arr"]
+        self.assertEqual((entry["status"], entry["failure_stage"], entry["http_status"]), ("storage_error", "snapshot_store", 200))
+
+    def test_invalid_json_is_a_decode_failure_with_no_snapshot(self):
+        budget = C.UsageBudget(["key"], self.now)
+        state = {}
+        with patch.object(C, "fetch", return_value=b"<html>temporary error</html>"):
+            C.attempt("jr03", "arr", "key", self.now, budget, state, {})
+        entry = state["endpoints"]["jr03:arr"]
+        self.assertEqual((entry["failure_stage"], entry["http_status"], entry["response_kind"]), ("decode", 200, "html"))
+        self.assertFalse(list((self.log / "20261102").glob("*.json")))
 
 
 if __name__ == "__main__":
