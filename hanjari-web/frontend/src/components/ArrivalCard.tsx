@@ -25,7 +25,13 @@ export default function ArrivalCard({ item, stale, fetchedAt }: Props) {
   }, []);
 
   // 같은 정류장·같은 버스면 직전 도착 예정 시각을 이어 쓴다 (차이가 크면 새 값으로 바로잡음)
-  const key = `${item.route}-${item.stop}-${item.plate}`;
+  const stopKey = `${item.route}-${item.stop}`;
+  const key = `${stopKey}-${item.vehicle_id ?? ""}-${item.plate}`;
+  const [vehicle, setVehicle] = useState({ stopKey, key, plate: item.plate, previous: "" });
+  const currentVehicle = vehicle.key === key ? vehicle : {
+    stopKey, key, plate: item.plate, previous: vehicle.stopKey === stopKey ? vehicle.plate : "",
+  };
+  if (vehicle.key !== key) setVehicle(currentVehicle);
   const at = arrivalAt(item, fetchedAt);
   const [held, setHeld] = useState({ key, at });
   const keep = held.key === key && Math.abs(held.at - at) <= JITTER_SEC * 1000;
@@ -36,6 +42,16 @@ export default function ArrivalCard({ item, stale, fetchedAt }: Props) {
   const t = mmss(left);
   return (
     <section className={s.arrival} aria-label="남은 시간" data-testid="arrival">
+      <div className={s.vehicle} data-testid="vehicle">
+        <span>조회 차량</span><strong>{item.plate || "차량번호 확인 중"}</strong>
+      </div>
+      <p className={s.vehicleHint}>선택한 정류장에 오는 첫 번째 버스 기준이에요.</p>
+      {currentVehicle.previous && (
+        <div className={s.changed} role="status" data-testid="vehicle-changed">
+          안내 차량이 바뀌었어요.<br />
+          {currentVehicle.previous} → {item.plate}
+        </div>
+      )}
       {stale && (
         <div className={s.stale} role="status" data-testid="notice-stale">
           버스 정보가 오래됐어요. 실제와 다를 수 있어요.

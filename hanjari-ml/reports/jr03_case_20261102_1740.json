@@ -1,0 +1,143 @@
+{
+  "case": "jr03_changsin_1740",
+  "user_report": {
+    "route": "jr03",
+    "stop": "23",
+    "query_time_approx": "17:40",
+    "shown_stops_away": 1,
+    "shown_current_count": 53,
+    "observed_arrival_count_approx": 21,
+    "observed_vehicle_id": null,
+    "observed_plate": null,
+    "exact_arrival_time": null
+  },
+  "candidate_date": "2026-11-02",
+  "date_basis": "4일 로그에서 시각/정류장/거리/53명 조건이 일치한 날짜. 사용자 날짜 명시는 없음.",
+  "matching_query": {
+    "collected_at": "2026-11-02T17:40:39+09:00",
+    "source_updated": "2026-11-02 17:40:14.0",
+    "stop": "23",
+    "stop_name": "숭인1동주민센터.창신역4번출구",
+    "arrivals": [
+      {
+        "slot": 1,
+        "plate": "서울70사5508",
+        "vehicle_id": "100000014",
+        "api_count": 53,
+        "eta_sec": 96,
+        "stops_away": 1,
+        "position_matches": true,
+        "position_section": 21,
+        "position_updated": "20261102174025"
+      },
+      {
+        "slot": 2,
+        "plate": "서울75사3170",
+        "vehicle_id": "100000069",
+        "api_count": 19,
+        "eta_sec": 219,
+        "stops_away": 2,
+        "position_matches": true,
+        "position_section": 20,
+        "position_updated": "20261102174014"
+      }
+    ]
+  },
+  "first_vehicle_switch": {
+    "previous_snapshot": "2026-11-02T17:41:33+09:00",
+    "current_snapshot": "2026-11-02T17:42:00+09:00",
+    "previous": {
+      "slot": 1,
+      "plate": "서울70사5508",
+      "vehicle_id": "100000014",
+      "api_count": 54,
+      "eta_sec": 62,
+      "stops_away": 0,
+      "position_matches": true,
+      "position_section": 22,
+      "position_updated": "20261102174125"
+    },
+    "current": {
+      "slot": 1,
+      "plate": "서울75사3170",
+      "vehicle_id": "100000069",
+      "api_count": 22,
+      "eta_sec": 53,
+      "stops_away": 0,
+      "position_matches": true,
+      "position_section": 22,
+      "position_updated": "20261102174156"
+    },
+    "meaning": "첫 도착예정 차량이 바뀜. 같은 차량의 인원 감소로 해석하지 않음."
+  },
+  "later_switch": {
+    "previous_snapshot": "2026-11-02T17:42:27+09:00",
+    "current_snapshot": "2026-11-02T17:42:54+09:00",
+    "previous": {
+      "slot": 1,
+      "plate": "서울75사3170",
+      "vehicle_id": "100000069",
+      "api_count": 22,
+      "eta_sec": 39,
+      "stops_away": 0,
+      "position_matches": true,
+      "position_section": 22,
+      "position_updated": "20261102174217"
+    },
+    "current": {
+      "slot": 1,
+      "plate": "서울75사3176",
+      "vehicle_id": "100000071",
+      "api_count": 12,
+      "eta_sec": 319,
+      "stops_away": 3,
+      "position_matches": true,
+      "position_section": 19,
+      "position_updated": "20261102174240"
+    },
+    "meaning": "첫 도착예정 차량이 바뀜. 같은 차량의 인원 감소로 해석하지 않음."
+  },
+  "source_files": [
+    {
+      "file": "20261102/jr03_arr_174039.json",
+      "sha256": "aa347cd2b26df9a3277270999b5441044217f84f1a6a80766b4549e24a70b099"
+    },
+    {
+      "file": "20261102/jr03_pos_174039.json",
+      "sha256": "4c13cfa1a2a023f1fbb4564fa0eaec0e1df3f89bb3a33490d2e5a9999ed947ec"
+    },
+    {
+      "file": "20261102/jr03_arr_174133.json",
+      "sha256": "2ca4a488cf56235c8dc7da15fc376cad24b62f6d7d64fd5fea6e6f6b79e9f4c4"
+    },
+    {
+      "file": "20261102/jr03_pos_174133.json",
+      "sha256": "57bc160e3418a26c64decd7435d92601a33797fe3c5774e0b31b1c9fe749021d"
+    },
+    {
+      "file": "20261102/jr03_arr_174200.json",
+      "sha256": "6f48a5beda177894a1695fb826d62e953cd19560b0f02e2b45e828eaaf92acc9"
+    },
+    {
+      "file": "20261102/jr03_pos_174200.json",
+      "sha256": "3b55911bbf1b90fa35d6e1d3c3f3dff6e8d1e162a9184e1ec868d292b718311a"
+    },
+    {
+      "file": "20261102/jr03_arr_174254.json",
+      "sha256": "c377656c33dc640d13f110e0f36c0820d297bdf90c1b999fc5e9377af0072855"
+    },
+    {
+      "file": "20261102/jr03_pos_174254.json",
+      "sha256": "1c692497fc60d5ae151989633d76ea9de37a3022c2c39c88df7bfe543e8753c3"
+    }
+  ],
+  "finding": "53~54명인 5508과 뒤따라온 22명인 3170은 서로 다른 차량. 54→22를 동일 차량의 인원 감소로 해석하지 않음.",
+  "frontend_defect": "기존 화면에는 차량번호 및 첫 도착예정 차량 교체 안내가 없어, 표시된 인원과 탑승 차량을 구분하기 어려웠음.",
+  "unresolved": "사용자가 실제 탑승한 차량 미확인. 원본 API 집계 오류 또는 다른 차량 비교 중 어느 쪽인지 확정하지 못함.",
+  "eligible_as_field_validation": false,
+  "not_applied": [
+    "53명을 21명으로 일괄 보정",
+    "현장 검증 없이 확률 재개",
+    "사용자 보고를 차량 확인된 학습 정답으로 사용"
+  ]
+}

@@ -63,3 +63,35 @@ test("invalid API payload shows error instead of 0 passengers or percentage", as
   await expect(page.getByTestId("notice-unknown")).toContainText("버스 정보를 확인할 수 없어요");
   await expect(page.getByTestId("result")).not.toBeVisible();
 });
+
+test("first bus change is visible and a new vehicle gets its own countdown", async ({ page }) => {
+  test.skip(process.env.VITE_MOCK !== "0", "VITE_MOCK=0으로 HTTP 경로 검사");
+  await page.clock.install({ time: new Date("2026-11-02T17:40:40+09:00") });
+  const first = held();
+  const row = first.results.find(i => i.route === "jr03" && i.stop === "23")!;
+  Object.assign(row, { plate: "서울70사5508", vehicle_id: "100000014", eta_sec: 96, stops_away: 1,
+    updated: "17:40:39", updated_at: "2026-11-02T17:40:39+09:00" });
+  const second = structuredClone(first);
+  Object.assign(second.results.find(i => i.route === "jr03" && i.stop === "23")!, {
+    plate: "서울75사3170", vehicle_id: "100000069", eta_sec: 108,
+  });
+  let response = first;
+  await page.route("**/api/predict?*", r => r.fulfill({ json: response }));
+  await page.goto("/");
+  await page.getByTestId("stop-jr03-23").click();
+  await page.clock.runFor(1_000);
+  await expect(page.getByTestId("vehicle")).toContainText("서울70사5508");
+  await expect(page.getByTestId("vehicle-changed")).not.toBeVisible();
+  response = second;
+  await page.getByTestId("refresh").click();
+  await page.clock.runFor(1_000);
+  await expect(page.getByTestId("vehicle")).toContainText("서울75사3170");
+  await expect(page.getByTestId("vehicle-changed")).toContainText("서울70사5508 → 서울75사3170");
+  // 12초 차이여도 다른 차량이면 이전 도착 시간을 이어 쓰지 않는다.
+  await expect(page.getByTestId("arrival")).toContainText(/1분4[45]초/);
+  await page.getByTestId("refresh").click();
+  await page.clock.runFor(1_000);
+  await expect(page.getByTestId("vehicle-changed")).toContainText("서울70사5508 → 서울75사3170");
+  await page.getByTestId("card-jr03-20").click();
+  await expect(page.getByTestId("vehicle-changed")).not.toBeVisible();
+});

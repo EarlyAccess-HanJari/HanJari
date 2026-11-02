@@ -18,7 +18,7 @@ test("정류장을 고르면 한 화면에 도착 정보·인원 입력·결과�
   await start(page);
   await expect(page.getByTestId("stop-name")).toHaveText("녹십자약국");
   await expect(page.getByTestId("arrival")).toContainText("남은 시간");
-  await expect(page.getByTestId("arrival")).not.toContainText("서울70사6419");
+  await expect(page.getByTestId("vehicle")).toContainText("서울70사6419");
   await expect(page.getByTestId("loads")).toContainText("도착 시 차내 인원");
   await expect(page.getByTestId("n-input")).toHaveValue("3");
   await expect(page.getByTestId("result")).toHaveAttribute("data-level", "여유 있음");
