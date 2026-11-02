@@ -10,7 +10,7 @@
 단계(기능흐름도 F-04 순서):
   1. 확률 보류     — 정보가 오래됨 / 수업 없는 날(일요일·공휴일) / 그 칸(시간대×거리)에 기준을 정할 데이터 부족
   2. 판단하기 일러요 — 도착재차 10~90% 구간이 WIDE 명보다 넓음
-  3. 여유 있음     — P ≥ 칸별 '여유' 기준(실제 탑승 97%, 수업 직전 98% 를 지킨 가장 낮은 P)
+  3. 여유 있음     — P ≥ 칸별 '여유' 기준(API 기준 계산 탑승 97%, 수업 직전 98% 를 지킨 가장 낮은 P)
   4. 어려울 수 있음 — P ≤ 0.3
   5. 빠듯함        — 그 사이
 실행: python src/serve.py latest 5     라이트, 수집기가 방금 받은 스냅샷으로(운영 서버, API 호출 없음) = predict_latest — 백엔드는 이것
@@ -63,18 +63,12 @@ def export(lite=False, until=None, out_dir=None):
         d = d[~d.holiday & (d.weekday != "일")].assign(rule=lambda x: lite_rule(x))
     keep, oof = [], []
     for tr, te in T.folds(d):  # 날짜 블록 전진 검증 — '여유' 기준은 처음 보는 날 예측으로 정한다
-        T.CAP_OBS.clear()
-        T.CAP_OBS.update(pd.concat([tr.y, tr.r_now]).groupby(pd.concat([tr.route + "|" + tr.bus_type] * 2)).max()
-                         .rename(lambda k: tuple(k.split("|"))).to_dict())
         point, Pm = T.predict(T.fit(tr, feats), te)
         oof.append(T.metrics(point, Pm, te))
         keep.append((Pm, (te.y.values[:, None] <= T.thresholds(te)).astype(float),
                      np.repeat(te.stops_away.values[:, None], len(T.NS), 1), np.repeat(te.is_peak.values[:, None] == 1, len(T.NS), 1)))
     Pm, Bd, K, PK = (np.concatenate(x) for x in zip(*keep))
     th = T.pick_thresholds(Pm, Bd, K, PK)
-    T.CAP_OBS.clear()
-    T.CAP_OBS.update(pd.concat([d.y, d.r_now]).groupby(pd.concat([d.route + "|" + d.bus_type] * 2)).max()
-                     .rename(lambda k: tuple(k.split("|"))).to_dict())
     m = T.fit(d, feats)
     log_days = sorted(p.name for p in B.LOG.glob("2026*") if p.is_dir() and (not until or p.name <= until))
     for route in B.STOPS:  # q_hist 용 과거 순증감 표 (로그 한 번 읽음)
@@ -85,7 +79,7 @@ def export(lite=False, until=None, out_dir=None):
     m["m0"].save_model(out_dir / "k0.json")
     meta = dict(
         feats=feats, f0=T.F0, qs=T.QS.tolist(), cats=d.attrs["cats"],
-        cap_obs=[[r, b, int(v)] for (r, b), v in T.CAP_OBS.items()],
+        capacity_policy=T.capacity_policy(),
         res0={str(k): v.tolist() for k, v in m["res0"].items()},
         thresholds=[[p, s, None if t in (None, "부족") else float(t), t == "부족"] for (p, s), (t, _, _) in th.items()],
         hist_all={r: [[j, h, v] for (j, h), v in tab.items()] for r, tab in B.HIST_ALL.items()},
@@ -116,9 +110,6 @@ def load(lite, src=None):
         meta["tab_d"] = {r: {(j, h): tuple(v) for j, h, *v in tab} for r, tab in meta["tab"].items()} if "tab" in meta else {}
         _M[src] = (m, meta)
     m, meta = _M[src]
-    cap = {(r, b): v for r, b, v in meta["cap_obs"]}
-    if T.CAP_OBS != cap:  # 통째로 바꿔 끼움(한 번에) — clear()+update() 사이에 다른 요청이 빈 정원표를 보던 틈 제거(10-05)
-        T.CAP_OBS = cap
     return m, meta
 
 
@@ -138,13 +129,22 @@ def level(p, q10, q90, k, peak, weekday_ok, th, age):
     if p <= HARD:
         return "어려울 수 있음", f"P {p:.2f} ≤ {HARD}"
     if t is None:
-        return "빠듯함", f"P {p:.2f}, {cell[0]}·{cell[1]}은 '여유'를 표시하지 않는 칸(실제 탑승 목표를 못 지킴)"
+        return "빠듯함", f"P {p:.2f}, {cell[0]}·{cell[1]}은 '여유' 안내 기준을 충족하지 못한 구간"
     return "빠듯함", f"P {p:.2f} < 기준 {t:.2f}"
 
 
 def check_n(n_ahead):
     if not isinstance(n_ahead, (int, np.integer)) or not 0 <= n_ahead <= T.NS[-1]:
         raise ValueError(f"n_ahead 는 0~{T.NS[-1]} 정수")
+
+
+def probability_hold(route, bus_type, r_now, meta):
+    """데이터/검증 기준 불일치 보류. 잠정 정원 초과를 API 오류로 확정하지 않는다."""
+    if r_now > T.cap(route, bus_type):
+        return "차내 인원 정보가 잠정 판단 기준을 넘어 확인이 필요해요"
+    if meta.get("capacity_policy") != T.capacity_policy():
+        return "차내 인원과 탑승 판단 기준을 다시 확인하고 있어요"
+    return None
 
 
 def predict_now(n_ahead, now=None, max_age=MAX_AGE):
@@ -226,6 +226,11 @@ def results(rows, m, meta, n_ahead, now, max_age, lite):
         q10, q90 = np.interp([0.1, 0.9], qs, Q[i])
         p = float(Pm[i, n_ahead])
         lv, why = level(p, q10, q90, r.stops_away, r.is_peak == 1, not r.holiday and r.weekday != "일", th, age)
+        # 기존 모델은 읽되, 다른 정원·후처리로 검증한 '여유' 기준은 서비스에 재사용하지 않는다.
+        # 원본 인원/계산값은 추적용으로 유지하고 기존 level/reason 계약으로 화면 표시를 보류한다.
+        hold = probability_hold(r.route, r.bus_type, r.r_now, meta)
+        if lv != "확률 보류" and hold:
+            lv, why = "확률 보류", hold
         out.append(dict(route=r.route, stop=r.stop, stop_name=NAMES[(r.route, r.stop)], plate=r.plate,
                         stops_away=int(r.stops_away), eta_sec=int(r.eta), r_now=int(r.r_now),
                         load_pred=round(float(point[i]), 1), load_10=round(float(q10), 1), load_90=round(float(q90), 1),
@@ -238,6 +243,7 @@ def demo(model_dir=None):
     run = lambda n: predict_live(n, log_dir=SAMPLE, model_dir=model_dir)
     res = run(0)
     assert res and all(r["level"] in LEVELS for r in res)
+    assert T.cap("jr03", "0") == T.CAPACITY[("jr03", "0")], "정원은 관측 최대로 올라가지 않음"
     assert all(np.isfinite([r["p_board"], r["load_pred"]]).all() for r in res), "NaN 예측"
     assert all(0 <= r["load_10"] <= r["load_pred"] + 1e-6 or r["stops_away"] == 0 for r in res)
     for n in (0, 10, 30):  # 앞사람이 많을수록 확률은 줄기만 해야 함

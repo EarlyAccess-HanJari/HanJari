@@ -4,7 +4,7 @@
   ② 어제 성적    지금 서비스 중인 모델(models/lite)로 어제를 채점 → reports/daily_metrics.csv 한 줄
                  (처음 보는 날 성적 = 모니터링. 정답은 버스 도착 때 재차라 자동으로 생김)
   ③ 재학습      어제까지 전체 데이터로 후보 모델 → models/versions/YYYYMMDD/ (일요일·공휴일은 건너뜀 — 수업 있는 날만 학습, 토요일 포함)
-  ④ 합격 판정    후보의 날짜 분할 성적이 지금 모델보다 10% 넘게 나쁘지 않음 · '여유' 후 실제 탑승 ≥ 97% · 자체 점검 통과
+  ④ 합격 판정    후보의 날짜 분할 성적이 지금 모델보다 10% 넘게 나쁘지 않음 · '여유' 후 API 기준 계산 탑승 ≥ 97% · 자체 점검 통과
   ⑤ 배포        합격이면 models/lite 교체(이전 모델은 versions/ 에 남음 → 되돌리기 = 폴더 복사)
   ⑥ 정리        원본 로그는 최근 KEEP_RAW 일만 폴더로, 그 전은 tar.gz 로 압축(223MB → 15MB/일, 개수 확인 후 폴더 삭제)
                 모델 버전은 최근 KEEP_VERSIONS 개만. 남은 디스크 < MIN_FREE_GB 면 경고
@@ -61,7 +61,7 @@ def check_data(day):
 
 
 def monitor(day, model_dir):
-    """지금 모델로 그날을 채점. 서비스와 같은 칸별 '여유' 기준으로 '여유'→실제 탑승을 잰다."""
+    """지금 모델로 그날을 채점. 서비스와 같은 칸별 '여유' 기준으로 '여유'→API 기준 계산 탑승을 잰다."""
     m, meta = S.load(True, model_dir)
     d = T.features(cats=meta["cats"])
     d = d[d.date == day]
@@ -73,6 +73,9 @@ def monitor(day, model_dir):
     th = {(p, s): t for p, s, t, _ in meta["thresholds"]}
     cell = np.array([th[("수업 직전" if pk else "평소", S.seg_name(k))] or 9 for pk, k in zip(d.is_peak == 1, d.stops_away)])
     shown = Pm >= cell[:, None]                                   # 서비스가 '여유'를 띄웠을 칸
+    valid = np.array([S.probability_hold(r, b, n, meta) is None
+                      for r, b, n in zip(d.route, d.bus_type, d.r_now)])
+    shown &= valid[:, None]
     w, err = d.w.values, np.abs(point - d.y.values)
     far, pk = d.stops_away.values >= 3, d.is_peak.values == 1
     wavg = lambda x, msk: float(np.average(x[msk], weights=w[msk])) if msk.any() else np.nan
@@ -142,9 +145,9 @@ def run(day):
         append(REPORTS / "daily_metrics.csv", mon)
         lines += [f"② 어제 성적(모델 ~{mon['model']}): 오차 {mon['mae']:.2f}명 (지금 재차 그대로 {mon['persistence_mae']:.2f}) · "
                   f"Brier {mon['brier']:.4f} · 3정류장+ {mon['far_mae']:.2f} · 수업 직전 {mon['peak_mae']:.2f} · "
-                  f"'여유' {mon['yeoyu_share']:.0%} 표시 → 실제 탑승 {mon['yeoyu_ok']:.1%}"]
+                  f"'여유' {mon['yeoyu_share']:.0%} 표시 → API 기준 계산 탑승 {mon['yeoyu_ok']:.1%}"]
         if mon["yeoyu_ok"] < T.TARGET["평소"]:
-            warn.append(f"'여유' 후 실제 탑승 {mon['yeoyu_ok']:.1%} < {T.TARGET['평소']:.0%}")
+            warn.append(f"'여유' 후 API 기준 계산 탑승 {mon['yeoyu_ok']:.1%} < {T.TARGET['평소']:.0%}")
         if mon["mae"] >= mon["persistence_mae"]:
             warn.append(f"모델 오차 {mon['mae']:.2f} ≥ 지금 재차 그대로 {mon['persistence_mae']:.2f}")
     if status == "FAIL":

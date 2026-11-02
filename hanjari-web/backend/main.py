@@ -30,7 +30,7 @@ import serve  # noqa: E402
 
 log = logging.getLogger("hanjari")
 
-# serve.predict_live 는 모듈 전역(B.LOG, T.CAP_OBS)을 바꿔치기하며 돌아서, 두 요청이 겹치면 결과가 섞인다
+# serve.predict_live 는 모듈 전역을 바꿔치기하며 돌아서, 두 요청이 겹치면 결과가 섞인다
 _lock = threading.Lock()
 
 

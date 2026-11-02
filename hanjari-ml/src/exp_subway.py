@@ -54,7 +54,6 @@ FOLDS = [("9/28", d.date.astype(str).isin(["20260923", "20260929", "20260930"]) 
 rows = []
 for name, trm, tem in FOLDS:
     tr, te = d[trm], d[tem]
-    E.setcap(tr)
     has = te.sub_n10.notna().values
     pk = has & (te.is_peak.values == 1)
     for arm, feats in [("기존", FEATS), ("+지하철", FEATS + NEW), ("+지하철(수업직전만)", FEATS + PK), ("+지하철×수업수", FEATS + XC)]:

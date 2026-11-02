@@ -4,10 +4,10 @@
       블록 i(2..) 를 그 앞 블록 전부로 학습해 예측 → 지표 평균. 하루짜리는 "점검용".
 점 예측(도착 재차 y): persistence / 규칙(지금 재차 + 남은 구간 CSV 평균 순승차) / 부스팅(규칙 잔차 학습).
   - 운행 1회당 가중치 합 1. 바로 앞(k=0)은 숫자 = 지금 재차, 확률 = (정류장, 정차 여부) 조건 실제 변화 분포.
-확률 P(탑승) = P(y − 하차 ≤ C − N − 1), N = 0..40 → Brier, '여유'(P≥0.9)·'어려움'(P≤0.3) 표시별 실제 탑승률.
+확률 P(탑승) = P(y − 하차 ≤ C − N − 1), N = 0..40 → Brier, '여유'(P≥0.9)·'어려움'(P≤0.3) 표시별 API 기준 계산 탑승률.
   - 규칙: 학습셋 잔차 경험분포. XGB: 다분위수(5~95%) 보간.
 피처 묶음을 하나씩 더해 효과(ablation)를 본다.
-'여유' 기준은 (시간대 × 거리) 칸별로 실제 탑승 ≥ 목표(평소 97%, 수업 직전 피크 98%)를 지키는 가장 낮은 P 를 데이터로 고른다
+'여유' 기준은 (시간대 × 거리) 칸별로 API 기준 계산 탑승 ≥ 목표(평소 97%, 수업 직전 피크 98%)를 지키는 가장 낮은 P 를 데이터로 고른다
   (너무 세면 늘 '어려움'만 뜸). 피크 = 버스 도착 후 10~35분 안에 강좌 40개 이상 시작(대면+BL, 10-05 전엔 대면만·20개).
 수업 시작 정각(09:00·10:30·12:00·13:30·15:00 …) 직전 몰림: 버스가 정류장에 온 뒤 타고 가서 걷는 시간이 있으므로
   "도착 후 10~35분 사이에 시작하는 강좌 수"(class_board_win)와 다음 큰 수업까지 남은 분(min_to_class)으로 잡는다.
@@ -22,16 +22,24 @@ import xgboost as xgb
 P = Path(__file__).resolve().parents[1] / "data/processed"
 DATASET = P / "dataset.csv"  # sweep.py 가 고정 스냅샷으로 바꿔 씀
 MIN_DAYS, FOLDS = 5, 4
-CAPACITY = {  # (노선, busType) → 잠정 정원 (docs/DESIGN.md 2절)
+CAPACITY = {  # (노선, busType) → 잠정 판단 기준. 확인된 차량별 법정 정원이 아님.
     ("sb02", "0"): 33, ("sb02", "1"): 55,
-    # 종로03은 busType 0 도 9/23 재차 48명 관측 → 성북02 소형차와 다른 차종. 관측 최대 이상으로 잠정 55, 차종 확인 필요
+    # 기존 잠정값을 유지. 차종·정원은 현장 확인 후 수정하고 확률 기준을 다시 검증해야 함.
     ("jr03", "0"): 55, ("jr03", "1"): 55,
 }
-CAP_OBS = {}  # (노선, busType) → 학습 구간에서 관측된 최대 재차. 정원 = max(잠정값, 관측 최대). 만차 신호는 9/23 기준 한 번도 안 켜짐
 
 
 def cap(route, bt):
-    return max(CAPACITY.get((route, bt), 33), CAP_OBS.get((route, bt), 0))
+    # API 관측 최대는 실제 정원의 근거가 아니므로 사용하지 않는다.
+    return CAPACITY.get((route, bt), 33)
+
+
+def capacity_policy():
+    """확률 검증에 쓴 판단 기준. 정원표나 예측 후처리가 바뀌면 이전 검증을 재사용하지 않는다."""
+    return {"version": "fixed-unclipped-v1", "fallback": 33,
+            "values": [[r, b, c] for (r, b), c in sorted(CAPACITY.items())]}
+
+
 NS = np.arange(0, 41)
 QS = np.round(np.linspace(0.05, 0.95, 9), 3)  # 10-01: 19개 → 9개(정확도 같고 학습 메모리·시간↓, 서버 한 대 1GB 용)
 # 스윕 100개(09-23)에서 일관되게 좋았던 설정: 얕은 트리·낮은 학습률·운행 가중·바로 앞 규칙 고정. 실험에서 바꿔 쓰도록 모듈 변수
@@ -101,7 +109,7 @@ def features(d=None, cats=None):
     #   CSV 고정은 휴일(9/24 추석)에 persistence 보다 나빠짐 → 오늘 실측이 쌓일수록 CSV 에서 벗어나게.
     d["rule"] = d["r_now"] + d["q_eb"] + d["q_pending"].fillna(0)
     d["is_peak"] = (d["class_board_win"] >= PEAK_CLASSES).astype(int)
-    d["cap"] = [CAPACITY.get((r, b), 33) for r, b in zip(d["route"], d["bus_type"])]  # 피처는 잠정값(관측 최대는 fold 마다 달라 thresholds 에서만)
+    d["cap"] = [cap(r, b) for r, b in zip(d["route"], d["bus_type"])]
     d["fill_ratio"] = d["r_now"] / d["cap"]
     return d
 
@@ -173,22 +181,21 @@ def fit(tr, feats):
 def predict(m, te, quantiles=False):
     """(점 예측, P(탑승) 행렬 [행 × N=0..40]). quantiles=True 면 도착재차 분위수(QS)도."""
     Xte = te[m["feats"]].astype(float)
-    # 재차는 0 이상·정원 이하 (정원 = max(잠정, 관측 최대)) — 붐빌 때 정원을 넘는 과대예측을 자름
-    cap_te = np.array([cap(r, b) for r, b in zip(te["route"], te["bus_type"])])
-    point = np.clip(te.rule.values + m["pt"].predict(Xte), 0, cap_te)
-    Q = np.sort(np.clip(m["qm"].predict(Xte) + te.rule.values[:, None], 0, cap_te[:, None]), axis=1)
+    # 예측 대상은 API 재차. 잠정 정원으로 자르면 초과값을 숨기고 확률·구간 폭을 왜곡한다.
+    point = np.maximum(te.rule.values + m["pt"].predict(Xte), 0)
+    Q = np.sort(np.maximum(m["qm"].predict(Xte) + te.rule.values[:, None], 0), axis=1)
     thr = thresholds(te)
     qs = m.get("qs", QS)  # 모델마다 분위수 개수가 다를 수 있음(19 → 9, 10-01) — 모델에 저장된 값으로
     Pm = quantile_p(Q, thr, qs)
     k0 = te.stops_away.values == 0
     if k0.any() and m["m0"] is not None:
         te0 = te[k0]
-        point[k0] = np.clip(te0.r_now.values + m["m0"].predict(te0[F0].astype(float)), 0, cap_te[k0])
+        point[k0] = np.maximum(te0.r_now.values + m["m0"].predict(te0[F0].astype(float)), 0)
         for dw in (True, False):
             me = k0 & ((te.pos_dwell.values == 1) == dw)
             if me.any():
                 Pm[me] = empirical_p(m["res0"][dw], point[me], thr[me])
-                Q[me] = np.clip(point[me, None] + np.quantile(m["res0"][dw], qs)[None, :], 0, cap_te[me, None])
+                Q[me] = np.maximum(point[me, None] + np.quantile(m["res0"][dw], qs)[None, :], 0)
     return (point, Pm, Q) if quantiles else (point, Pm)
 
 
@@ -197,7 +204,7 @@ def run(tr, te, feats):
 
 
 SEGS = {"바로 앞": (0, 0), "1~2정류장 전": (1, 2), "3정류장+ 전": (3, 99)}
-TARGET = {"평소": 0.97, "수업 직전": 0.98}  # '여유' 표시 → 실제 탑승률 목표. 수업 직전 피크는 더 엄격
+TARGET = {"평소": 0.97, "수업 직전": 0.98}  # '여유' 표시 → API 기준 계산 탑승률 목표. 수업 직전 피크는 더 엄격
 
 
 def pick_thresholds(Pm, B, K, peak):
@@ -222,9 +229,6 @@ def main():
     d = features()
     rows, keep = [], []
     for tr, te in folds(d):
-        CAP_OBS.clear()
-        CAP_OBS.update(pd.concat([tr.y, tr.r_now]).groupby(pd.concat([tr.route + "|" + tr.bus_type] * 2)).max()
-                       .rename(lambda k: tuple(k.split("|"))).to_dict())
         rule_res = tr.y.values - tr.rule.values
         rows.append(("persistence", metrics(te.r_now.values, (te.r_now.values[:, None] <= thresholds(te)).astype(float), te)))
         rows.append(("규칙 + 잔차분포", metrics(te.rule.values, empirical_p(rule_res, te.rule.values, thresholds(te)), te)))
@@ -241,10 +245,10 @@ def main():
     with pd.option_context("display.float_format", "{:.3f}".format, "display.width", 140):
         print(r)
     Pm, B, K, PK = (np.concatenate(x) for x in zip(*keep))
-    print(f"\n'여유' 기준 (목표 실제 탑승: " + ", ".join(f"{k} ≥ {v:.0%}" for k, v in TARGET.items()) + ", 그중 가장 많이 뜨는 기준)")
+    print(f"\n'여유' 기준 (목표 API 기준 계산 탑승: " + ", ".join(f"{k} ≥ {v:.0%}" for k, v in TARGET.items()) + ", 그중 가장 많이 뜨는 기준)")
     for (pname, name), (th, share, ok) in pick_thresholds(Pm, B, K, PK).items():
         msg = ("데이터 부족 → 기준 미정" if th == "부족" else
-               f"P ≥ {th:.2f} → '여유' {share:5.1%} 표시, 실제 탑승 {ok:5.1%}" if th else "목표 달성 불가 → '여유' 표시 안 함")
+               f"P ≥ {th:.2f} → '여유' {share:5.1%} 표시, API 기준 계산 탑승 {ok:5.1%}" if th else "목표 달성 불가 → '여유' 표시 안 함")
         print(f"  {pname:6} {name:10} {msg}")
 
 
