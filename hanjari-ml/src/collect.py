@@ -10,6 +10,7 @@ data/api_logs/YYYYMMDD/{노선}_{arr,pos}_HHMMSS.json  (시각은 KST)
 """
 import datetime as dt, hashlib, itertools, json, os, tempfile, time, urllib.error, urllib.parse, urllib.request
 from pathlib import Path
+from api_response import response_items
 
 ROOT = Path(__file__).resolve().parents[1]
 LOG = ROOT / "data/api_logs"
@@ -252,6 +253,8 @@ def attempt(route, kind, key, now, budget, state, sched):
         code = str(data["msgHeader"]["headerCd"])
         if code not in ("0", "4"):
             raise ValueError("API header error")
+        stage = "api_body"
+        items = response_items(data)
         stage = "snapshot_store"
         directory = LOG / now.strftime("%Y%m%d")
         directory.mkdir(parents=True, exist_ok=True)
@@ -259,7 +262,7 @@ def attempt(route, kind, key, now, budget, state, sched):
         entry.update(status="ok", last_success=now.isoformat(), failures=0, retry_after=0, http_status=200)
         if kind == "arr" and code == "0":
             stage = "schedule"
-            learn(sched, data["msgBody"]["itemList"] or [], route)
+            learn(sched, items, route)
             write_snapshot(SCHED, json.dumps(sched, ensure_ascii=False, indent=1).encode())
     except Exception as e:
         failures = entry.get("failures", 0) + 1

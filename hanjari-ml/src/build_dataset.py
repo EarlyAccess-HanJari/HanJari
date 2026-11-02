@@ -40,6 +40,7 @@ import calendar, csv, datetime as dt, glob, json, os
 from collections import defaultdict
 from pathlib import Path
 import data_quality as DQ
+from api_response import response_items
 
 ROOT = Path(__file__).resolve().parents[1]
 LOG, OUT = ROOT / "data/api_logs", ROOT / "data/processed"
@@ -74,12 +75,12 @@ def snapshots(route, days=None):
             for slot in "12":
                 n = DQ.passenger_count(it, slot)
                 if n is not None:
-                    counts[(it.get("plainNo" + slot), it.get("vehId" + slot))].add(n)
+                    counts[DQ.vehicle_key(it, slot)].add(n)
         for it in items:
             for slot in "12":
                 plate = str(it.get("plainNo" + slot) or "").strip()
                 it["_vehicle_mismatch" + slot] = plate in positions and str(it.get("vehId" + slot)) != positions[plate]
-                it["_passenger_conflict" + slot] = len(counts[(it.get("plainNo" + slot), it.get("vehId" + slot))]) > 1
+                it["_passenger_conflict" + slot] = len(counts[DQ.vehicle_key(it, slot)]) > 1
         yield dt.datetime.strptime(day + hms, "%Y%m%d%H%M%S"), {num(i.get("staOrd")): i for i in items if num(i.get("staOrd")) is not None}
 
 
@@ -88,31 +89,8 @@ def read_items(path):
         return response_items(json.load(f))
 
 
-def response_items(body):
-    """정상 빈 결과를 보존하고 잘못된 응답 구조는 일관된 검증 오류로 처리한다."""
-    if not isinstance(body, dict) or not isinstance(body.get("msgHeader"), dict):
-        raise ValueError("invalid bus API header")
-    code = str(body["msgHeader"].get("headerCd"))
-    message = body.get("msgBody")
-    if code == "4" and (message is None or isinstance(message, dict) and message.get("itemList") in (None, [])):
-        return []  # 정상적인 '결과 없음' 뒤에 이전 버스를 다시 살리지 않는다.
-    if code != "0":
-        raise ValueError("unsuccessful bus API response")
-    if not isinstance(message, dict) or "itemList" not in message:
-        raise ValueError("invalid bus API body")
-    items = message["itemList"]
-    if items is None:
-        return []
-    if not isinstance(items, list) or not all(isinstance(i, dict) for i in items):
-        raise ValueError("invalid bus API items")
-    return items
-
-
 def num(x):
-    try:
-        return int(x)
-    except (TypeError, ValueError):
-        return None
+    return DQ.integer(x)
 
 
 def segments(route, days=None, open_=False):
@@ -122,7 +100,7 @@ def segments(route, days=None, open_=False):
     for t, items in snapshots(route, days):
         gap = last_t is not None and (t - last_t).total_seconds() > MAX_GAP
         for s, it in items.items():
-            plate = it["plainNo1"].strip()
+            plate = DQ.vehicle_key(it)[0]
             if s in cur and (gap or plate != cur[s][0] or it.get("vehId1") != cur[s][1][-1][1].get("vehId1")
                              or (t - cur[s][1][-1][0]).total_seconds() > MAX_GAP):
                 p, seen = cur.pop(s)
@@ -198,7 +176,7 @@ def build(route, days=None, open_=False, hist_all=None, tab=None):
         loads = {}
         for it in items.values():
             for i in "12":
-                p, r = it["plainNo" + i].strip(), DQ.valid_count(it, t, i)
+                p, r = DQ.vehicle_key(it, i)[0], DQ.valid_count(it, t, i)
                 if p and r is not None:
                     loads[p] = r
         route_load[t] = round(sum(loads.values()) / len(loads), 2) if loads else None
@@ -215,7 +193,9 @@ def build(route, days=None, open_=False, hist_all=None, tab=None):
         stamp = dt.datetime.strptime(day + hms, "%Y%m%d%H%M%S")
         pos_ids[stamp] = {}
         for v in its:
-            plate = str(v.get("plainNo") or "").strip()
+            plate = DQ.vehicle_key(v, "")[0]
+            if not plate:
+                continue
             pos_ids[stamp][plate] = str(v.get("vehId") or "")
             made = DQ.source_time(v.get("dataTm"))
             if made is None or made.tzinfo is not None or not -5 <= (stamp - made).total_seconds() <= DQ.MAX_SOURCE_AGE:
@@ -224,7 +204,7 @@ def build(route, days=None, open_=False, hist_all=None, tab=None):
                 frac = float(v["sectDist"]) / float(v["fullSectDist"])
             except (KeyError, TypeError, ValueError, ZeroDivisionError):
                 frac = None
-            vs[v["plainNo"].strip()] = (num(v["sectOrd"]), num(v["stopFlag"]), frac)
+            vs[plate] = (num(v.get("sectOrd")), num(v.get("stopFlag")), frac)
         pos[dt.datetime.strptime(day + hms, "%Y%m%d%H%M%S")] = vs
     # 위치 기반 정밀 순승차 사건: pev[j] = [(출발시각, 차량, net, 배차간격초, 알 수 있게 된 시각)]
     #   net 은 구간 j 를 달리는 동안의 마지막 재차로 계산 → 알 수 있는 시각 = 그 구간을 마지막으로 본 시각(출발 시각 아님, 09-24 누설 수정)
@@ -232,7 +212,7 @@ def build(route, days=None, open_=False, hist_all=None, tab=None):
     for t, items in snapshots(route, days):
         for it in items.values():
             for i in "12":
-                pl, r = it["plainNo" + i].strip(), DQ.valid_count(it, t, i)
+                pl, r = DQ.vehicle_key(it, i)[0], DQ.valid_count(it, t, i)
                 if pl and r is not None and str(it.get("vehId" + i)) == pos_ids.get(t, {}).get(pl):
                     rr[(t, pl)] = r
     segs = defaultdict(list)  # 차량 → [구간 p, 출발시각, 구간 안 달리는 중 마지막 재차, 마지막으로 본 시각, 그 재차를 본 시각]
@@ -385,10 +365,10 @@ def build(route, days=None, open_=False, hist_all=None, tab=None):
                 date=t.strftime("%Y%m%d"), time=t.strftime("%H:%M:%S"), route=route, stop=s, plate=plate,
                 source_schema=DQ.SCHEMA_VERSION, data_status=status, vehicle_id=vehicle_id,
                 source_updated=it.get("mkTm"),
-                bus_type=it["busType1"], eta=eta, stops_away=k, r_now=DQ.passenger_count(it),
-                eta2=num(it["traTime2"]), r2=DQ.valid_count(it, t, "2"),
+                bus_type=it.get("busType1"), eta=eta, stops_away=k, r_now=DQ.passenger_count(it),
+                eta2=num(it.get("traTime2")), r2=DQ.valid_count(it, t, "2"),
                 q_live=round(q_live, 2), q_cover=round(used / len(J), 2) if len(J) else 1.0, q_prev=q_prev, q_today=q_today, q_eb=q_eb, q_hist=q_hist, q_bias3=q_bias3, since_prev=since_prev, hw_ratio=hw_ratio,
-                eta_gap=(num(it["traTime2"]) - eta) if num(it["traTime2"]) else None, route_load=route_load.get(t),
+                eta_gap=(num(it.get("traTime2")) - eta) if num(it.get("traTime2")) else None, route_load=route_load.get(t),
                 pos_sect=ps, pos_dwell=pdw, pos_frac=None if pfr is None else round(pfr, 3), q_pending=q_pending,
                 q_live2=q_live2, q_today2=q_today2, q_rate=q_rate, gap_sum=gap_sum,
                 q_csv=round(sum(tab.get((j, h), (0, 0))[0] for j in J), 2),

@@ -22,6 +22,7 @@ import collect as C
 import notify as N
 import serve as S
 import train as T
+from api_response import response_items
 
 REPORTS = B.ROOT / "reports"
 VERS = S.MODELS / "versions"
@@ -35,8 +36,9 @@ MIN_FREE_GB = 5
 
 def header_ok(f):
     try:
-        return json.loads(f.read_bytes())["msgHeader"].get("headerCd") == "0"
-    except ValueError:  # 잘린 파일
+        response_items(json.loads(f.read_bytes()))
+        return True
+    except (OSError, ValueError):
         return False
 
 
@@ -44,15 +46,23 @@ def check_data(day):
     """(상태, 설명). 로그 폴더를 읽기만 한다."""
     folder = B.LOG / day
     notes, status = [], "OK"
+    base = dt.datetime.strptime(day, "%Y%m%d")
+    sched = C.load_sched()
+    busy_start, busy_end = (t.hour*60 + t.minute for t in map(dt.time.fromisoformat, BUSY))
     for route in B.STOPS:
         fs = sorted(folder.glob(f"{route}_arr_*.json"))
         if not fs:
             return "FAIL", f"{route} 스냅샷 0개"
         ts = [dt.datetime.strptime(day + f.stem[-6:], "%Y%m%d%H%M%S") for f in fs]
-        busy = [t for t in ts if BUSY[0] <= t.strftime("%H:%M:%S") <= BUSY[1]]
+        first, last = sched.get(route, {}).get(C.day_type(base.date()), C.FALLBACK)
+        start = base + dt.timedelta(minutes=max(busy_start, first-C.PAD))
+        end = base + dt.timedelta(minutes=min(busy_end, last+C.PAD))
+        # 파일 사이뿐 아니라 첫 파일 전/마지막 파일 뒤의 운행 중 누락도 검사한다.
+        # 막차 이후와 첫차 이전의 정상 공백은 이 창에 포함하지 않는다.
+        busy = [start] + [t for t in ts if start <= t <= end] + [end] if start < end else []
         gap = max(((b - a).total_seconds() for a, b in zip(busy, busy[1:])), default=0) / 60
         bad = sum(not header_ok(f) for f in fs)
-        notes.append(f"{route} 스냅샷 {len(fs)}개 · 07~22시 최대 공백 {gap:.1f}분 · 오류 응답 {bad}개")
+        notes.append(f"{route} 스냅샷 {len(fs)}개 · 운행 중 점검창 {start:%H:%M}~{end:%H:%M} 최대 공백 {gap:.1f}분 · 오류 응답 {bad}개")
         if gap > 30 or bad > 0.05 * len(fs):
             status = "FAIL"
         elif (gap > 5 or bad) and status == "OK":

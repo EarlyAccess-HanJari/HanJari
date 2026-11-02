@@ -178,6 +178,20 @@ class CollectorRecovery(unittest.TestCase):
         self.assertEqual((entry["failure_stage"], entry["http_status"], entry["response_kind"]), ("decode", 200, "html"))
         self.assertFalse(list((self.log / "20261102").glob("*.json")))
 
+    def test_broken_response_body_is_not_saved_as_successful_data(self):
+        budget = C.UsageBudget(["key"], self.now)
+        for route in C.ROUTES:
+            for kind in C.URLS:
+                for message in (None, {"itemList": {}}, {"itemList": [None]}):
+                    state = {}
+                    body = json.dumps({"msgHeader": {"headerCd": "0"}, "msgBody": message}).encode()
+                    with self.subTest(route=route, kind=kind, message=message), patch.object(C, "fetch", return_value=body):
+                        C.attempt(route, kind, "key", self.now, budget, state, {})
+                        entry = state["endpoints"][route+":"+kind]
+                        self.assertEqual((entry["status"],entry["failure_stage"]), ("upstream_error","api_body"))
+                        self.assertNotIn("last_success",entry)
+                        self.assertFalse(list((self.log / "20261102").glob("*.json")))
+
 
 if __name__ == "__main__":
     unittest.main()

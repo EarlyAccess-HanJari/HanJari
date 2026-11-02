@@ -9,6 +9,7 @@ import datetime as dt, json, shutil, subprocess
 import build_dataset as B
 import collect as C
 import notify as N
+from api_response import response_items
 
 STALE = 10          # 분. 한산한 시간 수집 간격이 2분 반이라 넉넉히
 RECENT = 10
@@ -29,7 +30,8 @@ def collector_alive(now):
 
 def ok_header(f):
     try:
-        return json.loads(f.read_bytes())["msgHeader"].get("headerCd") == "0"
+        response_items(json.loads(f.read_bytes()))
+        return True
     except (OSError, ValueError):
         return False
 

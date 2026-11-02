@@ -19,6 +19,12 @@ def integer(value):
         return None
 
 
+def vehicle_key(item, slot="1"):
+    """잘못된 자료형을 차량 식별자로 바꾸거나 해시 키로 사용하지 않는다."""
+    plate = item.get("plainNo" + slot)
+    return (plate.strip() if isinstance(plate, str) else "", integer(item.get("vehId" + slot)))
+
+
 def passenger_count(item, slot="1"):
     """div=0은 결측, div=4는 혼잡도. 광역버스(routeType=6)는 잔여좌석 의미라 제외."""
     n = integer(item.get("reride_Num" + slot))
@@ -49,8 +55,8 @@ def source_issue(item, collected_at, slot="1"):
     age = (collected_at - made).total_seconds()
     if age < -5 or age > MAX_SOURCE_AGE:
         return "source_stale"
-    vehicle_id = integer(item.get("vehId" + slot))
-    if not str(item.get("plainNo" + slot) or "").strip() or vehicle_id is None or vehicle_id <= 0:
+    plate, vehicle_id = vehicle_key(item, slot)
+    if not plate or vehicle_id is None or vehicle_id <= 0:
         return "vehicle_unknown"
     return "ok"
 

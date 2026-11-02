@@ -183,6 +183,65 @@ class SnapshotIntegration(unittest.TestCase):
         rows = B.build("jr03", [str(self.folder)], open_=True, tab=meta["tab_d"]["jr03"])
         self.assertTrue(any(r["pos_sect"] is not None for r in rows))
 
+    def test_optional_arrival_fields_cannot_fail_other_stops_or_route(self):
+        baseline = S.predict_live(10, log_dir=self.folder)
+        for route, stop in (("sb02", "30"), ("jr03", "23")):
+            path = next(self.folder.glob(f"{route}_arr_*.json"))
+            original = path.read_bytes()
+            for field in ("plainNo1", "plainNo2", "busType1", "traTime2"):
+                for mode in ("missing", "null"):
+                    with self.subTest(route=route, field=field, mode=mode):
+                        body = json.loads(original)
+                        item = next(i for i in body["msgBody"]["itemList"] if i["staOrd"] == stop)
+                        if mode == "missing":
+                            item.pop(field, None)
+                        else:
+                            item[field] = None
+                        path.write_text(json.dumps(body))
+                        result = S.predict_live(10, log_dir=self.folder)
+                        unaffected = lambda rows: [r for r in rows if (r["route"],r["stop"]) != (route,stop)]
+                        self.assertEqual(unaffected(result), unaffected(baseline))
+                        if field != "plainNo1":
+                            self.assertEqual(result, baseline)
+                        else:
+                            self.assertFalse(any(r["route"] == route and r["stop"] == stop and r["r_now"] is not None for r in result))
+                        path.write_bytes(original)
+
+    def test_incomplete_position_cannot_fail_arrival_response(self):
+        baseline = S.predict_live(10, log_dir=self.folder)
+        for route in B.STOPS:
+            path = next(self.folder.glob(f"{route}_pos_*.json"))
+            original = path.read_bytes()
+            for field in ("plainNo", "sectOrd", "stopFlag"):
+                for mode in ("missing", "null"):
+                    with self.subTest(route=route, field=field, mode=mode):
+                        body = json.loads(original)
+                        for item in body["msgBody"]["itemList"]:
+                            if mode == "missing":
+                                item.pop(field, None)
+                            else:
+                                item[field] = None
+                        path.write_text(json.dumps(body))
+                        self.assertEqual(S.predict_live(10, log_dir=self.folder), baseline)
+                        path.write_bytes(original)
+
+    def test_malformed_identity_and_noninteger_arrival_never_become_valid_counts(self):
+        baseline = S.predict_live(10, log_dir=self.folder)
+        for route, stop in (("sb02", "30"), ("jr03", "23")):
+            path = next(self.folder.glob(f"{route}_arr_*.json"))
+            original = path.read_bytes()
+            for field in ("vehId1", "plainNo1", "staOrd", "sectOrd1", "traTime1"):
+                for value in ([], {}, True, 1.5, float("inf")):
+                    with self.subTest(route=route, field=field, value=value):
+                        body = json.loads(original)
+                        item = next(i for i in body["msgBody"]["itemList"] if i["staOrd"] == stop)
+                        item[field] = value
+                        path.write_text(json.dumps(body))
+                        result = S.predict_live(10, log_dir=self.folder)
+                        self.assertFalse(any(r["route"] == route and r["stop"] == stop and r["r_now"] is not None for r in result))
+                        self.assertEqual([r for r in result if r["route"] != route], [r for r in baseline if r["route"] != route])
+                        path.write_bytes(original)
+
 
 if __name__ == "__main__":
     unittest.main()
