@@ -1,7 +1,7 @@
 """하루 마감 자동 작업 (MLOps). 매일 01:00 KST — 수집기가 쉬는 새벽(막차 00:42 ~ 첫차 05:45)에 돈다.
 
   ① 데이터 점검  어제 로그: 노선별 스냅샷 수, 07~22시 최대 공백, API 오류 응답 → OK / WARN / FAIL(그날 학습 안 함)
-  ② 어제 성적    지금 서비스 중인 모델(models/lite)로 어제를 채점 → reports/daily_metrics.csv 한 줄
+  ② API 재생 평가 models/lite로 그날 API 집계를 재계산 → reports/daily_metrics.csv 한 줄 (현장 검증 별도)
                  (처음 보는 날 성적 = 모니터링. 정답은 버스 도착 때 재차라 자동으로 생김)
   ③ 재학습      어제까지 전체 데이터로 후보 모델 → models/versions/YYYYMMDD/ (일요일·공휴일은 건너뜀 — 수업 있는 날만 학습, 토요일 포함)
   ④ 합격 판정    후보의 날짜 분할 성적이 지금 모델보다 10% 넘게 나쁘지 않음 · '여유' 후 API 기준 계산 탑승 ≥ 97% · 자체 점검 통과
@@ -71,7 +71,7 @@ def check_data(day):
 
 
 def monitor(day, model_dir):
-    """지금 모델로 그날을 채점. 서비스와 같은 칸별 '여유' 기준으로 '여유'→API 기준 계산 탑승을 잰다."""
+    """그날의 API 기록을 models/lite로 재생 평가한다. '여유'와 계산 탑승은 모델 내부의 판정이다."""
     m, meta = S.load(True, model_dir)
     d = T.features(cats=meta["cats"])
     d = d[d.date == day]
@@ -154,9 +154,9 @@ def run(day):
     mon = monitor(day, LIVE) if (LIVE / "meta.json").exists() else None
     if mon:
         append(REPORTS / "daily_metrics.csv", mon)
-        lines += [f"② 어제 성적(모델 ~{mon['model']}): 오차 {mon['mae']:.2f}명 (지금 재차 그대로 {mon['persistence_mae']:.2f}) · "
+        lines += [f"② API 재생 평가(학습 모델 ~{mon['model']}): 오차 {mon['mae']:.2f}명 (지금 재차 그대로 {mon['persistence_mae']:.2f}) · "
                   f"Brier {mon['brier']:.4f} · 3정류장+ {mon['far_mae']:.2f} · 수업 직전 {mon['peak_mae']:.2f} · "
-                  f"'여유' {mon['yeoyu_share']:.0%} 표시 → API 기준 계산 탑승 {mon['yeoyu_ok']:.1%}"]
+                  f"'여유' 기준 해당 {mon['yeoyu_share']:.0%} → API 기준 계산 탑승 {mon['yeoyu_ok']:.1%}"]
         if mon["yeoyu_ok"] < T.TARGET["평소"]:
             warn.append(f"'여유' 후 API 기준 계산 탑승 {mon['yeoyu_ok']:.1%} < {T.TARGET['평소']:.0%}")
         if mon["mae"] >= mon["persistence_mae"]:
@@ -173,7 +173,7 @@ def run(day):
         if old and meta["oof"]["mae"] > old["mae"] * MAX_WORSE:
             why.append(f"날짜분할 오차 {meta['oof']['mae']:.2f} > 지금 {old['mae']:.2f}×{MAX_WORSE}")
         if not meta["oof"]["hi_ok"] >= T.TARGET["평소"]:
-            why.append(f"'여유' 후 탑승 {meta['oof']['hi_ok']:.1%} < {T.TARGET['평소']:.0%}")
+            why.append(f"'여유' 후 API 기준 계산 탑승 {meta['oof']['hi_ok']:.1%} < {T.TARGET['평소']:.0%}")
         try:
             S.demo(cand)
         except AssertionError as e:
