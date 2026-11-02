@@ -172,16 +172,86 @@ def probability_hold(route, bus_type, r_now, meta, plate="", vehicle_id=""):
 
 
 def latest_snapshot(src, route=None):
-    """수집 중인 일부 파일이나 오류 응답을 한 장의 정상 스냅샷으로 섞지 않는다."""
-    for stamp in sorted({f.stem.rsplit("_", 1)[-1] for f in src.glob(f"{route or '*'}_arr_*.json")}, reverse=True):
-        files = [src / f"{r}_{kind}_{stamp}.json" for r in ([route] if route else B.STOPS) for kind in ("arr", "pos")]
+    """최신 정상 도착 응답을 우선한다. 위치 파일 지연 때문에 지난 버스로 되돌아가지 않는다."""
+    if route is None:
+        snapshots = [latest_snapshot(src, r) for r in B.STOPS]
+        return max(t for t, _ in snapshots), [f for _, files in snapshots for f in files]
+    for arr in sorted(src.glob(f"{route}_arr_*.json"), reverse=True):
         try:
-            for f in files:
-                B.read_items(f)
+            B.read_items(arr)
         except (OSError, ValueError, KeyError, TypeError):
             continue
+        stamp = arr.stem.rsplit("_", 1)[-1]
+        files = [arr]
+        # 같은 시각 위치는 모델 피처용. 더 최신 위치는 통과 확인에만 쓰며 과거 피처에 섞지 않는다.
+        for pos in sorted(src.glob(f"{route}_pos_*.json"), reverse=True):
+            if pos.stem.rsplit("_", 1)[-1] < stamp:
+                break
+            try:
+                B.read_items(pos)
+            except (OSError, ValueError, KeyError, TypeError):
+                continue
+            if len(files) == 1 or pos.stem.rsplit("_", 1)[-1] == stamp:
+                files.append(pos)
         return stamp, files
-    raise RuntimeError("완전한 버스 스냅샷이 없음(수집 또는 API 응답 확인 필요)")
+    raise RuntimeError("정상 도착 스냅샷이 없음(수집 또는 API 응답 확인 필요)")
+
+
+def exclude_departed(snap, now):
+    """복사본에만 적용: 더 새로운 동일 차량 위치로 통과가 확인되면 둘째 버스를 첫째로 선택한다."""
+    passed = set()
+    for route in B.STOPS:
+        positions = {}
+        for f in sorted(snap.glob(f"{route}_pos_*.json")):
+            for v in B.read_items(f):
+                made = DQ.source_time(v.get("dataTm"))
+                key = (str(v.get("vehId") or ""), str(v.get("plainNo") or "").strip())
+                if made is not None and made.tzinfo is None and -5 <= (now - made).total_seconds() <= MAX_AGE:
+                    if key not in positions or made > positions[key][0]:
+                        positions[key] = made, v
+        for f in snap.glob(f"{route}_arr_*.json"):
+            body = json.loads(f.read_text())
+            for it in body["msgBody"]["itemList"] or []:
+                stop = B.num(it.get("staOrd"))
+                if stop not in B.STOPS[route]:
+                    continue
+                source = DQ.source_time(it.get("mkTm"))
+
+                def departed(slot):
+                    key = (str(it.get("vehId" + slot) or ""), str(it.get("plainNo" + slot) or "").strip())
+                    pos = positions.get(key)
+                    if source is None or source.tzinfo is not None or pos is None or pos[0] < source:
+                        return False
+                    section = B.num(pos[1].get("sectOrd"))
+                    # 목표 정류장에 정차 중인 차를 통과 차량으로 처리하지 않는다.
+                    return section is not None and (section > stop or section == stop and B.num(pos[1].get("stopFlag")) == 0)
+
+                if not departed("1"):
+                    continue
+                next_section = B.num(it.get("sectOrd2"))
+                next_eta = B.num(it.get("traTime2"))
+                if (str(it.get("plainNo2") or "").strip() and (DQ.integer(it.get("vehId2")) or 0) > 0
+                        and next_section is not None and 0 < next_section <= stop
+                        and next_eta is not None and next_eta >= 0 and not departed("2")):
+                    for key, value in list(it.items()):
+                        if key.endswith("2") and key[:-1] + "1" in it:
+                            it[key[:-1] + "1"] = value
+                    it.update(plainNo2="", vehId2="0", traTime2="0", reride_Num2="", rerdie_Div2="0")
+                else:
+                    passed.add((route, str(stop)))
+            f.write_text(json.dumps(body, ensure_ascii=False))
+    return passed
+
+
+def check_arrival(result, now, passed=False):
+    """ETA 만료는 통과 확정이 아니다. 새 안내를 기다리는 동안 옛 인원·확률을 현재 값으로 내주지 않는다."""
+    if result["arrival_stale"]:
+        return
+    target = dt.datetime.fromisoformat(result["arrival_at"]).replace(tzinfo=None)
+    if passed or now >= target:
+        result["arrival_status"] = "passed" if passed else "checking"
+        result["r_now"] = None
+        hold_result(result, "arrival_passed" if passed else "arrival_checking")
 
 
 def predict_now(n_ahead, now=None, max_age=MAX_AGE):
@@ -229,10 +299,17 @@ def predict_live(n_ahead, key=None, log_dir=None, model_dir=None):
                 (snap / f.name).write_bytes(f.read_bytes())
             days = [str(snap)]
             now = dt.datetime.strptime(src.name + last[:6], "%Y%m%d%H%M%S")
+        # 위치 API가 먼저 갱신되고 도착 API가 옛 차량을 유지하는 경우도 처리한다.
+        position_stamps = [dt.datetime.strptime(snap.name + f.stem[-6:], "%Y%m%d%H%M%S") for f in snap.glob("*_pos_*.json")]
+        now = max([now, *position_stamps])
+        passed = exclude_departed(snap, now)
         # 임시 폴더를 절대 경로로 넘김 — 예전엔 B.LOG 전역을 바꿨다 되돌려서 동시 요청이 꼬이고 B.LOG 가 지워진 폴더로 남았다(10-05 정원 발견)
         rows = [r for route in B.STOPS
                 for r in B.build(route, days, open_=True, hist_all=meta["hist_d"].get(route, {}), tab=meta["tab_d"][route])]
-    return results(rows, m, meta, n_ahead, now, MAX_AGE, lite=True)
+    out = results(rows, m, meta, n_ahead, now, MAX_AGE, lite=True)
+    for result in out:
+        check_arrival(result, now, (result["route"], result["stop"]) in passed)
+    return out
 
 
 def predict_latest(n_ahead):
@@ -254,6 +331,7 @@ def predict_latest(n_ahead):
             if made is not None and made.tzinfo is None and not -5 <= (now - made).total_seconds() <= MAX_AGE:
                 hold_result(r, "source_stale")
                 r.update(arrival_stale=True, data_status="source_stale")
+        check_arrival(r, now, r.get("arrival_status") == "passed")
     return res
 
 
@@ -275,12 +353,16 @@ def results(rows, m, meta, n_ahead, now, max_age, lite):
         if source_stale and status == "ok":
             status = "source_time_unknown" if made is None or made.tzinfo is not None else "source_stale"
         stale = source_stale or age > MAX_AGE or age < -5
+        arrival_base = made if made is not None and made.tzinfo is None else t_snap
         result = dict(route=r["route"], stop=str(r["stop"]), stop_name=NAMES[(r["route"], str(r["stop"]))],
                       plate=r["plate"], vehicle_id=str(r.get("vehicle_id", "")),
                       stops_away=int(r["stops_away"]), eta_sec=int(r["eta"]), r_now=DQ.integer(r["r_now"]),
                       updated=t_snap.strftime("%H:%M:%S"), updated_at=t_snap.replace(tzinfo=KST).isoformat(),
-                      source_updated=r.get("source_updated"), data_status=status, arrival_stale=stale)
-        issue = "collection_stale" if age > MAX_AGE or age < -5 else status if status != "ok" else None
+                      source_updated=r.get("source_updated"), data_status=status, arrival_stale=stale,
+                      arrival_at=(arrival_base + dt.timedelta(seconds=int(r["eta"]))).replace(tzinfo=KST).isoformat(),
+                      arrival_status="upcoming")
+        check_arrival(result, source_now)
+        issue = result.get("prediction_status") or ("collection_stale" if age > MAX_AGE or age < -5 else status if status != "ok" else None)
         if not issue:
             issue = probability_issue(r["route"], r["bus_type"], r["r_now"], meta, r["plate"], r.get("vehicle_id", ""))
         if issue:

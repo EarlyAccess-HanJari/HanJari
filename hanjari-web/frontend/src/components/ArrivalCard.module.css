@@ -1,8 +1,4 @@
 .arrival { display: flex; flex-direction: column; gap: 8px; }
-.vehicle { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; font-size: 14px; color: var(--ink-2); }
-.vehicle strong { color: var(--ink); font-size: 16px; }
-.vehicleHint { margin: -4px 0 0; color: var(--muted); font-size: 12px; }
-.changed { background: var(--warn-bg); color: var(--warn); font-size: 13px; line-height: 1.6; padding: 8px 12px; border-radius: 10px; overflow-wrap: anywhere; }
 .stale { background: var(--warn-bg); color: var(--warn); font-size: 13px; font-weight: 600; padding: 8px 12px; border-radius: 10px; }
 /* 최소 높이 38: 숫자·'곧 도착'·안내 어느 쪽이어도 아래 결과 블록이 같은 자리에서 시작 */
 .row { display: flex; align-items: baseline; flex-wrap: wrap; column-gap: 14px; row-gap: 2px; min-height: 38px; }

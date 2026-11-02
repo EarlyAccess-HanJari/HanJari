@@ -53,6 +53,14 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(title="한자리 API", lifespan=lifespan)
 
 
+@app.middleware("http")
+async def prevent_prediction_cache(request, call_next):
+    response = await call_next(request)
+    if request.url.path == "/api/predict":
+        response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 @app.get("/api/health")
 def health():
     return {"status": "ok", "mode": MODE}

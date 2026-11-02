@@ -9,7 +9,9 @@
     "observed_arrival_count_approx": 21,
     "observed_vehicle_id": null,
     "observed_plate": null,
-    "exact_arrival_time": null
+    "exact_arrival_time": null,
+    "candidate_plate_suffix": "3170",
+    "candidate_plate_certainty": "사용자: 3170번 맞는 거 같아 (잠정)"
   },
   "candidate_date": "2026-11-02",
   "date_basis": "4일 로그에서 시각/정류장/거리/53명 조건이 일치한 날짜. 사용자 날짜 명시는 없음.",
@@ -132,12 +134,178 @@
     }
   ],
   "finding": "53~54명인 5508과 뒤따라온 22명인 3170은 서로 다른 차량. 54→22를 동일 차량의 인원 감소로 해석하지 않음.",
-  "frontend_defect": "기존 화면에는 차량번호 및 첫 도착예정 차량 교체 안내가 없어, 표시된 인원과 탑승 차량을 구분하기 어려웠음.",
-  "unresolved": "사용자가 실제 탑승한 차량 미확인. 원본 API 집계 오류 또는 다른 차량 비교 중 어느 쪽인지 확정하지 못함.",
+  "frontend_defect": "30초 고정 갱신, ETA를 제공 시각이 아닌 수집 시각에 더하는 지연, ETA 만료 뒤 곧 도착 유지. 서버의 동일 시각 위치 파일 대기도 새 차량 반영을 지연시킬 수 있었음.",
+  "unresolved": "탑승 차량은 3170으로 잠정 제보됨. 실제 화면 요청/수신 기록이 없어 사건 당시 표시 지속 시각은 미확인. 이 사례만으로 인원 정확도나 현장 탑승 가능성 검증 완료를 주장하지 않음.",
   "eligible_as_field_validation": false,
   "not_applied": [
     "53명을 21명으로 일괄 보정",
     "현장 검증 없이 확률 재개",
     "사용자 보고를 차량 확인된 학습 정답으로 사용"
+  ],
+  "freshness_replay": [
+    {
+      "updated": "17:40:39",
+      "plate": "서울70사5508",
+      "r_now": 53,
+      "source_updated": "2026-11-02 17:40:14.0",
+      "eta_sec": 96,
+      "arrival_at": "2026-11-02T17:41:50+09:00",
+      "arrival_status": "upcoming",
+      "scenario": "new_arrival_before_position",
+      "elapsed_ms": 799
+    },
+    {
+      "updated": "17:41:06",
+      "plate": "서울70사5508",
+      "r_now": 54,
+      "source_updated": "2026-11-02 17:40:58.0",
+      "eta_sec": 68,
+      "arrival_at": "2026-11-02T17:42:06+09:00",
+      "arrival_status": "upcoming",
+      "scenario": "new_arrival_before_position",
+      "elapsed_ms": 10
+    },
+    {
+      "updated": "17:41:33",
+      "plate": "서울70사5508",
+      "r_now": 54,
+      "source_updated": "2026-11-02 17:41:08.0",
+      "eta_sec": 62,
+      "arrival_at": "2026-11-02T17:42:10+09:00",
+      "arrival_status": "upcoming",
+      "scenario": "new_arrival_before_position",
+      "elapsed_ms": 10
+    },
+    {
+      "updated": "17:42:00",
+      "plate": "서울75사3170",
+      "r_now": 22,
+      "source_updated": "2026-11-02 17:41:54.0",
+      "eta_sec": 53,
+      "arrival_at": "2026-11-02T17:42:47+09:00",
+      "arrival_status": "upcoming",
+      "scenario": "new_arrival_before_position",
+      "elapsed_ms": 9
+    },
+    {
+      "updated": "17:42:27",
+      "plate": "서울75사3170",
+      "r_now": 22,
+      "source_updated": "2026-11-02 17:42:08.0",
+      "eta_sec": 39,
+      "arrival_at": "2026-11-02T17:42:47+09:00",
+      "arrival_status": "upcoming",
+      "scenario": "new_arrival_before_position",
+      "elapsed_ms": 10
+    },
+    {
+      "updated": "17:42:54",
+      "plate": "서울75사3176",
+      "r_now": 12,
+      "source_updated": "2026-11-02 17:42:43.0",
+      "eta_sec": 319,
+      "arrival_at": "2026-11-02T17:48:02+09:00",
+      "arrival_status": "upcoming",
+      "scenario": "new_arrival_before_position",
+      "elapsed_ms": 9
+    }
+  ],
+  "freshness_replay_sources": [
+    {
+      "file": "20261102/jr03_arr_174039.json",
+      "sha256": "aa347cd2b26df9a3277270999b5441044217f84f1a6a80766b4549e24a70b099"
+    },
+    {
+      "file": "20261102/jr03_pos_174039.json",
+      "sha256": "4c13cfa1a2a023f1fbb4564fa0eaec0e1df3f89bb3a33490d2e5a9999ed947ec"
+    },
+    {
+      "file": "20261102/sb02_arr_174039.json",
+      "sha256": "fdfbb6916e79cd44c43aa10beba584b0be4f6062bd58cb776ce730b206bd6a7c"
+    },
+    {
+      "file": "20261102/sb02_pos_174039.json",
+      "sha256": "5b0bef04a319dd9cd389be0d0adb88967e173441ff3e976bcbdc5dffe5236ddf"
+    },
+    {
+      "file": "20261102/jr03_arr_174106.json",
+      "sha256": "1fe9be3f83bca55fc1b2089024c9a6643a0d9851e908f40025bbc6219c16e9f0"
+    },
+    {
+      "file": "20261102/jr03_pos_174106.json",
+      "sha256": "09d166a7c4183e7346b4b4e5b48e6612e44cd95fe2a4b853a12a6dcb26d31b46"
+    },
+    {
+      "file": "20261102/sb02_arr_174106.json",
+      "sha256": "21ee909349c5f02b32616f8c4f4dafb905e890c76a82c2ebe413cd10d90cdd5a"
+    },
+    {
+      "file": "20261102/sb02_pos_174106.json",
+      "sha256": "493728f17225d399b09f3672126dd76bf730f598bbcfbe7b675edcb7b665d64a"
+    },
+    {
+      "file": "20261102/jr03_arr_174133.json",
+      "sha256": "2ca4a488cf56235c8dc7da15fc376cad24b62f6d7d64fd5fea6e6f6b79e9f4c4"
+    },
+    {
+      "file": "20261102/jr03_pos_174133.json",
+      "sha256": "57bc160e3418a26c64decd7435d92601a33797fe3c5774e0b31b1c9fe749021d"
+    },
+    {
+      "file": "20261102/sb02_arr_174133.json",
+      "sha256": "04252bb264fe836d49a6224f4c9bceeb169d1b054fb98535f66a1bc851413120"
+    },
+    {
+      "file": "20261102/sb02_pos_174133.json",
+      "sha256": "8ce60f619fabf0c234669eb3eb3f55facb32209fb79934db1ee7378ec09dd7be"
+    },
+    {
+      "file": "20261102/jr03_arr_174200.json",
+      "sha256": "6f48a5beda177894a1695fb826d62e953cd19560b0f02e2b45e828eaaf92acc9"
+    },
+    {
+      "file": "20261102/jr03_pos_174200.json",
+      "sha256": "3b55911bbf1b90fa35d6e1d3c3f3dff6e8d1e162a9184e1ec868d292b718311a"
+    },
+    {
+      "file": "20261102/sb02_arr_174200.json",
+      "sha256": "e90b990324bc25f3f39f7df1115e73e1bbcaba9ac24c36b4c6cb3e2bd5bd4701"
+    },
+    {
+      "file": "20261102/sb02_pos_174200.json",
+      "sha256": "225ca8431b76a7c91c28a9315050b179ae192d2f7668b6ac785dcf43be2e00c6"
+    },
+    {
+      "file": "20261102/jr03_arr_174227.json",
+      "sha256": "da11c76d42c5a30dd1003b31e2e086161f336296e6620e31e7ff9446afbee70c"
+    },
+    {
+      "file": "20261102/jr03_pos_174227.json",
+      "sha256": "5500b76c41da405f77d7d1f9957c5e9b9a7f8ccb0e8b5b079fffcbb9457776cb"
+    },
+    {
+      "file": "20261102/sb02_arr_174227.json",
+      "sha256": "2f2d3b97080ae4765a23394aef8e744f790f5949e79991e512038cd6049cdf59"
+    },
+    {
+      "file": "20261102/sb02_pos_174227.json",
+      "sha256": "8a609cafb421761f5f8433830c92ab41fd2e3c971d0320849e82da057f1f9144"
+    },
+    {
+      "file": "20261102/jr03_arr_174254.json",
+      "sha256": "c377656c33dc640d13f110e0f36c0820d297bdf90c1b999fc5e9377af0072855"
+    },
+    {
+      "file": "20261102/jr03_pos_174254.json",
+      "sha256": "1c692497fc60d5ae151989633d76ea9de37a3022c2c39c88df7bfe543e8753c3"
+    },
+    {
+      "file": "20261102/sb02_arr_174254.json",
+      "sha256": "6532ef25e65cc9a6a7af53ba59ab00fda724083500773aab5cc2a2cf6142b7ed"
+    },
+    {
+      "file": "20261102/sb02_pos_174254.json",
+      "sha256": "5a2911ae61142f348a21cffb70b0e5a733fa9f7fe17e0f9be72c155a3fb7f5ce"
+    }
   ]
 }

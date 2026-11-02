@@ -20,15 +20,16 @@ export function mmss(sec: number): { m: number; s: string } {
 
 const DAY_SEC = 86_400;
 const KST_OFFSET_SEC = 9 * 3600;
-const MAX_SNAP_AGE_SEC = 180;  // 이보다 오래됐거나 미래로 보이면(폰 시계 어긋남·목업) 받은 시각 기준으로 셈
+const MAX_SNAP_AGE_SEC = 180;
 
-/** 버스가 도착할 시각(ms).
- *  eta_sec 는 스냅샷 시각(updated, KST "HH:MM:SS")의 남은 시간이라, 받은 시각이 아니라 스냅샷 시각에 더한다.
- *  받은 시각에 더하면 스냅샷 나이(최대 약 27초)만큼 새로고침마다 숫자가 출렁인다. */
+/** 도착 예정 시각(ms). 서버의 제공 시각 + ETA를 사용하여 수집·수신 지연을 더하지 않는다.
+ *  날짜 없는 구버전/목업 응답만 HH:MM:SS 또는 수신 시각으로 계산한다. */
 export function arrivalAt(i: PredictItem, fetchedAt: number): number {
+  if (i.arrival_at) return Date.parse(i.arrival_at);
   if (i.updated_at) {
     const snap = Date.parse(i.updated_at);
-    if (Number.isFinite(snap)) return snap + i.eta_sec * 1000;
+    const source = sourceAt(i);
+    if (Number.isFinite(snap)) return (source ?? snap) + i.eta_sec * 1000;
   }
   const [h, m, sec] = i.updated.split(":").map(Number);
   const snapSod = h * 3600 + m * 60 + sec;
@@ -65,4 +66,27 @@ export function whyText(i: PredictItem): string {
 /** serve.py 가 스냅샷이 오래됐을 때 붙이는 reason("…N분 전 것…", "정보가 N초 전 것")으로 판별 */
 export function isStale(i: PredictItem): boolean {
   return i.arrival_stale === true || (i.level === "확률 보류" && i.reason.includes("전 것"));
+}
+
+function sourceAt(i: PredictItem): number | null {
+  if (!i.source_updated) return null;
+  const raw = i.source_updated.replace(" ", "T");
+  const stamp = Date.parse(/(Z|[+-]\d{2}:\d{2})$/.test(raw) ? raw : `${raw}+09:00`);
+  return Number.isFinite(stamp) ? stamp : null;
+}
+
+export type ArrivalState = "upcoming" | "checking" | "stale";
+
+export function isOlderSnapshot(next: PredictItem, previous: PredictItem): boolean {
+  const source = sourceAt(next), before = sourceAt(previous);
+  return Boolean(next.updated_at && previous.updated_at && Date.parse(next.updated_at) < Date.parse(previous.updated_at))
+    || (source !== null && before !== null && source < before);
+}
+
+/** 응답 후에도 시간이 흐른다. 같은 응답을 다시 받아도 유효 시간을 연장하지 않는다. */
+export function arrivalState(i: PredictItem, now: number, fetchedAt: number): ArrivalState {
+  const stamps = [i.updated_at ? Date.parse(i.updated_at) : null, sourceAt(i)];
+  if (isStale(i) || stamps.some(t => t !== null && (now - t > MAX_SNAP_AGE_SEC * 1000 || t - now > 5000))) return "stale";
+  if (i.arrival_status === "passed" || i.arrival_status === "checking" || now >= arrivalAt(i, fetchedAt)) return "checking";
+  return "upcoming";
 }

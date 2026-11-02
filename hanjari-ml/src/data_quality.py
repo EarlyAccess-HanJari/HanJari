@@ -115,4 +115,6 @@ REASONS = {
     "capacity_exceeded": "차내 인원 정보가 확인된 차량 정원을 넘어 확인이 필요해요",
     "prediction_invalid": "예측 결과를 확인하고 있어요",
     "collection_stale": "버스 정보 수집이 늦어져 갱신을 기다리고 있어요",
+    "arrival_passed": "앞 버스가 지나가 다음 도착 정보를 확인하고 있어요",
+    "arrival_checking": "도착 예정 시간이 지나 새 도착 정보를 확인하고 있어요",
 }

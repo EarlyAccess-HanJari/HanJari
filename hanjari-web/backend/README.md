@@ -26,4 +26,4 @@ AI 예측(레포 `src/serve.py`, 모델 `models/lite/`)을 HTTP로 내준다. AI
 
 ## 2026-11-02 응답 계약
 
-보류 결과의 `load_pred`, `load_10`, `load_90`, `p_board`는 `null`입니다. `r_now`도 결측이면 `null`이며 0으로 대체하지 않습니다. `data_status`, `prediction_status`, `arrival_stale`, `vehicle_id`, `updated_at`, `source_updated`가 추가되었습니다. 정상 도착 안내는 유지하고 입력 불량·현장 미검증 인원 예측은 실행하지 않습니다. 완전한 스냅샷이 없으면 503입니다. [계약과 재개 절차](../../hanjari-ml/docs/CAPACITY_FIX_20261102.md)를 함께 검토하세요.
+보류 결과의 `load_pred`, `load_10`, `load_90`, `p_board`는 `null`입니다. `r_now`도 결측이면 `null`이며 0으로 대체하지 않습니다. `data_status`, `prediction_status`, `arrival_stale`, `vehicle_id`, `updated_at`, `source_updated`, `arrival_at`, `arrival_status`가 추가되었습니다. 정상 도착 안내는 유지하고 입력 불량·현장 미검증 인원 예측은 실행하지 않습니다. 최신 정상 도착 파일을 우선 사용하며 위치 파일을 기다리느라 이전 차량을 반환하지 않습니다. 정상 도착 파일 자체가 없으면 503입니다. ETA 만료/위치상 통과가 확인된 안내는 갱신 대기로 반환하고 모든 예측 응답에 `Cache-Control: no-store`를 설정합니다. [계약과 재개 절차](../../hanjari-ml/docs/CAPACITY_FIX_20261102.md)를 함께 검토하세요.

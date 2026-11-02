@@ -29,7 +29,12 @@ export function isPredictResponse(d: unknown): d is PredictResponse {
     if (i.level !== "확률 보류" && [i.r_now, i.load_pred, i.load_10, i.load_90, i.p_board].some(n => n === null)) return false;
     if (typeof i.load_10 === "number" && typeof i.load_90 === "number" && i.load_10 > i.load_90) return false;
     if (i.updated_at !== undefined && (typeof i.updated_at !== "string" || !/(Z|[+-]\d{2}:\d{2})$/.test(i.updated_at) || !Number.isFinite(Date.parse(i.updated_at)))) return false;
+    if (i.arrival_at !== undefined && (typeof i.arrival_at !== "string" || !/(Z|[+-]\d{2}:\d{2})$/.test(i.arrival_at) || !Number.isFinite(Date.parse(i.arrival_at)))) return false;
+    if (i.arrival_status !== undefined && !["upcoming", "checking", "passed"].includes(String(i.arrival_status))) return false;
+    if ((i.arrival_status === "checking" || i.arrival_status === "passed") && i.level !== "확률 보류") return false;
     if (i.arrival_stale !== undefined && typeof i.arrival_stale !== "boolean") return false;
+    if (i.source_updated !== undefined && i.source_updated !== null && typeof i.source_updated !== "string") return false;
+    if (i.vehicle_id !== undefined && typeof i.vehicle_id !== "string") return false;
     if (i.arrival_stale === true && i.level !== "확률 보류") return false;
     if (i.prediction_status !== undefined) {
       if (typeof i.prediction_status !== "string") return false;

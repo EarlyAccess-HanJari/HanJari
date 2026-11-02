@@ -56,12 +56,13 @@ async function fetchReal(n: number): Promise<ApiResult> {
   try {
     const res =
       REQUEST_STYLE === "get"
-        ? await fetch(`${API_URL}?${N_PARAM}=${n}`, { signal: ctrl.signal })
+        ? await fetch(`${API_URL}?${N_PARAM}=${n}`, { signal: ctrl.signal, cache: "no-store" })
         : await fetch(API_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ [N_BODY_KEY]: n }),
             signal: ctrl.signal,
+            cache: "no-store",
           });
 
     if (res.status === 400 || res.status === 422) {

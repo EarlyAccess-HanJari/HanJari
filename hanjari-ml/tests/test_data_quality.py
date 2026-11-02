@@ -145,17 +145,22 @@ class SnapshotIntegration(unittest.TestCase):
         self.body["msgBody"]["itemList"].append(other)
         self.assertEqual(self.run_sample()["prediction_status"], "passenger_conflict")
 
-    def test_incomplete_or_error_snapshot_uses_previous_complete_bundle(self):
+    def test_new_arrival_does_not_wait_for_position_but_rejects_error_payloads(self):
         stamp, _ = S.latest_snapshot(self.folder)
         (self.folder / "jr03_arr_235900.json").write_text(self.arr.read_text())
-        self.assertEqual(S.latest_snapshot(self.folder)[0], stamp)
+        self.assertEqual(S.latest_snapshot(self.folder)[0], "235900")
         for route in B.STOPS:
             for kind in ("arr", "pos"):
                 (self.folder / f"{route}_{kind}_235900.json").write_text('{"msgHeader":{"headerCd":"7"},"msgBody":{"itemList":[]}}')
         self.assertEqual(S.latest_snapshot(self.folder)[0], stamp)
 
-    def test_no_complete_bundle_is_error_instead_of_no_buses(self):
+    def test_position_outage_does_not_freeze_arrival(self):
         for f in self.folder.glob("*_pos_*.json"):
+            f.unlink()
+        self.assertEqual(len(S.predict_live(10, log_dir=self.folder)), 6)
+
+    def test_no_valid_arrival_is_error_instead_of_no_buses(self):
+        for f in self.folder.glob("*_arr_*.json"):
             f.unlink()
         with self.assertRaisesRegex(RuntimeError, "스냅샷이 없음"):
             S.predict_live(10, log_dir=self.folder)

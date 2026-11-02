@@ -8,7 +8,7 @@ data/api_logs/YYYYMMDD/{노선}_{arr,pos}_HHMMSS.json  (시각은 KST)
 실행: nohup python3 src/collect.py >> data/api_logs/collect.log 2>&1 &
 키: .env 의 SEOUL_BUS_API_KEY* 전부를 풀로 묶어 호출마다 돌아가며 사용. 간격 = 기본간격 × 노선수 ÷ 키수 (키당 한도 유지).
 """
-import datetime as dt, itertools, json, time, urllib.parse, urllib.request
+import datetime as dt, itertools, json, os, tempfile, time, urllib.parse, urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -134,7 +134,7 @@ def main():
                     try:
                         body = fetch(url, k, ROUTES[route])
                         data = json.loads(body)  # 깨진 응답은 저장 안 하고 로그만
-                        (d / f"{route}_{name}_{now:%H%M%S}.json").write_bytes(body)
+                        write_snapshot(d / f"{route}_{name}_{now:%H%M%S}.json", body)
                         if name == "arr":
                             before = json.dumps(sched, sort_keys=True)
                             learn(sched, data["msgBody"]["itemList"] or [], route)
@@ -147,6 +147,19 @@ def main():
             time.sleep(iv - (time.time() % iv))
         else:
             time.sleep(60)
+
+
+def write_snapshot(path, body):
+    """쓰는 도중의 JSON이 최신 파일로 읽히지 않도록 같은 폴더에서 원자적으로 교체한다."""
+    tmp = None
+    try:
+        with tempfile.NamedTemporaryFile(dir=path.parent, suffix=".tmp", delete=False) as f:
+            tmp = Path(f.name)
+            f.write(body)
+        os.replace(tmp, path)
+    finally:
+        if tmp is not None:
+            tmp.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":

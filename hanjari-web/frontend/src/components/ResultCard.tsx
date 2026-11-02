@@ -1,5 +1,6 @@
 import type { Level, PredictItem } from "../types";
-import { pct, whyText } from "../utils/format";
+import { isStale, pct, whyText } from "../utils/format";
+import type { ArrivalState } from "../utils/format";
 import { LEVEL_CLASS } from "./LevelBadge";
 import lv from "./levels.module.css";
 import s from "./ResultCard.module.css";
@@ -16,14 +17,25 @@ interface Props {
   item: PredictItem;
   invalid: boolean;  // 입력이 잘못됐으면 결과 대신 안내
   busy: boolean;     // 새 인원으로 다시 불러오는 중
+  arrivalState: ArrivalState;
 }
 
-export default function ResultCard({ item, invalid, busy }: Props) {
+export default function ResultCard({ item, invalid, busy, arrivalState }: Props) {
   if (invalid) {
     return (
       <section className={`${s.card} ${lv.hold}`} aria-live="polite" data-testid="result">
         <div className={s.head}><span className={s.title}><span className={s.dot} />인원을 확인해 주세요</span></div>
         <p className={s.why}>올바른 인원을 넣으면 바로 다시 계산해요.</p>
+      </section>
+    );
+  }
+
+  if (arrivalState !== "upcoming") {
+    return (
+      <section className={`${s.card} ${lv.hold}`} aria-live="polite" data-testid="result" data-level="확률 보류">
+        <div className={s.head}><span className={s.title}><span className={s.dot} />버스 정보 갱신 중</span></div>
+        <p className={s.why}>{arrivalState === "stale" && isStale(item)
+          ? item.reason : "최신 도착 정보가 들어오면 자동으로 다시 표시해요."}</p>
       </section>
     );
   }

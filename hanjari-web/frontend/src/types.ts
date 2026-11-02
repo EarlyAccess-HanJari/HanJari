@@ -30,6 +30,8 @@ export interface PredictItem {
   data_status?: string;
   prediction_status?: string;
   arrival_stale?: boolean;
+  arrival_at?: string;   // 제공 시각 + ETA, 날짜·시간대 포함
+  arrival_status?: "upcoming" | "checking" | "passed";
 }
 
 /** GET /api/predict 응답. results 가 빈 배열이면 운행 시간 아님(새벽). */
