@@ -1,22 +1,18 @@
-/* 스크롤해도 정류장·갱신 상태는 위에 고정 (지도 앱 상단 바처럼) */
-.header { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 10px 16px 10px 20px; display: flex; flex-direction: column; gap: 4px; border-bottom: 1px solid var(--line-3); }
-.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.brand { display: flex; align-items: center; gap: 6px; }
-.wordmark { font-size: var(--fs-md); font-weight: 700; letter-spacing: -0.05em; }
-.refresh { width: 44px; height: 44px; flex: none; border-radius: 22px; border: 1px solid var(--line); background: var(--card); display: flex; align-items: center; justify-content: center; padding: 0; }
-.refresh:disabled svg { animation: spin 1s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-.stopBtn { all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 4px; min-height: 44px; min-width: 0; border-radius: 8px; }
+.header { padding: 14px 16px 10px 20px; display: flex; flex-direction: column; gap: 6px; }
+.top { display: flex; align-items: center; justify-content: space-between; }
+.brand { display: flex; align-items: center; gap: 8px; }
+.wordmark { font-size: 17px; font-weight: 700; letter-spacing: -0.05em; }
+.refresh { width: 44px; height: 44px; border-radius: 22px; border: 1px solid var(--line); background: var(--card); display: flex; align-items: center; justify-content: center; padding: 0; }
+.stopBtn { all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 6px; min-height: 44px; border-radius: 8px; }
 .stopBtn:focus-visible { outline: 3px solid var(--blue); outline-offset: 4px; }
 .meta { display: flex; align-items: center; gap: 8px; }
-.routeChip { font-size: var(--fs-xs); font-weight: 600; color: #fff; padding: 3px 8px; border-radius: 6px; }
+.routeChip { font-size: 12px; font-weight: 600; color: #fff; padding: 3px 8px; border-radius: 6px; }
 .sb02 { background: var(--route-sb02); }
 .jr03 { background: var(--route-jr03); }
-.metaText { font-size: var(--fs-xs); color: var(--muted); }
-.nameRow { display: flex; align-items: center; gap: 4px; color: var(--muted); min-width: 0; }
-.name { font-size: var(--fs-xl); font-weight: 700; letter-spacing: -0.03em; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* 문구가 바뀌어도 높이가 그대로이도록 한 줄 고정 */
-.status { margin: 0; font-size: var(--fs-sm); height: 19px; line-height: 19px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.metaText { font-size: 12px; color: var(--muted); }
+.nameRow { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.name { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; color: var(--ink); }
+.status { margin: 0; font-size: 13px; min-height: 19px; }
 .normal { color: var(--muted); font-weight: 500; }
 .warn { color: var(--warn); font-weight: 600; }
 .bad { color: var(--bad); font-weight: 600; }

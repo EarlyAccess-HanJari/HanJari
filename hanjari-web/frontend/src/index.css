@@ -19,36 +19,21 @@
   --bad-line: #C8372B;
   --route-sb02: #1D4F91;
   --route-jr03: #0F6D77;
-  /* 디자인 규칙 — 글자·모서리·여백은 아래 값만 쓴다 (지도 앱처럼 숫자는 크게, 설명은 작고 흐리게) */
-  --fs-hero: 44px;  /* 도착 시간·확률 숫자 */
-  --fs-xl: 22px;    /* 단계 이름·정류장 이름 */
-  --fs-lg: 17px;    /* 카드 제목 */
-  --fs-md: 15px;    /* 본문·버튼 */
-  --fs-sm: 13px;    /* 보조 설명 */
-  --fs-xs: 12px;    /* 칩·라벨 */
-  --r-card: 20px;
-  --r-ctrl: 14px;
-  --gap: 12px;
-  --pad: 20px;
-  /* 도착 카드 최소 높이 — 숫자 ↔ 보류 안내가 바뀌어도 아래 결과 카드 시작점이 같게 */
-  --arrival-h: 138px;
+  --time: #E0352B;
   --font: "IBM Plex Sans KR", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, monospace;
 }
 
 * { box-sizing: border-box; }
-/* 삼성 인터넷 등의 강제 다크 모드가 신호등 색을 바꾸지 않게 — 색은 밝은 화면 기준으로만 설계됨 */
-html { color-scheme: light only; }
 html, body { margin: 0; padding: 0; }
 body {
   font-family: var(--font);
   color: var(--ink);
   background: var(--bg);
   line-height: 1.45;
-  overscroll-behavior: none;  /* 끝에서 더 당겨도 화면 전체가 튕기지 않게 */
 }
 button { font: inherit; color: inherit; cursor: pointer; }
 button:disabled { cursor: default; opacity: .45; }
 input { font: inherit; }
 :focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
-#root { max-width: 480px; margin: 0 auto; }
+#root { max-width: 480px; margin: 0 auto; min-height: 100dvh; }

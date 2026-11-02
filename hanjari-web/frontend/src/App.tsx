@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { fetchPredict, USE_MOCK } from "./api/predict";
-import type { Scenario } from "./api/predict";
+import { fetchPredict } from "./api/predict";
 import { N_MAX, N_MIN, ROUTES } from "./types";
 import type { ApiResult, RouteCode } from "./types";
 import { isStale, parseN } from "./utils/format";
@@ -9,11 +8,10 @@ import Header from "./components/Header";
 import ArrivalCard from "./components/ArrivalCard";
 import AheadInput from "./components/AheadInput";
 import ResultCard from "./components/ResultCard";
+import LoadCompare from "./components/LoadCompare";
 import OtherStops from "./components/OtherStops";
 import StopSheet from "./components/StopSheet";
 import Notice from "./components/Notice";
-import HeroSkeleton from "./components/HeroSkeleton";
-import DevSwitcher from "./components/DevSwitcher";
 import s from "./App.module.css";
 
 interface Sel { route: RouteCode; stop: string }
@@ -87,15 +85,6 @@ export default function App() {
 
   const retry = () => load(queryN);
 
-  // 개발용 상태 전환 — 목업은 요청마다 주소의 ?scenario 를 읽음
-  const devSwitch = (sc: Scenario | null) => {
-    const u = new URL(window.location.href);
-    if (sc) u.searchParams.set("scenario", sc); else u.searchParams.delete("scenario");
-    history.replaceState(null, "", u);
-    if (sc === "loading") setRes(null);
-    load(queryN);
-  };
-
   const pick = (route: RouteCode, stop: string) => {
     const v = { route, stop };
     setSel(v);
@@ -118,11 +107,10 @@ export default function App() {
 
   let body: ReactNode;
   if (!res) {
-    // 첫 조회 전에도 결과가 올 자리를 같은 크기로 잡아 둠
-    body = <><div className={s.hero} data-testid="hero"><HeroSkeleton /></div>{input}<div className={s.dock}><OtherStops items={[]} onPick={() => {}} /></div></>;
+    body = <><section className={s.card}>{input}</section><p className={s.loading}>버스 정보를 불러오는 중…</p></>;
   } else if (!res.ok) {
     body = res.error.kind === "bad_input"
-      ? <>{input}<Notice kind="bad_input" detail={res.error.message} /></>
+      ? <><section className={s.card}>{input}</section><Notice kind="bad_input" detail={res.error.message} /></>
       : <Notice kind={res.error.kind} detail={res.error.kind === "unknown" ? res.error.message : undefined}
           onRetry={retry} retrying={loading} />;
   } else if (items.length === 0) {
@@ -130,18 +118,18 @@ export default function App() {
   } else if (!mine) {
     body = <Notice kind="no_stop" onRetry={retry} retrying={loading} />;
   } else {
+    // 한 카드 안에서 위→아래: 남은 시간 → 탑승 가능성 → 차내 인원 → 대기 인원 입력
     body = (
       <>
-        {/* 핵심 '지금 오는 버스에 탈 수 있을까?' — 도착 시간과 탑승 가능성을 한 카드에. 다른 정류장은 맨 아래 접어 둠 */}
-        <div className={s.hero} data-testid="hero">
+        <section className={s.card}>
           <ArrivalCard item={mine} stale={stale} fetchedAt={fetchedAt} />
           <ResultCard item={mine} invalid={n === null} busy={loading} />
-        </div>
-        {input}
-        <div className={s.dock}>
-          <OtherStops items={items.filter((i) => i.route === mine.route && i !== mine)}
-            onPick={(i) => pick(i.route, i.stop)} />
-        </div>
+          <LoadCompare item={mine} stale={stale} />
+          <div className={s.divider} />
+          {input}
+        </section>
+        <OtherStops items={items.filter((i) => i.route === mine.route && i !== mine)}
+          onPick={(i) => pick(i.route, i.stop)} />
       </>
     );
   }
@@ -153,7 +141,6 @@ export default function App() {
       <main className={s.main}>
         {body}
       </main>
-      {USE_MOCK && <DevSwitcher onSwitch={devSwitch} />}
       {sheetOpen && (
         <StopSheet route={sel.route} stop={sel.stop} onPick={pick} onClose={() => setSheetOpen(false)} />
       )}

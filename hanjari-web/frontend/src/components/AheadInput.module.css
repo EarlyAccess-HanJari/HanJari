@@ -1,14 +1,20 @@
-.card { background: var(--card); border-radius: var(--r-card); padding: 16px var(--pad) 18px; display: flex; flex-direction: column; gap: 10px; }
-.labelRow { height: 22px; display: flex; align-items: center; min-width: 0; }
-.label { font-size: var(--fs-md); font-weight: 600; }
-.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.stepper { display: flex; align-items: center; gap: 8px; }
-.step { width: 52px; height: 52px; flex: none; border-radius: var(--r-ctrl); border: 1px solid var(--line); background: var(--bg); display: flex; align-items: center; justify-content: center; padding: 0; }
-.field { flex: 1; min-width: 0; display: flex; align-items: baseline; justify-content: center; gap: 4px; height: 52px; border-radius: var(--r-ctrl); border: 2px solid var(--ink); padding: 0 12px; }
+.wrap { display: flex; flex-direction: column; gap: 10px; }
+.row { display: flex; justify-content: center; align-items: center; gap: 40px; }
+.labelCol { display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 0; }
+.label { font-size: 15px; font-weight: 600; }
+.help { font-size: 12px; color: var(--muted); }
+.stepper { display: flex; align-items: center; gap: 4px; flex: none; }
+.step { width: 44px; height: 44px; flex: none; border-radius: 12px; border: 1px solid var(--line); background: var(--card); display: flex; align-items: center; justify-content: center; padding: 0; }
+/* 고정 폭 + 가운데 정렬: 1자리·2자리 어느 쪽이어도 − 와 + 사이 간격이 같게 */
+.field { display: flex; align-items: baseline; justify-content: center; width: 60px; height: 44px; border-radius: 10px; border: 1px solid transparent; padding: 0 2px; }
+.field:focus-within { border-color: var(--ink); }
 .fieldError { border-color: var(--bad-line); }
-.input { width: 80px; height: 48px; line-height: 48px; border: 0; outline: none; background: transparent; text-align: right; font-family: var(--mono); font-size: 30px; font-weight: 600; color: var(--ink); padding: 0; }
-.unit { font-size: var(--fs-md); font-weight: 600; width: 64px; }
-.quick { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
-.chip { height: 44px; border-radius: 12px; font-size: var(--fs-md); font-weight: 600; border: 1px solid var(--line); background: var(--card); }
-.chipOn { border: 2px solid var(--ink); background: var(--ink); color: #fff; }
-.error { margin: 0; font-size: var(--fs-md); color: var(--bad); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.input { min-width: 1ch; height: 42px; line-height: 42px; border: 0; outline: none; background: transparent; text-align: right; font-size: 18px; font-weight: 700; color: var(--ink); padding: 0; font-variant-numeric: tabular-nums; }
+.unit { font-size: 18px; font-weight: 700; }
+/* 알약 높이는 32px, 회색 상자 여백까지 누르는 범위로 넓혀 높이 44px을 확보 */
+/* 테두리도 함께: 삼성 인터넷 등 브라우저 강제 다크 모드에서 배경색 차이가 줄어도 상자가 구분되게 */
+.quick { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; padding: 6px; border-radius: 16px; background: var(--bg); border: 1px solid var(--line); }
+.chip { position: relative; height: 32px; border-radius: 16px; font-size: 14px; font-weight: 500; color: var(--ink-2); border: 1px solid var(--line-2); background: var(--card); padding: 0; }
+.chip::before { content: ""; position: absolute; inset: -6px -3px; }
+.chipOn { border-color: var(--ink); background: var(--ink); color: #fff; }
+.error { margin: 0; font-size: 13px; color: var(--bad); font-weight: 600; text-align: center; }

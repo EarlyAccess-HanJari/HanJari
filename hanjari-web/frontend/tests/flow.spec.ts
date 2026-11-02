@@ -17,7 +17,9 @@ test("첫 방문엔 정류장 시트가 열리고 6곳이 전부 보인다", asy
 test("정류장을 고르면 한 화면에 도착 정보·인원 입력·결과가 보인다", async ({ page }) => {
   await start(page);
   await expect(page.getByTestId("stop-name")).toHaveText("녹십자약국");
-  await expect(page.getByTestId("arrival")).toContainText("서울70사6419");
+  await expect(page.getByTestId("arrival")).toContainText("남은 시간");
+  await expect(page.getByTestId("arrival")).not.toContainText("서울70사6419");
+  await expect(page.getByTestId("loads")).toContainText("도착 시 차내 인원");
   await expect(page.getByTestId("n-input")).toHaveValue("3");
   await expect(page.getByTestId("result")).toHaveAttribute("data-level", "여유 있음");
   await expect(page.getByText("버스 정보 13:11:33 기준")).toBeVisible();
@@ -27,6 +29,15 @@ test("인원을 바꾸면 결과가 바로 다시 계산된다", async ({ page }
   await start(page);
   await expect(page.getByTestId("result")).toHaveAttribute("data-level", "여유 있음");
   await page.getByRole("button", { name: "20명" }).click();     // 목업 n30 → 녹십자약국 '어려울 수 있음'
+  await expect(page.getByTestId("result")).toHaveAttribute("data-level", "어려울 수 있음");
+  await expect(page.getByTestId("result")).toContainText(/탑승 가능성 \d+%/);
+  await expect(page.getByTestId("result")).toContainText("이번 버스는 타기 힘들어요.");
+});
+
+test("빠른 선택 30명으로 입력과 결과가 갱신된다", async ({ page }) => {
+  await start(page);
+  await page.getByRole("button", { name: "30명", exact: true }).click();
+  await expect(page.getByTestId("n-input")).toHaveValue("30");
   await expect(page.getByTestId("result")).toHaveAttribute("data-level", "어려울 수 있음");
 });
 
@@ -57,7 +68,6 @@ test("입력 검증: 글자·빈칸·범위 밖·경계값", async ({ page }) =>
 
 test("같은 노선 다른 정류장을 누르면 그 정류장으로 바뀐다", async ({ page }) => {
   await start(page);
-  await page.getByTestId("other-stops").click();                // 맨 아래 접힌 줄 → 목록
   await page.getByTestId("card-sb02-30").click();
   await expect(page.getByTestId("stop-name")).toHaveText("한성대입구역5번출구");
 });
@@ -67,7 +77,6 @@ test("정류장 이름을 눌러 다른 노선으로 바꿀 수 있다", async (
   await page.getByTestId("stop-switch").click();
   await page.getByTestId("stop-jr03-23").click();
   await expect(page.getByTestId("stop-name")).toHaveText("창신역4번출구");
-  await page.getByTestId("other-stops").click();
   await expect(page.getByTestId("card-jr03-19")).toBeVisible();
 });
 

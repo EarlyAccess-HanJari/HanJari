@@ -8,40 +8,43 @@ interface Props {
   onChange: (raw: string) => void;
 }
 
-const QUICK = [0, 3, 5, 10, 20];
+const QUICK = [0, 3, 5, 10, 20, 30];
 
 export default function AheadInput({ raw, n, error, onChange }: Props) {
   const cur = n ?? 0;
   const set = (v: number) => onChange(String(Math.min(N_MAX, Math.max(N_MIN, v))));
   return (
-    <section className={s.card}>
-      {/* 입력이 틀리면 제목 자리에 안내를 띄움 — 줄이 늘지 않아 위 카드·아래 줄이 밀리지 않음 */}
-      <div className={s.labelRow}>
-        <label htmlFor="n-ahead" className={error ? s.sr : s.label}>내 앞에 기다리는 사람</label>
-        {error && <p id="n-hint" className={s.error} role="alert" data-testid="n-hint">{error}</p>}
-      </div>
-      <div className={s.stepper}>
-        <button type="button" className={s.step} onClick={() => set(cur - 1)} disabled={n === N_MIN}
-          aria-label="1명 줄이기" data-testid="n-minus">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M5 12h14" /></svg>
-        </button>
-        <div className={`${s.field} ${error ? s.fieldError : ""}`}>
-          <input id="n-ahead" className={s.input} type="text" inputMode="numeric" autoComplete="off"
-            value={raw} onChange={(e) => onChange(e.target.value)}
-            aria-invalid={!!error} aria-describedby={error ? "n-hint" : undefined} data-testid="n-input" />
-          <span className={s.unit}>명</span>
+    <section className={s.wrap}>
+      <div className={s.row}>
+        <div className={s.labelCol}>
+          <label htmlFor="n-ahead" className={s.label}>대기 인원</label>
+          <span className={s.help}>내 앞에 줄 선 사람</span>
         </div>
-        <button type="button" className={s.step} onClick={() => set(cur + 1)} disabled={n === N_MAX}
-          aria-label="1명 늘리기" data-testid="n-plus">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
-        </button>
+        <div className={s.stepper}>
+          <button type="button" className={s.step} onClick={() => set(cur - 1)} disabled={n === N_MIN}
+            aria-label="1명 줄이기" data-testid="n-minus">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M5 12h14" /></svg>
+          </button>
+          <div className={`${s.field} ${error ? s.fieldError : ""}`}>
+            <input id="n-ahead" className={s.input} type="text" inputMode="numeric" autoComplete="off"
+              style={{ width: `${Math.max(1, raw.length)}ch` }}
+              value={raw} onChange={(e) => onChange(e.target.value)}
+              aria-invalid={!!error} aria-describedby={error ? "n-hint" : undefined} data-testid="n-input" />
+            <span className={s.unit}>명</span>
+          </div>
+          <button type="button" className={s.step} onClick={() => set(cur + 1)} disabled={n === N_MAX}
+            aria-label="1명 늘리기" data-testid="n-plus">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+          </button>
+        </div>
       </div>
-      <div className={s.quick}>
+      <div className={s.quick} role="group" aria-label="빠른 선택">
         {QUICK.map((v) => (
           <button key={v} type="button" className={`${s.chip} ${n === v ? s.chipOn : ""}`}
-            aria-pressed={n === v} onClick={() => set(v)}>{v}명</button>
+            aria-pressed={n === v} aria-label={`${v}명`} onClick={() => set(v)}>{v}</button>
         ))}
       </div>
+      {error && <p id="n-hint" className={s.error} role="alert" data-testid="n-hint">{error}</p>}
     </section>
   );
 }
