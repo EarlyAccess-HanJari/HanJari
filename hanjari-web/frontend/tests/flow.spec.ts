@@ -6,6 +6,7 @@ const start = async (page: Page, query = "") => {
   await page.goto("/" + query);
   await page.getByTestId("stop-sb02-32").click();
 };
+const chip = (page: Page, n: number) => page.getByRole("button", { name: `${n}명`, exact: true });
 
 test("첫 방문엔 정류장 시트가 열리고 6곳이 전부 보인다", async ({ page }) => {
   await page.goto("/");
@@ -17,28 +18,40 @@ test("첫 방문엔 정류장 시트가 열리고 6곳이 전부 보인다", asy
 test("정류장을 고르면 한 화면에 도착 정보·인원 입력·결과가 보인다", async ({ page }) => {
   await start(page);
   await expect(page.getByTestId("stop-name")).toHaveText("녹십자약국");
-  await expect(page.getByTestId("arrival")).toContainText("남은 시간");
+  await expect(page.getByTestId("arrival")).toContainText("다음 버스");
   await expect(page.getByTestId("arrival")).not.toContainText("서울70사6419");
-  await expect(page.getByTestId("loads")).toContainText("도착 시 차내 인원");
+  await expect(page.getByTestId("loads")).toContainText("도착 시 예상");
   await expect(page.getByTestId("n-input")).toHaveValue("3");
-  await expect(page.getByTestId("result")).toHaveAttribute("data-level", "여유 있음");
+  await expect(page.getByTestId("hero")).toHaveAttribute("data-level", "여유 있음");
+  await expect(page.getByTestId("verdict")).toContainText(/탑승 유력 · \d+%/);   // 퍼센트가 보인다
   await expect(page.getByText("버스 정보 13:11:33 기준")).toBeVisible();
 });
 
 test("인원을 바꾸면 결과가 바로 다시 계산된다", async ({ page }) => {
   await start(page);
-  await expect(page.getByTestId("result")).toHaveAttribute("data-level", "여유 있음");
-  await page.getByRole("button", { name: "20명" }).click();     // 목업 n30 → 녹십자약국 '어려울 수 있음'
-  await expect(page.getByTestId("result")).toHaveAttribute("data-level", "어려울 수 있음");
-  await expect(page.getByTestId("result")).toContainText(/탑승 가능성 \d+%/);
-  await expect(page.getByTestId("result")).toContainText("이번 버스는 타기 힘들어요.");
+  await expect(page.getByTestId("hero")).toHaveAttribute("data-level", "여유 있음");
+  await chip(page, 20).click();                                   // 목업 n30 → 녹십자약국 '어려울 수 있음'
+  await expect(page.getByTestId("hero")).toHaveAttribute("data-level", "어려울 수 있음");
+  await expect(page.getByTestId("verdict")).toContainText(/\d+%/);
+  await expect(page.getByTestId("result")).toContainText("만차 가능성이 높아요.");
 });
 
-test("빠른 선택 30명으로 입력과 결과가 갱신된다", async ({ page }) => {
+test("+/-로 만든 인원이 칩에 있으면 그 칩이 바로 선택 표시된다", async ({ page }) => {
   await start(page);
-  await page.getByRole("button", { name: "30명", exact: true }).click();
-  await expect(page.getByTestId("n-input")).toHaveValue("30");
-  await expect(page.getByTestId("result")).toHaveAttribute("data-level", "어려울 수 있음");
+  await expect(chip(page, 3)).toHaveAttribute("aria-pressed", "true");
+  for (let i = 0; i < 12; i++) await page.getByTestId("n-plus").click();   // 3 → 15
+  await expect(page.getByTestId("n-input")).toHaveValue("15");
+  await expect(chip(page, 15)).toHaveAttribute("aria-pressed", "true");
+  await expect(chip(page, 3)).toHaveAttribute("aria-pressed", "false");
+  await page.getByTestId("n-plus").click();                                // 16 → 칩에 없으니 선택 없음
+  await expect(page.locator('[aria-pressed="true"]')).toHaveCount(0);
+});
+
+test("빠른 선택 20명으로 입력과 결과가 갱신된다", async ({ page }) => {
+  await start(page);
+  await chip(page, 20).click();
+  await expect(page.getByTestId("n-input")).toHaveValue("20");
+  await expect(page.getByTestId("hero")).toHaveAttribute("data-level", "어려울 수 있음");
 });
 
 test("입력 검증: 글자·빈칸·범위 밖·경계값", async ({ page }) => {
@@ -58,17 +71,19 @@ test("입력 검증: 글자·빈칸·범위 밖·경계값", async ({ page }) =>
 
   await input.fill("40");
   await expect(hint).toHaveCount(0);
-  await expect(page.getByTestId("n-plus")).toBeDisabled();      // 40 에서 더 못 늘림
+  await expect(page.getByTestId("n-plus")).toBeDisabled();
 
   await input.fill("0");
-  await expect(page.getByTestId("n-minus")).toBeDisabled();     // 0 에서 더 못 줄임
+  await expect(page.getByTestId("n-minus")).toBeDisabled();
   await page.getByTestId("n-plus").click();
   await expect(input).toHaveValue("1");
 });
 
-test("같은 노선 다른 정류장을 누르면 그 정류장으로 바뀐다", async ({ page }) => {
+test("다른 정류장 카드를 누르면 그 정류장으로 바뀌고 첫 화면으로 돌아온다", async ({ page }) => {
   await start(page);
+  await page.getByTestId("tab-1").click();
   await page.getByTestId("card-sb02-30").click();
+  await expect(page.getByTestId("tab-0")).toHaveAttribute("aria-selected", "true");
   await expect(page.getByTestId("stop-name")).toHaveText("한성대입구역5번출구");
 });
 
@@ -77,6 +92,7 @@ test("정류장 이름을 눌러 다른 노선으로 바꿀 수 있다", async (
   await page.getByTestId("stop-switch").click();
   await page.getByTestId("stop-jr03-23").click();
   await expect(page.getByTestId("stop-name")).toHaveText("창신역4번출구");
+  await page.getByTestId("tab-1").click();
   await expect(page.getByTestId("card-jr03-19")).toBeVisible();
 });
 

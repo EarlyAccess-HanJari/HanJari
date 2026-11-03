@@ -1,6 +1,10 @@
-.wrap { display: flex; justify-content: center; align-items: stretch; }
-.col { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 0 24px; }
-.sep { width: 1px; background: var(--line-3); margin: 2px 0; }
-.k { font-size: 12px; color: var(--muted); }
-.v { font-size: 15px; font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; }
-.em { font-weight: 700; color: var(--ink); }
+/* 카드 바닥 서브 정보 — 구분선 아래 좌우 정렬 */
+.wrap { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--c-line-1); }
+.col { display: flex; align-items: center; gap: 4px; min-width: 0; font-size: 12px; }
+.left { color: var(--c-text-3); }
+.right { color: #374151; font-weight: 500; }
+.k { font-size: 12px; }
+.v { font-size: 12px; font-variant-numeric: tabular-nums; }
+.left .v { font-weight: 500; }
+.right .v { font-weight: 700; color: var(--c-text-1); }
+.sep { display: none; }

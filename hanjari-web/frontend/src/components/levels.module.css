@@ -1,6 +1,6 @@
-/* 단계별 색. 배지·결과 카드가 같이 쓴다 (var(--lv-*)) */
-.ok    { --lv-bg: #E9F6EF; --lv-fg: #0B7A43; --lv-bar: #0F9D58; --lv-track: #CFE9DA; }
-.tight { --lv-bg: #FDF3E6; --lv-fg: #A85B00; --lv-bar: #E08000; --lv-track: #F6DCB8; }
-.hard  { --lv-bg: #FDECEA; --lv-fg: #C2302A; --lv-bar: #E5342B; --lv-track: #F6C9C6; }
-.early { --lv-bg: #E7EBF0; --lv-fg: #34414F; --lv-bar: #34414F; --lv-track: #D5DCE6; }
-.hold  { --lv-bg: #EDEBE7; --lv-fg: #4A4640; --lv-bar: #4A4640; --lv-track: #DDD9D2; }
+/* 상태 색 시스템(신호등). 히어로 카드·뱃지·게이지가 같이 쓴다 (var(--lv-*))
+   bg/fg/line = 소프트 뱃지, bar/track = 게이지 */
+.ok   { --lv-bg: #ECFDF5; --lv-fg: #059669; --lv-line: #A7F3D0; --lv-bar: #10B981; --lv-track: #D1FAE5; }
+.warn { --lv-bg: #FFF7ED; --lv-fg: #EA580C; --lv-line: #FED7AA; --lv-bar: #F59E0B; --lv-track: #FEF3C7; }
+.bad  { --lv-bg: #FEF2F2; --lv-fg: #DC2626; --lv-line: #FECACA; --lv-bar: #EF4444; --lv-track: #FEE2E2; }
+.hold { --lv-bg: #F3F4F6; --lv-fg: #374151; --lv-line: #D1D5DB; --lv-bar: #6B7280; --lv-track: #E5E7EB; }

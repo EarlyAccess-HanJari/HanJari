@@ -57,6 +57,31 @@ export function whyText(i: PredictItem): string {
     : `지금 ${i.r_now}명 탄 버스가 ${i.stops_away}정류장을 더 지나면 약 ${load}명이 될 것 같아요.`;
 }
 
+export type Tone = "ok" | "warn" | "bad" | "hold";
+export interface Verdict { badge: string; guide: string; tone: Tone; crowd: string }
+
+/** 한눈에 보는 판정. 색·뱃지·문구를 확률(p_board) 기준 한 곳에서 정해 서로 어긋나지 않게 한다.
+ *  80% 이상 초록 / 50~79% 주황 / 50% 미만 빨강(뱃지 문구는 80·60·40% 경계). 보류·판단 이른 단계는 회색.
+ *  '빠듯함'은 확률이 높아도 백엔드가 수업 시간·거리 때문에 내리는 단계라 '탑승 가능'으로 낮추고 시간 빠듯함을 안내 */
+export function verdict(i: PredictItem): Verdict {
+  if (i.level === "확률 보류")
+    return { badge: "확률 보류", tone: "hold", crowd: "", guide: "확률은 잠시 보류했어요. 위의 도착 정보만 참고해 주세요." };
+  if (i.level === "판단하기 일러요")
+    return { badge: "판단하기 일러요", tone: "hold", crowd: "", guide: "버스가 가까워지면 다시 확인해 주세요." };
+  const p = i.p_board;
+  if (p >= 0.8)
+    return i.level === "빠듯함"
+      ? { badge: "탑승 유력", tone: "ok", crowd: "여유", guide: "탈 수 있지만 수업 시간엔 빠듯할 수 있어요." }
+      : { badge: "탑승 유력", tone: "ok", crowd: "여유", guide: "줄을 서면 안정적으로 탑승할 수 있어요." };
+  if (p >= 0.6)
+    return { badge: "혼잡 주의", tone: "warn", crowd: "혼잡", guide: "앞줄에 서면 탈 수 있지만, 차내가 다소 혼잡해요." };
+  if (p >= 0.5)
+    return { badge: "탑승 아슬아슬", tone: "warn", crowd: "혼잡", guide: "탑승이 불확실해요. 다음 버스 도착 시간도 확인해보세요." };
+  if (p >= 0.4)
+    return { badge: "탑승 아슬아슬", tone: "bad", crowd: "매우 혼잡", guide: "탑승이 불확실해요. 다음 버스 도착 시간도 확인해보세요." };
+  return { badge: "다음 차 권장", tone: "bad", crowd: "매우 혼잡", guide: "만차 가능성이 높아요. 다음 차 탑승을 권장해요." };
+}
+
 /** serve.py 가 스냅샷이 오래됐을 때 붙이는 reason("…N분 전 것…", "정보가 N초 전 것")으로 판별 */
 export function isStale(i: PredictItem): boolean {
   return i.level === "확률 보류" && i.reason.includes("전 것");

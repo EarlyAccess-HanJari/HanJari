@@ -41,7 +41,7 @@ test("같은 버스의 작은 도착 예정 변동은 유지한다", async ({ pa
   await expect(page.getByTestId("arrival")).toContainText(/1분2[78]초/);
 });
 
-test("15초를 넘는 예정 시각 변동은 새 값으로 교체한다", async ({ page }) => {
+test("15초를 넘는 예정 시각 변동은 점프 없이 천천히 따라간다", async ({ page }) => {
   await page.clock.install({ time: new Date("2026-09-30T08:00:00+09:00") });
   await page.goto("/");
   await page.getByTestId("stop-sb02-32").click();
@@ -49,5 +49,8 @@ test("15초를 넘는 예정 시각 변동은 새 값으로 교체한다", async
   await page.clock.runFor(20_000);
   await page.getByTestId("refresh").click();
   await page.clock.runFor(1000);
-  await expect(page.getByTestId("arrival")).toContainText(/1분(39|40)초/);
+  // 서버는 100초(1분40초)라 하지만 화면은 뒤로 늘지 않고 약 1분20초 근처에서 느리게 흐른다
+  await expect(page.getByTestId("arrival")).toContainText(/1분(19|20)초/);
+  await page.clock.runFor(10_000);
+  await expect(page.getByTestId("arrival")).toContainText(/1분1\d초/);  // 10초 동안 5초만 줄어듦(느리게 보정 중), 점프·역주행 없음
 });

@@ -1,11 +1,5 @@
-/* 최소 높이 104: 상태가 바뀌어도(로딩·보류·재계산) 아래 인원·입력칸 위치가 그대로 */
-.card { position: relative; min-height: 104px; background: var(--lv-bg); color: var(--ink); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; transition: opacity .15s; }
-.card[aria-busy="true"] .head .title, .card[aria-busy="true"] .track, .card[aria-busy="true"] .guide { opacity: .4; }
-.head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.title { display: flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.3; color: var(--lv-fg); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--lv-bar); flex: none; }
-.recalc { position: absolute; right: 14px; top: 17px; font-size: 12px; font-weight: 500; color: var(--ink-2); }
-.track { height: 6px; border-radius: 3px; background: var(--lv-track); overflow: hidden; }
-.fill { height: 6px; border-radius: 3px; background: var(--lv-bar); transition: width .3s; }
-.guide { margin: 0; font-size: 14px; line-height: 22px; font-weight: 500; }
-.why { margin: 0; font-size: 13px; line-height: 1.55; color: var(--ink-2); }
+.card { display: flex; flex-direction: column; gap: 8px; min-height: 52px; color: #1F2937; }
+.track { height: clamp(6px, 1dvh, 10px); border-radius: 999px; background: var(--lv-track); overflow: hidden; }
+.fill { height: clamp(6px, 1dvh, 10px); border-radius: 999px; background: var(--lv-bar); transition: width .4s ease; }
+.guide { margin: 6px 0 0; font-size: clamp(14px, 2dvh, 17px); line-height: 1.5; font-weight: 500; color: #1F2937; }
+.why { margin: 0; font-size: 13px; line-height: 1.55; color: var(--c-text-2); }

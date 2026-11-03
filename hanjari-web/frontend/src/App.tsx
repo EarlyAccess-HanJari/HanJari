@@ -3,15 +3,20 @@ import type { ReactNode } from "react";
 import { fetchPredict } from "./api/predict";
 import { N_MAX, N_MIN, ROUTES } from "./types";
 import type { ApiResult, RouteCode } from "./types";
-import { isStale, parseN } from "./utils/format";
+import { isStale, parseN, verdict } from "./utils/format";
 import Header from "./components/Header";
 import ArrivalCard from "./components/ArrivalCard";
 import AheadInput from "./components/AheadInput";
 import ResultCard from "./components/ResultCard";
 import LoadCompare from "./components/LoadCompare";
-import OtherStops from "./components/OtherStops";
+import Tabs from "./components/Tabs";
+import Pager from "./components/Pager";
+import Timeline from "./components/Timeline";
 import StopSheet from "./components/StopSheet";
 import Notice from "./components/Notice";
+import { HeroError, HeroSkeleton, TimelinePlaceholder } from "./components/Offline";
+import { TONE_CLASS } from "./components/LevelBadge";
+import lv from "./components/levels.module.css";
 import s from "./App.module.css";
 
 interface Sel { route: RouteCode; stop: string }
@@ -43,7 +48,10 @@ export default function App() {
   const [res, setRes] = useState<ApiResult | null>(null);
   const [fetchedAt, setFetchedAt] = useState(0);  // 도착 시간 카운트다운 기준
   const [loading, setLoading] = useState(false);
+  const [view, setView] = useState(0);  // 0: 지금 탈 수 있을까? / 1: 앞·뒤 정류장
+  const [offline, setOffline] = useState(false);  // 이미 받은 정보가 있는데 새로고침만 실패 — 화면은 그대로 두고 상태 줄로만 알림
   const reqId = useRef(0);
+  const hasData = useRef(false);
 
   const parsed = parseN(raw, N_MIN, N_MAX);
   const n = "n" in parsed ? parsed.n : null;
@@ -61,9 +69,13 @@ export default function App() {
     if (!silent) setLoading(true);
     const r = await fetchPredict(nn);
     if (id !== reqId.current) return;  // 그사이 더 최근 요청이 나갔으면 버림
+    setLoading(false);
+    // 한 번 받은 뒤의 일시적 서버 오류는 화면을 갈아엎지 않고 마지막 정보를 유지 (카드가 사라졌다 나타나며 출렁이던 원인)
+    if (!r.ok && r.error.kind !== "bad_input" && hasData.current) { setOffline(true); return; }
+    setOffline(false);
+    hasData.current = r.ok;
     setRes(r);
     setFetchedAt(Date.now());
-    setLoading(false);
   }, []);
 
   // 인원이 바뀌면 잠깐 기다렸다 조회 — +/− 를 연달아 누를 때 요청이 몰리지 않게
@@ -74,7 +86,7 @@ export default function App() {
 
   // 자동 새로고침: 수집기가 약 27초마다 새 스냅샷을 쓰므로 30초. 화면이 안 보이면 쉬고, 돌아오면 바로 조회.
   // 서버 오류일 땐 간격만 늘려 계속 시도 — 일시적 오류가 지나가면 '다시 시도'를 안 눌러도 돌아오게
-  const failing = res !== null && !res.ok && res.error.kind !== "bad_input";
+  const failing = offline || (res !== null && !res.ok && res.error.kind !== "bad_input");
   useEffect(() => {
     const visible = () => document.visibilityState === "visible";
     const t = setInterval(() => { if (visible()) load(queryN, true); }, failing ? ERROR_RETRY_MS : AUTO_REFRESH_MS);
@@ -90,6 +102,7 @@ export default function App() {
     setSel(v);
     saveSel(v);
     setSheetOpen(false);
+    setView(0);
   };
 
   const items = res?.ok ? res.data.results : [];
@@ -98,6 +111,7 @@ export default function App() {
 
   const status =
     loading ? { text: "새로 불러오는 중…", tone: "normal" as const }
+    : offline ? { text: "연결이 불안정해요 · 마지막으로 받은 정보예요", tone: "warn" as const }
     : res && !res.ok ? { text: "연결 실패", tone: "bad" as const }
     : res && items.length === 0 ? { text: "운행 시간 아님", tone: "normal" as const }
     : mine ? { text: `버스 정보 ${mine.updated} 기준`, tone: stale ? "warn" as const : "normal" as const }
@@ -107,38 +121,59 @@ export default function App() {
 
   let body: ReactNode;
   if (!res) {
-    body = <><section className={s.card}>{input}</section><p className={s.loading}>버스 정보를 불러오는 중…</p></>;
+    body = (
+      <>
+        <Tabs index={0} onChange={() => {}} disabled />
+        <HeroSkeleton />
+      </>
+    );
   } else if (!res.ok) {
     body = res.error.kind === "bad_input"
       ? <><section className={s.card}>{input}</section><Notice kind="bad_input" detail={res.error.message} /></>
-      : <Notice kind={res.error.kind} detail={res.error.kind === "unknown" ? res.error.message : undefined}
-          onRetry={retry} retrying={loading} />;
+      : (
+        <>
+          <Tabs index={view} onChange={setView} />
+          <Pager index={view} onChange={setView}>
+            <HeroError kind={res.error.kind} detail={res.error.kind === "unknown" ? res.error.message : undefined}
+              onRetry={retry} retrying={loading} input={input} />
+            <TimelinePlaceholder route={sel.route} stop={sel.stop} onPick={pick} />
+          </Pager>
+        </>
+      );
   } else if (items.length === 0) {
     body = <Notice kind="night" />;
   } else if (!mine) {
     body = <Notice kind="no_stop" onRetry={retry} retrying={loading} />;
   } else {
-    // 한 카드 안에서 위→아래: 남은 시간 → 탑승 가능성 → 차내 인원 → 대기 인원 입력
+    // 위→아래: [히어로 카드: 도착 시간·판정 → 게이지·결론 → 대기 인원 → 차내 인원] / 두 번째 화면: 앞·뒤 정류장
+    const vd = verdict(mine);
+    const hold = n === null || stale;
+    const tone = hold ? lv.hold : TONE_CLASS[vd.tone];
     body = (
       <>
-        <section className={s.card}>
-          <ArrivalCard item={mine} stale={stale} fetchedAt={fetchedAt} />
-          <ResultCard item={mine} invalid={n === null} busy={loading} />
-          <LoadCompare item={mine} stale={stale} />
-          <div className={s.divider} />
-          {input}
-        </section>
-        <OtherStops items={items.filter((i) => i.route === mine.route && i !== mine)}
-          onPick={(i) => pick(i.route, i.stop)} />
+        <Tabs index={view} onChange={setView} />
+        <Pager index={view} onChange={setView}>
+          <section className={`${s.hero} ${tone}`} data-level={mine.level} data-tone={hold ? "hold" : vd.tone} data-testid="hero" aria-busy={loading}>
+            <ArrivalCard item={mine} stale={stale} fetchedAt={fetchedAt} />
+            <ResultCard item={mine} invalid={n === null} />
+            {input}
+            <LoadCompare item={mine} stale={stale} />
+            {loading && <div className={s.loadbar} aria-hidden="true" />}
+          </section>
+          <Timeline items={items.filter((i) => i.route === mine.route)} mine={mine} onPick={(i) => pick(i.route, i.stop)} />
+        </Pager>
       </>
     );
   }
+
+  // 탭이 있는 화면(정상·오류·첫 불러오기)은 페이지 높이에 고정, 나머지 안내는 일반 흐름
+  const paged = !res || (res.ok ? mine !== null && items.length > 0 : res.error.kind !== "bad_input");
 
   return (
     <div className={s.app}>
       <Header route={sel.route} stop={sel.stop} status={status} refreshing={loading}
         onRefresh={retry} onOpenStops={() => setSheetOpen(true)} />
-      <main className={s.main}>
+      <main className={`${s.main} ${paged ? s.fill : ""}`}>
         {body}
       </main>
       {sheetOpen && (

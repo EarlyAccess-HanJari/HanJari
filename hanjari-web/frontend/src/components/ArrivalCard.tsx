@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useReducer, useRef } from "react";
 import type { PredictItem } from "../types";
-import { arrivalAt, mmss, stopsAwayText } from "../utils/format";
+import { arrivalAt, mmss, pct, stopsAwayText, verdict } from "../utils/format";
 import s from "./ArrivalCard.module.css";
 
 interface Props {
@@ -14,26 +14,50 @@ interface Props {
  *  끄려면 false (받은 eta_sec 를 그대로 표시) */
 const COUNTDOWN = true;
 const SOON_SEC = 60;    // 남은 시간이 이보다 적으면(1분 미만) '곧 도착'
-const JITTER_SEC = 15;  // 같은 버스의 도착 예정이 이만큼 안쪽으로만 바뀌면 무시 — 버스 API ETA 의 잔떨림에 숫자가 튀지 않게
+const DEADBAND_SEC = 15;   // 서버 예정과 화면 값 차이가 이 안쪽이면 무시 — 버스 API ETA 의 잔떨림에 숫자가 튀지 않게
+const SETTLED_SEC = 3;     // 보정을 시작하면 차이가 이만큼 줄 때까지 이어감
+const SNAP_SEC = 120;      // 이보다 크게 어긋나면 보정이 의미 없으니 바로 맞춤
+const SLEW = 0.5;          // 보정 중 시계 속도 ±50% — 숫자가 뒤로 늘거나 점프하지 않고 천천히 따라감
+const GAP_RESET_MS = 5000; // 탭이 오래 멈췄다 돌아오면 바로 맞춤
 
-export default function ArrivalCard({ item, stale, fetchedAt }: Props) {
-  const [now, setNow] = useState(() => Date.now());
+/** 화면에 보일 남은 초. 서버 예정 시각(target)이 크게 바뀌어도 점프하지 않고 시계를 조금 빠르게/느리게 돌려 따라간다.
+ *  속도가 항상 0보다 커서 7분 9초 → 7분 31초 같은 역주행이 없다. */
+function useCountdown(key: string, target: number): number {
+  const [, tick] = useReducer((n: number) => n + 1, 0);
+  const ref = useRef<{ key: string; shown: number; last: number; fixing: boolean } | null>(null);
   useEffect(() => {
     if (!COUNTDOWN) return;
-    const t = setInterval(() => setNow(Date.now()), 1000);
+    const t = setInterval(tick, 1000);
     return () => clearInterval(t);
   }, []);
 
-  // 같은 정류장·같은 버스면 직전 도착 예정 시각을 이어 쓴다 (차이가 크면 새 값으로 바로잡음)
-  const key = `${item.route}-${item.stop}-${item.plate}`;
-  const at = arrivalAt(item, fetchedAt);
-  const [held, setHeld] = useState({ key, at });
-  const keep = held.key === key && Math.abs(held.at - at) <= JITTER_SEC * 1000;
-  if (!keep) setHeld({ key, at });  // 렌더 중 상태 맞추기(React 권장 방식) — 이번 렌더는 아래에서 새 값으로 바로 계산
-  const target = keep ? held.at : at;
+  const now = Date.now();
+  const want = (target - now) / 1000;
+  let c = ref.current;
+  if (!c || c.key !== key || now - c.last > GAP_RESET_MS) {
+    c = ref.current = { key, shown: want, last: now, fixing: false };
+  } else {
+    const dt = (now - c.last) / 1000;
+    c.last = now;
+    const gap = want - c.shown;  // + : 서버가 더 늦게 도착한다고 함
+    if (Math.abs(gap) > SNAP_SEC) {
+      c.shown = want; c.fixing = false;
+    } else {
+      if (Math.abs(gap) > DEADBAND_SEC) c.fixing = true;
+      else if (Math.abs(gap) <= SETTLED_SEC) c.fixing = false;
+      c.shown -= dt * (c.fixing ? (gap > 0 ? 1 - SLEW : 1 + SLEW) : 1);
+    }
+  }
+  return Math.max(0, Math.ceil(c.shown));
+}
 
-  const left = COUNTDOWN ? Math.max(0, Math.ceil((target - now) / 1000)) : item.eta_sec;
+export default function ArrivalCard({ item, stale, fetchedAt }: Props) {
+  const key = `${item.route}-${item.stop}-${item.plate}`;
+  const ticking = useCountdown(key, arrivalAt(item, fetchedAt));
+  const left = COUNTDOWN ? ticking : item.eta_sec;
   const t = mmss(left);
+  const v = verdict(item);
+  const showP = item.level !== "확률 보류" && item.level !== "판단하기 일러요";
   return (
     <section className={s.arrival} aria-label="남은 시간" data-testid="arrival">
       {stale && (
@@ -41,28 +65,28 @@ export default function ArrivalCard({ item, stale, fetchedAt }: Props) {
           버스 정보가 오래됐어요. 실제와 다를 수 있어요.
         </div>
       )}
+      <div className={s.top}>
+        <span className={s.label}>다음 버스</span>
+        {!stale && <span className={s.away}>{stopsAwayText(item.stops_away)}</span>}
+      </div>
       {/* 오래된 정보(수집 중단·새벽)면 몇 시간 전 버스를 카운트다운하게 되므로 도착 시간 대신 안내만 */}
       {stale ? (
-        <div className={s.row}>
-          <span className={s.label}>남은 시간</span>
+        <div className={s.timeRow}>
           <span className={s.sub}>지금은 버스 위치를 확인할 수 없어요. 정류장 안내판을 확인해 주세요.</span>
         </div>
       ) : (
-        <div className={s.row}>
-          <span className={s.label}>남은 시간</span>
-          <span className={s.group}>
-            <span className={s.eta}>
-              {left < SOON_SEC ? (
-                <span className={s.soon}>곧 도착</span>
-              ) : (
-                <>
-                  <span className={s.num}>{t.m}</span><span className={s.unit}>분</span>
-                  <span className={s.num}>{t.s}</span><span className={s.unit}>초</span>
-                </>
-              )}
-            </span>
-            <span className={s.away}>· {stopsAwayText(item.stops_away)}</span>
+        <div className={s.timeRow}>
+          <span className={s.eta}>
+            {left < SOON_SEC ? (
+              <span className={s.soon}>곧 도착</span>
+            ) : (
+              <>
+                <span className={s.num}>{t.m}</span><span className={s.unit}>분</span>
+                <span className={s.num}>{t.s}</span><span className={s.unit}>초</span>
+              </>
+            )}
           </span>
+          <span className={s.verdict} data-testid="verdict">{v.badge}{showP ? ` · ${pct(item.p_board)}%` : ""}</span>
         </div>
       )}
     </section>

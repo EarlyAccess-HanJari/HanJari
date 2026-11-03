@@ -1,18 +1,17 @@
-.header { padding: 14px 16px 10px 20px; display: flex; flex-direction: column; gap: 6px; }
-.top { display: flex; align-items: center; justify-content: space-between; }
-.brand { display: flex; align-items: center; gap: 8px; }
-.wordmark { font-size: 17px; font-weight: 700; letter-spacing: -0.05em; }
-.refresh { width: 44px; height: 44px; border-radius: 22px; border: 1px solid var(--line); background: var(--card); display: flex; align-items: center; justify-content: center; padding: 0; }
-.stopBtn { all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 6px; min-height: 44px; border-radius: 8px; }
+/* 헤더는 두 줄: [노선 · 정류장 ▾ · 새로고침] / 상태 */
+.header { padding: 10px 14px 6px 20px; display: flex; flex-direction: column; gap: 0; }
+.line { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.stopBtn { all: unset; cursor: pointer; display: flex; align-items: center; gap: 8px; min-height: 44px; min-width: 0; border-radius: 8px; color: var(--muted); }
 .stopBtn:focus-visible { outline: 3px solid var(--blue); outline-offset: 4px; }
-.meta { display: flex; align-items: center; gap: 8px; }
-.routeChip { font-size: 12px; font-weight: 600; color: #fff; padding: 3px 8px; border-radius: 6px; }
-.sb02 { background: var(--route-sb02); }
-.jr03 { background: var(--route-jr03); }
-.metaText { font-size: 12px; color: var(--muted); }
-.nameRow { display: flex; align-items: center; gap: 6px; color: var(--muted); }
-.name { font-size: 24px; font-weight: 700; letter-spacing: -0.03em; color: var(--ink); }
-.status { margin: 0; font-size: 13px; min-height: 19px; }
+.routeChip { flex: none; font-size: 12px; font-weight: 700; color: #fff; padding: 3px 8px; border-radius: 6px; background: var(--navy); }
+.sb02 { background: var(--navy); }
+.jr03 { background: var(--navy); }
+.name { font-size: 20px; font-weight: 700; letter-spacing: -0.03em; color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.refresh { width: 40px; height: 40px; flex: none; border-radius: 20px; border: 0; background: transparent; color: var(--muted); display: flex; align-items: center; justify-content: center; padding: 0; }
+.refresh:disabled { opacity: 1; }
+.refresh[disabled] svg { animation: spin .9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.status { margin: 0; font-size: 12px; min-height: 18px; }
 .normal { color: var(--muted); font-weight: 500; }
 .warn { color: var(--warn); font-weight: 600; }
 .bad { color: var(--bad); font-weight: 600; }
