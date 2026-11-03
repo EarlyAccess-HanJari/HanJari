@@ -13,7 +13,7 @@ AI 예측(레포 `src/serve.py`, 모델 `models/lite/`)을 HTTP로 내준다. AI
 
 | 환경 변수 | 기본값 | 뜻 |
 |---|---|---|
-| `HANJARI_ML` | 레포 루트(이 폴더의 상위) | `src/serve.py`·`models/`가 있는 곳 |
+| `HANJARI_ML` | `hanjari-web` 옆의 `hanjari-ml` | `src/serve.py`·`models/`가 있는 곳. 실행한 작업 폴더와 무관하게 찾는다. |
 | `HANJARI_MODE` | `sample` | `sample` = 레포의 9/30 13:11 실제 스냅샷(키·서버 불필요) / `latest` = 수집기 최신 스냅샷(운영 서버 전용) |
 
 ## 운영 서버에서 (나중에)

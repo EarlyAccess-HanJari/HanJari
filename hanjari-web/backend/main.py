@@ -2,7 +2,7 @@
 frontend/dist 가 있으면(npm run build:prod) 화면도 같이 내준다 → 서버 하나로 전체 서비스.
 
 환경 변수
-  HANJARI_ML    AI 레포 폴더. 기본: 이 파일의 상위 폴더(레포 루트)
+  HANJARI_ML    AI 폴더. 기본: hanjari-web 옆의 hanjari-ml 폴더
   HANJARI_MODE  sample(기본) 레포에 든 9/30 13:11 실제 스냅샷 — 키·서버·API 호출 없이 개발용
                 latest       수집기가 방금 저장한 스냅샷 — 운영 서버(161.33.132.80) 전용, API 호출 없음
 
@@ -19,7 +19,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 
 ROOT = Path(__file__).resolve().parents[1]
-ML = Path(os.environ.get("HANJARI_ML", ROOT))
+ML = Path(os.environ.get("HANJARI_ML", ROOT.parent / "hanjari-ml"))
 DIST = ROOT / "frontend" / "dist"
 MODE = os.environ.get("HANJARI_MODE", "sample")
 RELEASE = os.environ.get("HANJARI_RELEASE", "development")

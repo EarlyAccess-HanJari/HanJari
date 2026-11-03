@@ -183,45 +183,71 @@ class NoSnapshotError(RuntimeError):
     pass
 
 
-def latest_snapshot(src, route=None):
+def _snapshot_files(sources, pattern):
+    """날짜 폴더가 바뀌어도 수집 시각으로 정렬한다. 잘못된 파일명은 선택하지 않는다."""
+    folders = sources if isinstance(sources, (list, tuple)) else [sources]
+    files = {}
+    for folder in folders:
+        for path in Path(folder).glob(pattern):
+            stamp = path.stem.rsplit("_", 1)[-1]
+            if len(path.parent.name) != 8 or len(stamp) != 6:
+                continue
+            try:
+                when = dt.datetime.strptime(path.parent.name + stamp, "%Y%m%d%H%M%S")
+            except ValueError:
+                continue
+            files[path] = when
+    return sorted(((when, path) for path, when in files.items()), reverse=True)
+
+
+def latest_snapshot(src, route=None, now=None):
     """최신 정상 도착 응답을 우선한다. 위치 파일 지연 때문에 지난 버스로 되돌아가지 않는다."""
     if route is None:
-        snapshots = [latest_snapshot(src, r) for r in B.STOPS]
-        return max(t for t, _ in snapshots), [f for _, files in snapshots for f in files]
-    for arr in sorted(src.glob(f"{route}_arr_*.json"), reverse=True):
+        snapshots = [latest_snapshot(src, r, now) for r in B.STOPS]
+        newest = max(snapshots, key=lambda pair: pair[1][0].parent.name + pair[0])
+        return newest[0], [f for _, files in snapshots for f in files]
+    for collected, arr in _snapshot_files(src, f"{route}_arr_*.json"):
         try:
             B.read_items(arr)
         except (OSError, ValueError, KeyError, TypeError):
             continue
         stamp = arr.stem.rsplit("_", 1)[-1]
         files = [arr]
-        # 같은 시각 위치는 모델 피처용. 더 최신 위치는 통과 확인에만 쓰며 과거 피처에 섞지 않는다.
-        for pos in sorted(src.glob(f"{route}_pos_*.json"), reverse=True):
-            if pos.stem.rsplit("_", 1)[-1] < stamp:
-                break
+        # 차량이 최신 위치 응답에서 빠져도 최근 통과 근거를 잃지 않는다.
+        # 도착 파일보다 먼저 수집한 위치도 제공 시각(dataTm)이 mkTm보다 새로울 수 있다.
+        # 같은 시각 위치만 모델 피처에 쓰고, 나머지는 통과 확인에만 쓴다.
+        reference = now
+        for at, pos in _snapshot_files(src, f"{route}_pos_*.json"):
+            paired = at == collected
+            if reference is not None and not paired and not -5 <= (reference - at).total_seconds() <= MAX_AGE + 5:
+                continue
             try:
                 B.read_items(pos)
             except (OSError, ValueError, KeyError, TypeError):
                 continue
-            if len(files) == 1 or pos.stem.rsplit("_", 1)[-1] == stamp:
+            reference = reference or max(collected, at)
+            if paired or -5 <= (reference - at).total_seconds() <= MAX_AGE + 5:
                 files.append(pos)
         return stamp, files
     raise NoSnapshotError("정상 도착 스냅샷이 없음(수집 또는 API 응답 확인 필요)")
 
 
 def exclude_departed(snap, now):
-    """복사본에만 적용: 더 새로운 동일 차량 위치로 통과가 확인되면 둘째 버스를 첫째로 선택한다."""
+    """날짜 경계를 포함한 복사본에서 같은 차량의 최신 제공 시각으로 통과를 확인한다."""
     passed = set()
     for route in B.STOPS:
         positions = {}
-        for f in sorted(snap.glob(f"{route}_pos_*.json")):
+        for _, f in _snapshot_files(snap, f"{route}_pos_*.json"):
             for v in B.read_items(f):
                 made = DQ.source_time(v.get("dataTm"))
-                key = (str(v.get("vehId") or ""), str(v.get("plainNo") or "").strip())
+                plate, vehicle_id = DQ.vehicle_key(v, "")
+                if not plate or vehicle_id is None or vehicle_id <= 0:
+                    continue
+                key = (vehicle_id, plate)
                 if made is not None and made.tzinfo is None and -5 <= (now - made).total_seconds() <= MAX_AGE:
                     if key not in positions or made > positions[key][0]:
                         positions[key] = made, v
-        for f in snap.glob(f"{route}_arr_*.json"):
+        for _, f in _snapshot_files(snap, f"{route}_arr_*.json"):
             body = json.loads(f.read_text())
             for it in B.response_items(body):
                 stop = B.num(it.get("staOrd"))
@@ -230,7 +256,8 @@ def exclude_departed(snap, now):
                 source = DQ.source_time(it.get("mkTm"))
 
                 def departed(slot):
-                    key = (str(it.get("vehId" + slot) or ""), str(it.get("plainNo" + slot) or "").strip())
+                    plate, vehicle_id = DQ.vehicle_key(it, slot)
+                    key = (vehicle_id, plate)
                     pos = positions.get(key)
                     if source is None or source.tzinfo is not None or pos is None or pos[0] < source:
                         return False
@@ -245,9 +272,12 @@ def exclude_departed(snap, now):
                 if (str(it.get("plainNo2") or "").strip() and (DQ.integer(it.get("vehId2")) or 0) > 0
                         and next_section is not None and 0 < next_section <= stop
                         and next_eta is not None and next_eta >= 0 and not departed("2")):
-                    for key, value in list(it.items()):
-                        if key.endswith("2") and key[:-1] + "1" in it:
-                            it[key[:-1] + "1"] = value
+                    second = {key[:-1] + "1": value for key, value in it.items() if key.endswith("2")}
+                    # 둘째 차량의 필드가 빠졌을 때 첫째 차량 값을 상속하면 차량과 인원이 섞인다.
+                    for key in list(it):
+                        if key.endswith(("1", "2")):
+                            del it[key]
+                    it.update(second)
                     it.update(plainNo2="", vehId2="0", traTime2="0", reride_Num2="", rerdie_Div2="0")
                 else:
                     passed.add((route, str(stop)))
@@ -308,12 +338,10 @@ def predict_live(n_ahead, key=None, log_dir=None, model_dir=None, reference_now=
             sources = list(log_dir) if isinstance(log_dir, (list, tuple)) else [Path(log_dir)]
             snapshots = []
             for route in B.STOPS:
-                for src in sources:
-                    try:
-                        snapshots.append(latest_snapshot(Path(src), route))
-                        break
-                    except RuntimeError:
-                        continue  # 한 노선의 실패가 다른 노선의 새 응답을 가리지 않게
+                try:
+                    snapshots.append(latest_snapshot(sources, route, reference_now))
+                except NoSnapshotError:
+                    continue  # 한 노선의 실패가 다른 노선의 새 응답을 가리지 않게
             snapshot_files = [f for _, files in snapshots for f in files]
             if not snapshot_files:
                 raise NoSnapshotError("정상 도착 스냅샷이 없음(수집 또는 API 응답 확인 필요)")
@@ -325,7 +353,7 @@ def predict_live(n_ahead, key=None, log_dir=None, model_dir=None, reference_now=
             now = max(dt.datetime.strptime(f.parent.name + f.stem[-6:], "%Y%m%d%H%M%S") for f in snapshot_files)
         # 위치 API가 먼저 갱신되고 도착 API가 옛 차량을 유지하는 경우도 처리한다.
         now = reference_now or now
-        passed = set().union(*(exclude_departed(Path(day), now) for day in days))
+        passed = exclude_departed(days, now)
         # 임시 폴더를 절대 경로로 넘김 — 예전엔 B.LOG 전역을 바꿨다 되돌려서 동시 요청이 꼬이고 B.LOG 가 지워진 폴더로 남았다(10-05 정원 발견)
         rows = [r for route in B.STOPS
                 for r in B.build(route, days, open_=True, hist_all=meta["hist_d"].get(route, {}), tab=meta["tab_d"][route])]
@@ -365,7 +393,7 @@ def source_health(now=None):
         entry = {"status": "missing", "collected_at": None, "age_sec": None}
         for folder in folders:
             try:
-                _, files = latest_snapshot(folder, route)
+                _, files = latest_snapshot(folder, route, now)
             except RuntimeError:
                 continue
             arr = files[0]

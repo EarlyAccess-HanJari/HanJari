@@ -46,6 +46,79 @@ class ArrivalFreshness(unittest.TestCase):
                          ("서울75사3170", "100000069", "19", "219", "21", "0"))
         self.assertEqual(item["plainNo2"], "")
 
+    def test_promotion_never_inherits_missing_second_vehicle_fields(self):
+        for missing in ("reride_Num2", "rerdie_Div2", "busType2"):
+            with self.subTest(missing=missing):
+                first = dict(self.first)
+                first.pop(missing)
+                _, item = self.prepare(first)
+                self.assertEqual(item["plainNo1"], self.first["plainNo2"])
+                self.assertIsNone(item.get(missing[:-1] + "1"))
+                if missing != "busType2":
+                    result = S.predict_live(0, log_dir=self.folder)[0]
+                    self.assertIsNone(result["r_now"])
+                    self.assertEqual(result["data_status"], "passenger_unavailable")
+
+    def test_promotion_copies_second_count_when_first_count_field_is_missing(self):
+        first = dict(self.first)
+        first.pop("reride_Num1")
+        _, item = self.prepare(first)
+        self.assertEqual(item.get("reride_Num1"), "19")
+
+    def test_recent_departure_survives_vehicle_missing_from_latest_position(self):
+        self.write("arr", "174039", [self.first])
+        self.write("pos", "174045", [dict(self.pos, dataTm="20261102174040")])
+        self.write("pos", "174106", [dict(self.pos, plainNo="서울75사3170", vehId="100000069",
+                                           sectOrd="21", dataTm="20261102174100")])
+        got = S.predict_live(0, log_dir=self.folder)[0]
+        self.assertEqual((got["plate"], got["r_now"]), ("서울75사3170", 19))
+
+    def test_provider_time_can_prove_departure_before_arrival_file_was_collected(self):
+        self.write("arr", "174039", [self.first])
+        self.write("pos", "174036", [self.pos])
+        got = S.predict_live(0, log_dir=self.folder)[0]
+        self.assertEqual((got["plate"], got["r_now"]), ("서울75사3170", 19))
+
+    def test_newer_wrapped_position_overrides_previous_departure(self):
+        self.write("arr", "174039", [self.first])
+        self.write("pos", "174045", [dict(self.pos, dataTm="20261102174040")])
+        self.write("pos", "174106", [dict(self.pos, sectOrd="1", dataTm="20261102174100")])
+        got = S.predict_live(0, log_dir=self.folder)[0]
+        self.assertEqual(got["plate"], "서울70사5508")
+
+    def test_after_midnight_position_is_used_for_previous_day_arrival(self):
+        first = dict(self.first, mkTm="2026-11-02 23:59:40", traTime1="120", traTime2="180")
+        self.write("arr", "235945", [first])
+        next_day = self.folder.parent / "20261103"
+        next_day.mkdir()
+        position = dict(self.pos, dataTm="20261103000005")
+        (next_day / "jr03_pos_000010.json").write_text(json.dumps(
+            {"msgHeader": {"headerCd": "0"}, "msgBody": {"itemList": [position]}}))
+        for folders in ([next_day, self.folder], [self.folder, next_day]):
+            got = S.predict_live(0, log_dir=folders, reference_now=dt.datetime(2026, 11, 3, 0, 0, 10))[0]
+            self.assertEqual((got["plate"], got["r_now"]), ("서울75사3170", 19))
+            self.assertEqual(got["updated_at"], "2026-11-02T23:59:45+09:00")
+            self.assertEqual(got["arrival_at"], "2026-11-03T00:02:40+09:00")
+
+    def test_newer_empty_arrival_wins_regardless_of_folder_order(self):
+        self.write("arr", "235945", [dict(self.first, mkTm="2026-11-02 23:59:40")])
+        next_day = self.folder.parent / "20261103"
+        next_day.mkdir()
+        (next_day / "jr03_arr_000010.json").write_text(json.dumps(
+            {"msgHeader": {"headerCd": "4"}, "msgBody": None}))
+        self.assertEqual(S.predict_live(0, log_dir=[self.folder, next_day],
+                                       reference_now=dt.datetime(2026, 11, 3, 0, 0, 10)), [])
+
+    def test_combined_snapshot_clock_uses_the_latest_date(self):
+        self.write("arr", "235945", [dict(self.first, mkTm="2026-11-02 23:59:40")])
+        next_day = self.folder.parent / "20261103"
+        next_day.mkdir()
+        (next_day / "sb02_arr_000010.json").write_text(json.dumps(
+            {"msgHeader": {"headerCd": "4"}, "msgBody": None}))
+        stamp, files = S.latest_snapshot([self.folder, next_day])
+        self.assertEqual(stamp, "000010")
+        self.assertEqual(len(files), 2)
+
     def test_stopped_at_target_is_not_departure(self):
         passed, item = self.prepare(positions=[dict(self.pos, stopFlag="1")])
         self.assertFalse(passed)
