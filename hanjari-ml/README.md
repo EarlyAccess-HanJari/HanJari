@@ -23,7 +23,9 @@
 ## 현재 기준 (2026-11-05)
 
 - 계획: [PRD·WBS v1.4, 마일스톤 v1.2](../docs/plan/). 사용자 직접 제출 익명 탑승 기록은 제외하고 팀 직접 관측과 학생 사용성 평가는 유지합니다.
-- 운영: `practical-20261104-v7`, HTTPS 443. 2026-11-05 03:34(KST) 공개 8000을 차단하고 nginx → `127.0.0.1:8000`으로 연결합니다. 같은 날 서버에서 바인딩·방화벽 규칙 제거를 확인했고, 외부에서 HTTPS 200·일반 HTTP 308·공개 8000 무응답을 확인했습니다.
+- 운영: 2026-11-05 05:04(KST) `practical-20261105-v8`로 전환했습니다. HTTPS 443과 nginx → `127.0.0.1:8000` 연결, 03:34(KST)부터의 공개 8000 차단을 유지합니다. nginx·인증서와 일반 HTTP의 HTTPS 308 이동은 변경하지 않았습니다.
+- 코드 통합 완료: `main`(`2fcffa1`), 웹 v8, 재학습 폴더 `~/hanjari-ml`의 `serve.py`·`train.py`가 같습니다. 웹과 재학습은 계속 서로 다른 폴더를 사용합니다.
+- v8 검증: 서버 ML 테스트 114개, 백엔드 테스트 2개와 `serve.py check`를 통과했습니다. 샘플 자료에서 6개 정류장 모두 `eta2_sec`를 확인했고, 전환 후 HTTPS 정상·공개 8000 무응답을 확인했습니다. 실제 운행 시간의 화면은 아직 확인 전입니다.
 - 코드: 범위폭 20명 초과도 확률 안내, 상태별 안내 구분, `eta2_sec` / 다음 버스 표시 구현. 둘째 버스의 탑승 확률은 제공하지 않습니다.
 - 2026-11-05 운영 모델 `meta.json`·`alerts.log` 확인 결과: 수업일 31일(9/23~11/4), API 재생 평가 MAE 2.58명, 현재 승객 수 기준 4.34명. 실제 탑승 성능이 아닙니다.
 - 저장소 `models/lite/meta.json`은 11/4 생성·11/3까지 수업일 30일인 사본입니다. 2026-11-05 확인한 운영 31일 모델과 구분합니다.
@@ -204,7 +206,7 @@ src/serve.py predict_latest(N)  ← 운영 백엔드가 부르는 함수
 ### 백엔드에서 쓰기
 운영 서버(**161.33.132.80**, 수집기와 같은 서버)에서는 **`predict_latest`** 를 씁니다.
 ```python
-import sys; sys.path.insert(0, "/home/ubuntu/hanjari-releases/practical-20261104-v7/hanjari-ml/src")
+import sys; sys.path.insert(0, "/home/ubuntu/hanjari-releases/practical-20261105-v8/hanjari-ml/src")
 import serve
 res = serve.predict_latest(3)        # 최신 저장 스냅샷 사용, 외부 버스 API 호출 없음
 ```
@@ -250,7 +252,7 @@ FastAPI    API + React 빌드 화면 + 예측 모델
 | `hanjari-watchdog.timer` | 10분마다 | 새 데이터 10분 넘게 없으면 수집기 재시작 + 알림, API 오류(키·한도)·디스크 부족 알림 |
 | `hanjari-daily.timer` | 매일 01:00 KST | 위 ①~⑥ + 결과 알림(이상 있으면 ⚠) |
 | `hanjari-fail@` | 작업 실패 시 | 실패 알림 |
-| `hanjari-web` | 24시간 | 백엔드 FastAPI `127.0.0.1:8000`(API + 화면, 운영 웹 릴리스 v7). 하루 마감이 끝나면 재시작해 새 모델을 읽음 — 유닛 `ops/systemd/hanjari-web.service` |
+| `hanjari-web` | 24시간 | 백엔드 FastAPI `127.0.0.1:8000`(API + 화면, 운영 웹 릴리스 v8). 하루 마감이 끝나면 재시작해 새 모델을 읽음 — 유닛 `ops/systemd/hanjari-web.service` |
 - 알림: 항상 `reports/alerts.log`, 디스코드 웹훅(`HANJARI_WEBHOOK`)을 넣으면 채널로.
 - 되돌리기: `python src/daily.py rollback` (바로 전 모델 버전으로).
 - **새 서버 설치**: `ops/install.sh`는 기존 MLOps 설치 템플릿입니다. 현재 모노레포 경로와 운영 설정을 대조해야 하며 웹 릴리스·HTTPS·방화벽 전체를 자동 구성하는 절차가 아닙니다. [RUNBOOK](ops/RUNBOOK.md)을 따릅니다.

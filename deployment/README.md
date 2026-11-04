@@ -2,12 +2,14 @@
 
 ## 현재 운영 구성
 
-확인 날짜: 2026-11-05. 서버와 외부 접속 점검에서 웹 `practical-20261104-v7`, HTTPS 200 응답, 일반 HTTP 요청의 308 이동 및 03:34(KST) 이후 공개 8000 무응답을 확인했습니다.
+확인 날짜: 2026-11-05. 05:04(KST)에 `main` 커밋 `2fcffa1`의 웹 `practical-20261105-v8`로 전환했습니다. 전환 후 HTTPS 정상·공개 8000 무응답을 확인했습니다. nginx와 인증서는 변경하지 않았으며, 일반 HTTP 요청의 HTTPS 308 이동도 유지합니다.
 
-- 웹: `/home/ubuntu/hanjari-releases/practical-20261104-v7/hanjari-web/backend`. 실행 환경은 `/home/ubuntu/hanjari-web/backend/.venv`를 사용합니다.
-- 웹의 AI 코드: `/home/ubuntu/hanjari-releases/practical-20261104-v7/hanjari-ml`. 경로는 `installed/hanjari-web.service.d/20261102-freshness.conf`가 지정합니다.
-- v7은 커밋 `b3f0134`로 11월 4일 18:20(KST)에 전환했습니다. 되돌릴 때 쓰는 v6 설정은 v7 폴더의 `previous-service.conf`에 있습니다.
-- 이 레포의 `serve.py`·`train.py`는 서버 두 폴더의 변경을 합친 코드입니다. 서버의 웹(v7)에는 메모리 수정(PR #11)이 없고, 매일 작업 폴더에는 다음 버스 응답(`eta2_sec`)이 없습니다. 웹을 `/home/ubuntu/hanjari-ml`로 돌리면 다음 버스 표시가 사라집니다.
+- 웹: `/home/ubuntu/hanjari-releases/practical-20261105-v8/hanjari-web/backend`. 실행 환경은 `/home/ubuntu/hanjari-web/backend/.venv`를 사용합니다.
+- 웹의 AI 코드: `/home/ubuntu/hanjari-releases/practical-20261105-v8/hanjari-ml`. 경로는 `installed/hanjari-web.service.d/20261102-freshness.conf`가 지정합니다.
+- v7 릴리스는 되돌리기용으로 남겨 두었습니다. v7 설정은 v8 폴더의 `previous-service.conf`에 있습니다.
+- `main`(`2fcffa1`), 웹 v8, 재학습 폴더 `~/hanjari-ml`의 `serve.py`·`train.py`가 같습니다. 웹과 재학습은 계속 서로 다른 폴더를 사용합니다.
+- 재학습 폴더의 `src/serve.py`와 `tests/test_data_quality.py`를 같은 코드로 맞췄습니다. 교체 전 파일은 `~/hanjari-backups/daily-20261105-050434`에 보관했습니다.
+- v8 검증: 서버 ML 테스트 114개, 백엔드 테스트 2개와 `serve.py check`를 통과했습니다. 샘플 자료에서 6개 정류장 모두 `eta2_sec`를 확인했고, 전환 후 HTTPS 정상·공개 8000 무응답을 확인했습니다. 실제 운행 시간의 화면은 아직 확인 전입니다.
 - 릴리스의 `hanjari-ml/models`와 `hanjari-ml/data`는 `/home/ubuntu/hanjari-ml` 아래를 가리키는 심볼릭 링크입니다. 따라서 매일 작업이 모델을 교체하면 웹 재시작 후 웹에도 반영되며, 그 뒤에는 `models/lite`가 Git과 달라질 수 있습니다.
 - 매일 작업: `/home/ubuntu/hanjari-ml`
 - 수집기: `/home/ubuntu/hanjari`. 코드는 `hanjari/src/`와 같습니다.
@@ -16,11 +18,21 @@
 - 11/5 03:34(KST): uvicorn을 `127.0.0.1:8000`에만 바인딩하고 서버 방화벽의 8000 허용 규칙을 제거했습니다. 외부에서 `http://161.33.132.80:8000/`의 응답이 없음을 확인했으며, 서비스 주소는 `https://161.33.132.80/`입니다.
 - 남은 접근 설정 점검은 11/8, 앱·모델 복구 검증은 11/13 예정입니다. 공개 8000 차단 완료가 이 검증의 완료를 뜻하지 않습니다.
 
+### 웹 v8을 v7로 되돌리기
+
+1. `~/hanjari-releases/practical-20261105-v8/previous-service.conf`의 대상이 v7인지와 uvicorn의 `127.0.0.1:8000` 바인딩을 확인합니다.
+2. 이 파일을 `/etc/systemd/system/hanjari-web.service.d/20261102-freshness.conf`로 복원하고 `sudo systemctl daemon-reload`, `sudo systemctl restart hanjari-web`을 실행합니다.
+3. 서비스의 v7 경로, HTTPS 응답, 다음 버스 표시와 공개 8000 무응답을 다시 확인합니다. 웹 릴리스 복원은 재학습 폴더의 코드나 모델을 복원하지 않습니다.
+
 ### 공개 8000 차단 설정 되돌리기
 
-서버의 `~/hanjari-backups/close-8000-20261105-033411` 백업을 기준으로 복원합니다. 이 백업은 위의 v7 → v6 웹 릴리스 복원용 `previous-service.conf`와 목적이 다릅니다. 복원 전 백업에 포함된 파일과 방화벽 규칙을 확인하고, 복원 후 바인딩·nginx 연결·외부 접근 범위를 다시 검증합니다. 백업 내용과 실제 복구 성공 여부는 2026-11-05 기준 미확인입니다.
+서버의 `~/hanjari-backups/close-8000-20261105-033411` 백업은 계속 유효합니다. 다만 **이 백업의 웹 설정은 v7을 가리키므로, 그대로 복원하면 웹도 v7로 돌아갈 수 있습니다.** v8 → v7 웹 릴리스 복원용 `previous-service.conf`와 목적이 다릅니다. 복원 전 대상 릴리스·바인딩·방화벽 규칙을 확인하고, 복원 후 nginx 연결과 외부 접근 범위를 다시 검증합니다. 실제 복구 성공 여부는 아직 확인 전입니다.
 
 API 키가 든 `.env`, 인증서 개인키, SSH 키, 수집 로그, 가상환경, 과거 모델과 백업은 Git에 올리지 않습니다.
+
+## 이전 웹 릴리스 전환 기록
+
+- v7은 커밋 `b3f0134`로 11월 4일 18:20(KST)에 전환했습니다. 되돌릴 때 쓰는 v6 설정은 v7 폴더의 `previous-service.conf`에 있습니다.
 
 ## 2026년 10월 19일에 확인한 구성
 
