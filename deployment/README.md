@@ -1,8 +1,8 @@
 # 운영 구성 안내
 
-## 현재 서버에서 확인한 구성
+## 현재 운영 구성
 
-확인 시각: 2026년 11월 5일(KST).
+확인 날짜: 2026-11-05. 서버와 외부 접속 점검에서 웹 `practical-20261104-v7`, HTTPS 200 응답, 일반 HTTP 요청의 308 이동 및 03:34(KST) 이후 공개 8000 무응답을 확인했습니다.
 
 - 웹: `/home/ubuntu/hanjari-releases/practical-20261104-v7/hanjari-web/backend`. 실행 환경은 `/home/ubuntu/hanjari-web/backend/.venv`를 사용합니다.
 - 웹의 AI 코드: `/home/ubuntu/hanjari-releases/practical-20261104-v7/hanjari-ml`. 경로는 `installed/hanjari-web.service.d/20261102-freshness.conf`가 지정합니다.
@@ -12,7 +12,13 @@
 - 매일 작업: `/home/ubuntu/hanjari-ml`
 - 수집기: `/home/ubuntu/hanjari`. 코드는 `hanjari/src/`와 같습니다.
 - 품질 점검: `/home/ubuntu/hanjari-quality`, `validation-20261103-v4` 릴리스를 가리키는 링크입니다.
-- HTTPS: `installed/nginx-hanjari.conf`가 443 포트를 받아 8000 포트로 전달합니다. 인증서 갱신은 `installed/hanjari-cert-renew.*`가 맡습니다.
+- HTTPS: `https://161.33.132.80/`. `installed/nginx-hanjari.conf`가 443 포트를 받아 내부 `127.0.0.1:8000`으로 전달합니다. 80의 일반 요청은 HTTPS로 308 이동하며 인증서 검증용 ACME 경로는 예외입니다. 인증서 갱신은 `installed/hanjari-cert-renew.*`가 맡습니다.
+- 11/5 03:34(KST): uvicorn을 `127.0.0.1:8000`에만 바인딩하고 서버 방화벽의 8000 허용 규칙을 제거했습니다. 외부에서 `http://161.33.132.80:8000/`의 응답이 없음을 확인했으며, 서비스 주소는 `https://161.33.132.80/`입니다.
+- 남은 접근 설정 점검은 11/8, 앱·모델 복구 검증은 11/13 예정입니다. 공개 8000 차단 완료가 이 검증의 완료를 뜻하지 않습니다.
+
+### 공개 8000 차단 설정 되돌리기
+
+서버의 `~/hanjari-backups/close-8000-20261105-033411` 백업을 기준으로 복원합니다. 이 백업은 위의 v7 → v6 웹 릴리스 복원용 `previous-service.conf`와 목적이 다릅니다. 복원 전 백업에 포함된 파일과 방화벽 규칙을 확인하고, 복원 후 바인딩·nginx 연결·외부 접근 범위를 다시 검증합니다. 백업 내용과 실제 복구 성공 여부는 2026-11-05 기준 미확인입니다.
 
 API 키가 든 `.env`, 인증서 개인키, SSH 키, 수집 로그, 가상환경, 과거 모델과 백업은 Git에 올리지 않습니다.
 
@@ -44,7 +50,7 @@ API 키가 든 `.env`, 인증서 개인키, SSH 키, 수집 로그, 가상환경
 
 원래의 DVC 파일은 보존했지만 DVC 저장소 설정과 캐시는 포함하지 않았습니다. 포함된 CSV와 현재 모델로 샘플 실행은 가능하며, `dvc pull`은 별도 저장소 연결 없이 바로 사용할 수 없습니다.
 
-## 원본과 정리본의 차이
+## 초기 저장소 정리 기록 (2026년 10월 19일)
 
 애플리케이션 코드, 모델, 배포 화면은 내려받은 내용을 그대로 보존했습니다. `hanjari-ml/.gitignore`만 노선별 통계 CSV 네 개가 새 저장소에 포함되도록 조정했습니다.
 
