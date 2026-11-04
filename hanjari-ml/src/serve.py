@@ -42,6 +42,9 @@ KST = dt.timezone(dt.timedelta(hours=9))
 # ponytail: 기능흐름도는 60초지만 수집 간격이 한산한 시간 150초라 180초. 백엔드가 API 를 직접 부르게 되면 60초로.
 MAX_AGE = 180
 HARD = 0.3
+# 11-04: 동대문역 앞 구간에서 차가 4~5분 서 있는 동안 API 남은 시간이 '5초'에 멈춰 화면이 내내 '갱신 중'이었다.
+# 도착 정보보다 새 위치(60초 안)가 '아직 정류장 전·정차 중'이면 '곧 도착'(지금+30초)으로 두고 확률을 낸다.
+APPROACH_POS_SEC, ARRIVING_SEC = 60, 30
 NAMES = {("sb02", "30"): "한성대입구역5번출구", ("sb02", "31"): "한성대입구역2번출구", ("sb02", "32"): "녹십자약국",
          ("jr03", "19"): "동대문역.흥인지문", ("jr03", "20"): "동묘앞역", ("jr03", "23"): "창신역4번출구"}
 LEVELS = ["확률 보류", "판단하기 일러요", "여유 있음", "어려울 수 있음", "빠듯함"]
@@ -225,8 +228,9 @@ def latest_snapshot(src, route=None, now=None):
     raise NoSnapshotError("정상 도착 스냅샷이 없음(수집 또는 API 응답 확인 필요)")
 
 
-def exclude_departed(snap, now):
-    """날짜 경계를 포함한 복사본에서 같은 차량의 최신 제공 시각으로 통과를 확인한다."""
+def exclude_departed(snap, now, approaching=None):
+    """날짜 경계를 포함한 복사본에서 같은 차량의 최신 제공 시각으로 통과를 확인한다.
+    approaching(set)을 주면 새 위치가 아직 정류장 전·정차 중으로 확인한 첫째 차량 (노선, 정류장, 차량번호)를 담는다."""
     passed = set()
     for route in B.STOPS:
         positions = {}
@@ -248,17 +252,26 @@ def exclude_departed(snap, now):
                     continue
                 source = DQ.source_time(it.get("mkTm"))
 
-                def departed(slot):
+                def located(slot, newer=True):  # 통과 판정은 도착 정보보다 새 위치만 근거로 쓴다
                     plate, vehicle_id = DQ.vehicle_key(it, slot)
-                    key = (vehicle_id, plate)
-                    pos = positions.get(key)
-                    if source is None or source.tzinfo is not None or pos is None or pos[0] < source:
-                        return False
-                    section = B.num(pos[1].get("sectOrd"))
+                    pos = positions.get((vehicle_id, plate))
+                    if source is None or source.tzinfo is not None or pos is None or newer and pos[0] < source:
+                        return None
+                    return B.num(pos[1].get("sectOrd")), B.num(pos[1].get("stopFlag")), pos[0]
+
+                def departed(slot):
+                    section, flag, _ = located(slot) or (None, None, None)
                     # 목표 정류장에 정차 중인 차를 통과 차량으로 처리하지 않는다.
-                    return section is not None and (section > stop or section == stop and B.num(pos[1].get("stopFlag")) == 0)
+                    return section is not None and (section > stop or section == stop and flag == 0)
 
                 if not departed("1"):
+                    # 통과 근거가 없고, 60초 안의 도착 정보('곧 도착')와 위치가 둘 다 '아직 안 옴'이면 접근 중.
+                    # 위치는 도착 정보보다 몇십 초 먼저 찍히는 일이 잦아(동대문) 새 것만 고집하면 근거를 버린다.
+                    section, flag, made = located("1", newer=False) or (None, None, None)
+                    if (approaching is not None and section is not None
+                            and max(now - made, now - source).total_seconds() <= APPROACH_POS_SEC
+                            and (section == stop - 1 or section == stop and flag == 1)):  # 바로 앞 구간·정차 중만(순환 되감김 제외)
+                        approaching.add((route, str(stop), DQ.vehicle_key(it, "1")[0]))
                     continue
                 next_section = B.num(it.get("sectOrd2"))
                 next_eta = B.num(it.get("traTime2"))
@@ -346,11 +359,12 @@ def predict_live(n_ahead, key=None, log_dir=None, model_dir=None, reference_now=
             now = max(dt.datetime.strptime(f.parent.name + f.stem[-6:], "%Y%m%d%H%M%S") for f in snapshot_files)
         # 위치 API가 먼저 갱신되고 도착 API가 옛 차량을 유지하는 경우도 처리한다.
         now = reference_now or now
-        passed = exclude_departed(days, now)
+        approaching = set()
+        passed = exclude_departed(days, now, approaching)
         # 임시 폴더를 절대 경로로 넘김 — 예전엔 B.LOG 전역을 바꿨다 되돌려서 동시 요청이 꼬이고 B.LOG 가 지워진 폴더로 남았다(10-05 정원 발견)
         rows = [r for route in B.STOPS
                 for r in B.build(route, days, open_=True, hist_all=meta["hist_d"].get(route, {}), tab=meta["tab_d"][route])]
-    out = results(rows, m, meta, n_ahead, now, MAX_AGE, lite=True)
+    out = results(rows, m, meta, n_ahead, now, MAX_AGE, lite=True, approaching=approaching)
     for result in out:
         check_arrival(result, now, (result["route"], result["stop"]) in passed)
     return out
@@ -406,7 +420,7 @@ def source_health(now=None):
     return routes
 
 
-def results(rows, m, meta, n_ahead, now, max_age, lite):
+def results(rows, m, meta, n_ahead, now, max_age, lite, approaching=()):
     out, eligible, indices = [], [], []
     for row in rows:
         r = dict(row)
@@ -429,6 +443,9 @@ def results(rows, m, meta, n_ahead, now, max_age, lite):
                       arrival_status="upcoming")
         if stale or status != "ok":
             result["r_now"] = None
+        if (result["route"], result["stop"], result["plate"]) in approaching and not stale \
+                and dt.datetime.fromisoformat(result["arrival_at"]).replace(tzinfo=None) <= source_now:
+            result["arrival_at"] = (source_now + dt.timedelta(seconds=ARRIVING_SEC)).replace(tzinfo=KST).isoformat()
         check_arrival(result, source_now)
         issue = result.get("prediction_status") or ("collection_stale" if age > MAX_AGE or age < -5 else status if status != "ok" else None)
         if not issue:
