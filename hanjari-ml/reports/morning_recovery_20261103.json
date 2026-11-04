@@ -1,0 +1,155 @@
+{
+  "checked_at": "2026-11-02T21:04:04.326966+00:00",
+  "status": "upstream_503_observed_after_first_bus",
+  "ten_hour_run_complete": false,
+  "collection_windows": {
+    "sb02": {
+      "first_bus": "05:51",
+      "collection_from": "05:41",
+      "first_observed_attempt": "2026-11-03T05:41:52.723713+09:00"
+    },
+    "jr03": {
+      "first_bus": "06:00",
+      "collection_from": "05:50",
+      "first_observed_attempt": "2026-11-03T05:50:00.061644+09:00"
+    }
+  },
+  "timezone": "Asia/Seoul",
+  "night_no_new_requests": {
+    "from": "2026-11-03T00:50:00.709179+09:00",
+    "through": "2026-11-03T05:37:50.823182+09:00",
+    "observations": 59,
+    "reserved_total_first": {
+      "arr": 10,
+      "pos": 10
+    },
+    "reserved_total_last": {
+      "arr": 10,
+      "pos": 10
+    }
+  },
+  "post_first_bus": {
+    "checked_at": "2026-11-03T06:02:50.820076+09:00",
+    "allowed": {
+      "sb02": true,
+      "jr03": true
+    },
+    "collector": {
+      "heartbeat": "2026-11-03T06:02:30.328197+09:00",
+      "endpoints": {
+        "sb02:arr": {
+          "status": "upstream_error",
+          "last_attempt": "2026-11-03T06:02:30.029637+09:00",
+          "last_success": null,
+          "failure_stage": "request",
+          "http_status": 503,
+          "api_header_code": null,
+          "response_prefix_sha256": "494756fba1426c9041353308d8511aa01eb8bc959e553332b119f9131fb5d2d4"
+        },
+        "sb02:pos": {
+          "status": "upstream_error",
+          "last_attempt": "2026-11-03T06:02:30.029637+09:00",
+          "last_success": null,
+          "failure_stage": "request",
+          "http_status": 503,
+          "api_header_code": null,
+          "response_prefix_sha256": "494756fba1426c9041353308d8511aa01eb8bc959e553332b119f9131fb5d2d4"
+        },
+        "jr03:arr": {
+          "status": "upstream_error",
+          "last_attempt": "2026-11-03T06:02:30.029637+09:00",
+          "last_success": null,
+          "failure_stage": "request",
+          "http_status": 503,
+          "api_header_code": null,
+          "response_prefix_sha256": "494756fba1426c9041353308d8511aa01eb8bc959e553332b119f9131fb5d2d4"
+        },
+        "jr03:pos": {
+          "status": "upstream_error",
+          "last_attempt": "2026-11-03T06:02:30.029637+09:00",
+          "last_success": null,
+          "failure_stage": "request",
+          "http_status": 503,
+          "api_header_code": null,
+          "response_prefix_sha256": "494756fba1426c9041353308d8511aa01eb8bc959e553332b119f9131fb5d2d4"
+        }
+      }
+    },
+    "usage_day": "20261103",
+    "reserved_total": {
+      "arr": 17,
+      "pos": 17
+    },
+    "display_checks": {
+      "compared_counts": 0,
+      "issues": []
+    }
+  },
+  "browser": {
+    "checked_at": "2026-11-02T21:03:24.739Z",
+    "routes": [
+      {
+        "route": "jr03",
+        "stop": "23",
+        "source_status": "stale",
+        "http": 200,
+        "cache_control": "no-store, no-store",
+        "current_count": null,
+        "prediction_status": "collection_stale",
+        "loads": "현재 차내 인원 · 추정\n—\n도착 시 차내 인원\n—"
+      },
+      {
+        "route": "sb02",
+        "stop": "32",
+        "source_status": "stale",
+        "http": 200,
+        "cache_control": "no-store, no-store",
+        "current_count": null,
+        "prediction_status": "collection_stale",
+        "loads": "현재 차내 인원 · 추정\n—\n도착 시 차내 인원\n—"
+      }
+    ],
+    "input": {
+      "before": 3,
+      "after": 5
+    },
+    "reload_rows": 6,
+    "cache": {
+      "controller": true,
+      "apiEntries": []
+    },
+    "errors": [],
+    "frontend_modified": false,
+    "provider_requests_added": 0,
+    "field_accuracy_verified": false
+  },
+  "new_provider_diagnostic_calls": 0,
+  "provider_internal_root_cause_known": false,
+  "provider_quota_exhaustion_proven": false,
+  "field_accuracy_verified": false,
+  "interpretation": [
+    "운행 종료 구간의 데이터 없음은 정상이다. 해당 시간대 수집기를 강제 실행하지 않았다.",
+    "첫차 10분 전 수집을 준비하며, 이 시각과 실제 첫차 시각은 구분한다.",
+    "두 노선의 첫차 이후 06:02:30 요청도 HTTP 503이었다. 정상 빈 API 응답(코드 4)과 다르다.",
+    "운영 브라우저에서 두 노선의 과거 인원/확률이 숨겨지고 새로고침 및 대기 인원 입력이 동작했다.",
+    "실시간 신규 인원 자료가 없으므로 실제 차량 전환 및 현장 인원 정확도는 검증 완료로 세지 않는다."
+  ],
+  "evidence": {
+    "morning-sb02-resume.json": {
+      "sha256": "f2c13753aba8d970e013549097bb7df3d55901837bc6270bd6e790d73d97264b",
+      "bytes": 4489
+    },
+    "morning-after-first-buses.json": {
+      "sha256": "d8c476bdd319bbb97583a1558ddf4aeab6cc2239d2fe69f04ce7acdecd50a3db",
+      "bytes": 4488
+    },
+    "morning-browser.json": {
+      "sha256": "2e588c683df25a2a83c5894bde87524ef88d94b096d4c7b40f66740af92e068f",
+      "bytes": 936
+    },
+    "morning-browser.png": {
+      "sha256": "e2f4899cfcb4ddbf7b86e7011e61e52f75996399707761ad08d4659fe77e9c3e",
+      "bytes": 49222
+    }
+  }
+}

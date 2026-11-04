@@ -1,0 +1,8 @@
+[Unit]
+Description=Check HanJari certificate renewal every six hours
+[Timer]
+OnCalendar=*-*-* 00,06,12,18:00:00
+RandomizedDelaySec=45m
+Persistent=true
+[Install]
+WantedBy=timers.target

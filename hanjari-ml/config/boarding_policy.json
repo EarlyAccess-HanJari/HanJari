@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "enabled": true,
+  "validation_evidence": "API 기반 검증(현장 계수 아님, 2026-11-04): 공공 카드 18개월 미태그 하차 성북02 1.8%·종로03 2.3%, 종점 출발 직후 API 중앙값 0명(차량별 평균 0.3~2.8명), 차량 카운터 누적 없음, 41일 원본에서 만차 인원 산출. 현장 대조(차량번호·시각·인원)는 11주차 계획 — 결과에 따라 정원을 고친다.",
+  "vehicles": [
+    {
+      "route": "jr03",
+      "plate": "서울70사5507",
+      "vehicle_id": "100000013",
+      "capacity": 54,
+      "evidence": "docs/PRACTICAL_CAPACITY_20261104.md — API 기준 실제 만차 인원(혼잡 시간 붐비는 정류장 출발 인원 상위 1%·더 못 타는 인원), 법정 정원 아님"
+    },
+    {
+      "route": "jr03",
+      "plate": "서울70사5508",
+      "vehicle_id": "100000014",
+      "capacity": 54,
+      "evidence": "docs/PRACTICAL_CAPACITY_20261104.md — API 기준 실제 만차 인원(혼잡 시간 붐비는 정류장 출발 인원 상위 1%·더 못 타는 인원), 법정 정원 아님"
+    },
+    {
+      "route": "jr03",
+      "plate": "서울75사2007",
+      "vehicle_id": "100000057",
+      "capacity": 52,
+      "evidence": "docs/PRACTICAL_CAPACITY_20261104.md — API 기준 실제 만차 인원(혼잡 시간 붐비는 정류장 출발 인원 상위 1%·더 못 타는 인원), 법정 정원 아님"
+    },
+    {
+      "route": "jr03",
+      "plate": "서울75사3163",
+      "vehicle_id": "100000066",
+      "capacity": 52,
+      "evidence": "docs/PRACTICAL_CAPACITY_20261104.md — API 기준 실제 만차 인원(혼잡 시간 붐비는 정류장 출발 인원 상위 1%·더 못 타는 인원), 법정 정원 아님"
+    },
+    {
+      "route": "jr03",
+      "plate": "서울75사3164",
+      "vehicle_id": "100000067",
+      "capacity": 52,
+      "evidence": "docs/PRACTICAL_CAPACITY_20261104.md — API 기준 실제 만차 인원(혼잡 시간 붐비는 정류장 출발 인원 상위 1%·더 못 타는 인원), 법정 정원 아님"
+    },
+    {
+      "route": "jr03",
+      "plate": "서울75사3170",
+      "vehicle_id": "100000069",
+      "capacity": 52,
+      "evidence": "docs/PRACTICAL_CAPACITY_20261104.md — API 기준 실제 만차 인원(혼잡 시간 붐비는 정류장 출발 인원 상위 1%·더 못 타는 인원), 법정 정원 아님"
+    },
+    {
+      "route": "jr03",
+      "plate": "서울75사3171",
+      "vehicle_id": "100000070",
+      "capacity": 52,
+      "evidence": "docs/PRACTICAL_CAPACITY_20261104.md — API 기준 실제 만차 인원(혼잡 시간 붐비는 정류장 출발 인원 상위 1%·더 못 타는 인원), 법정 정원 아님"
+    },
+    {
+      "route": "jr03",
+      "plate": "서울75사3176",
+      "vehicle_id": "100000071",
+      "capacity": 54,
+      "evidence": "docs/PRACTICAL_CAPACITY_20261104.md — API 기준 실제 만차 인원(혼잡 시간 붐비는 정류장 출발 인원 상위 1%·더 못 타는 인원), 법정 정원 아님"
+    },
+    {
+      "route": "jr03",
+      "plate": "서울75사3189",
+      "vehicle_id": "100000073",
+      "capacity": 52,
+      "evidence": "docs/PRACTICAL_CAPACITY_20261104.md — API 기준 실제 만차 인원(혼잡 시간 붐비는 정류장 출발 인원 상위 1%·더 못 타는 인원), 법정 정원 아님"
+    },
+    {
+      "route": "sb02",
+      "plate": "서울70사6418",
+      "vehicle_id": "107063706",
+      "capacity": 38,
+      "evidence": "docs/PRACTICAL_CAPACITY_20261104.md — API 기준 실제 만차 인원(혼잡 시간 붐비는 정류장 출발 인원 상위 1%·더 못 타는 인원), 법정 정원 아님"
+    },
+    {
+      "route": "sb02",
+      "plate": "서울70사6419",
+      "vehicle_id": "107063707",
+      "capacity": 60,
+      "evidence": "docs/PRACTICAL_CAPACITY_20261104.md — API 기준 실제 만차 인원(혼잡 시간 붐비는 정류장 출발 인원 상위 1%·더 못 타는 인원), 법정 정원 아님"
+    },
+    {
+      "route": "sb02",
+      "plate": "서울70사6421",
+      "vehicle_id": "107063708",
+      "capacity": 60,
+      "evidence": "docs/PRACTICAL_CAPACITY_20261104.md — API 기준 실제 만차 인원(혼잡 시간 붐비는 정류장 출발 인원 상위 1%·더 못 타는 인원), 법정 정원 아님"
+    },
+    {
+      "route": "sb02",
+      "plate": "서울70사6597",
+      "vehicle_id": "107063679",
+      "capacity": 38,
+      "evidence": "docs/PRACTICAL_CAPACITY_20261104.md — API 기준 실제 만차 인원(혼잡 시간 붐비는 정류장 출발 인원 상위 1%·더 못 타는 인원), 법정 정원 아님"
+    },
+    {
+      "route": "sb02",
+      "plate": "서울71사1601",
+      "vehicle_id": "107063771",
+      "capacity": 38,
+      "evidence": "docs/PRACTICAL_CAPACITY_20261104.md — API 기준 실제 만차 인원(혼잡 시간 붐비는 정류장 출발 인원 상위 1%·더 못 타는 인원), 법정 정원 아님"
+    }
+  ]
+}

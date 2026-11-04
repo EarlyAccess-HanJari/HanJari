@@ -1,10 +1,12 @@
 import s from "./Notice.module.css";
 
-export type NoticeKind = "night" | "no_stop" | "server_down" | "timeout" | "bad_input" | "unknown";
+export type NoticeKind = "offline" | "night" | "no_stop" | "data_delayed" | "server_down" | "timeout" | "bad_input" | "unknown";
 
 const TEXT: Record<NoticeKind, { title: string; body: string }> = {
+  offline:     { title: "인터넷 연결을 확인해 주세요", body: "실시간 버스 정보는 인터넷 연결이 필요해요. 연결되면 최신 정보를 다시 불러올게요." },
   night:       { title: "지금은 버스가 다니지 않아요", body: "새벽 시간이라 도착 정보가 없어요. 운행이 시작되면 이 화면에서 바로 보여드릴게요." },
   no_stop:     { title: "이 정류장 버스 정보가 없어요", body: "잠시 뒤 다시 확인해 주세요." },
+  data_delayed: { title: "버스 정보 갱신이 늦어지고 있어요", body: "새 정보가 들어오면 자동으로 보여드릴게요. 지금은 정류장 안내판을 확인해 주세요." },
   server_down: { title: "서버에 연결할 수 없어요",     body: "잠시 뒤 다시 시도해 주세요. 그동안은 정류장 안내판의 도착 정보를 확인해 주세요." },
   timeout:     { title: "응답이 너무 느려요",         body: "네트워크 상태를 확인하고 다시 시도해 주세요." },
   bad_input:   { title: "입력을 확인해 주세요",       body: "" },

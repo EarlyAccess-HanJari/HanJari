@@ -1,0 +1,1407 @@
+{
+  "status": "offline_experiment_not_promoted",
+  "group_basis": "API_busType_provisional_not_size",
+  "target": "arrival_API_count_not_physical_headcount",
+  "data": {
+    "first_date": "20260923",
+    "last_date": "20261102",
+    "observed_days": 39,
+    "rows": 374487,
+    "raw_files": 294958,
+    "dataset_sha256": "5d548262a4bb301fe7a1862b1bf9fe3c097ed65bfc24cb5683a655baf1a6c319",
+    "note": "Observed dates include partial collection days; not 39 complete service days.",
+    "arrival_events": 26289
+  },
+  "spec": {
+    "status": "offline_experiment",
+    "target": "arrival_API_count_not_physical_headcount",
+    "group_basis": "API_busType_provisional_not_size",
+    "registry": null,
+    "dataset_sha256": "5d548262a4bb301fe7a1862b1bf9fe3c097ed65bfc24cb5683a655baf1a6c319",
+    "source_schema": 2,
+    "realtime_features": [
+      "eta",
+      "stops_away",
+      "r_now",
+      "minute",
+      "weekday",
+      "route_code",
+      "stop",
+      "bus_type",
+      "eta_gap",
+      "eta2",
+      "r2",
+      "route_load",
+      "pos_dwell",
+      "pos_frac",
+      "pos_sect",
+      "source_age"
+    ],
+    "historical_comparison_features": [
+      "q_csv",
+      "off_csv",
+      "q_pending"
+    ],
+    "params": {
+      "n_estimators": 300,
+      "max_depth": 5,
+      "learning_rate": 0.06,
+      "min_child_weight": 5,
+      "subsample": 0.8,
+      "random_state": 0,
+      "n_jobs": 4,
+      "tree_method": "hist",
+      "objective": "reg:absoluteerror"
+    },
+    "xgboost_version": "3.2.0",
+    "min_group_arrivals": 100,
+    "date_splits": [
+      {
+        "name": "validation_1",
+        "train": [
+          "20260923",
+          "20260924",
+          "20260925",
+          "20260928",
+          "20260929",
+          "20260930",
+          "20261001",
+          "20261002"
+        ],
+        "test": [
+          "20261003",
+          "20261004",
+          "20261005",
+          "20261006",
+          "20261007",
+          "20261008",
+          "20261009",
+          "20261010"
+        ]
+      },
+      {
+        "name": "validation_2",
+        "train": [
+          "20260923",
+          "20260924",
+          "20260925",
+          "20260928",
+          "20260929",
+          "20260930",
+          "20261001",
+          "20261002",
+          "20261003",
+          "20261004",
+          "20261005",
+          "20261006",
+          "20261007",
+          "20261008",
+          "20261009",
+          "20261010"
+        ],
+        "test": [
+          "20261011",
+          "20261012",
+          "20261013",
+          "20261014",
+          "20261015",
+          "20261016",
+          "20261017",
+          "20261018"
+        ]
+      },
+      {
+        "name": "validation_3",
+        "train": [
+          "20260923",
+          "20260924",
+          "20260925",
+          "20260928",
+          "20260929",
+          "20260930",
+          "20261001",
+          "20261002",
+          "20261003",
+          "20261004",
+          "20261005",
+          "20261006",
+          "20261007",
+          "20261008",
+          "20261009",
+          "20261010",
+          "20261011",
+          "20261012",
+          "20261013",
+          "20261014",
+          "20261015",
+          "20261016",
+          "20261017",
+          "20261018"
+        ],
+        "test": [
+          "20261019",
+          "20261020",
+          "20261021",
+          "20261022",
+          "20261023",
+          "20261024",
+          "20261025",
+          "20261026"
+        ]
+      },
+      {
+        "name": "holdout",
+        "train": [
+          "20260923",
+          "20260924",
+          "20260925",
+          "20260928",
+          "20260929",
+          "20260930",
+          "20261001",
+          "20261002",
+          "20261003",
+          "20261004",
+          "20261005",
+          "20261006",
+          "20261007",
+          "20261008",
+          "20261009",
+          "20261010",
+          "20261011",
+          "20261012",
+          "20261013",
+          "20261014",
+          "20261015",
+          "20261016",
+          "20261017",
+          "20261018",
+          "20261019",
+          "20261020",
+          "20261021",
+          "20261022",
+          "20261023",
+          "20261024",
+          "20261025",
+          "20261026"
+        ],
+        "test": [
+          "20261027",
+          "20261028",
+          "20261029",
+          "20261030",
+          "20261031",
+          "20261101",
+          "20261102"
+        ]
+      }
+    ],
+    "limitations": [
+      "API error can occur in both input and label",
+      "no independent boarding labels or verified capacity",
+      "3-group API-code split is not a physical size classification without a registry",
+      "arrival events at neighboring stops may be correlated",
+      "no model promotion"
+    ],
+    "comparison": "same fixed point-model recipe, not an exact replay of the deployed model"
+  },
+  "inventory": [
+    {
+      "route": "jr03",
+      "plate": "서울70사5507",
+      "vehicle_id": "100000013",
+      "group": "jr03",
+      "rows": 20835,
+      "arrival_events": 1423,
+      "days": 39,
+      "first_date": "20260923",
+      "last_date": "20261102",
+      "api_bus_types": [
+        1
+      ]
+    },
+    {
+      "route": "jr03",
+      "plate": "서울70사5508",
+      "vehicle_id": "100000014",
+      "group": "jr03",
+      "rows": 22310,
+      "arrival_events": 1839,
+      "days": 39,
+      "first_date": "20260923",
+      "last_date": "20261102",
+      "api_bus_types": [
+        1
+      ]
+    },
+    {
+      "route": "jr03",
+      "plate": "서울75사2007",
+      "vehicle_id": "100000057",
+      "group": "jr03",
+      "rows": 4641,
+      "arrival_events": 385,
+      "days": 26,
+      "first_date": "20260928",
+      "last_date": "20261030",
+      "api_bus_types": [
+        0
+      ]
+    },
+    {
+      "route": "jr03",
+      "plate": "서울75사3163",
+      "vehicle_id": "100000066",
+      "group": "jr03",
+      "rows": 23136,
+      "arrival_events": 1686,
+      "days": 39,
+      "first_date": "20260923",
+      "last_date": "20261102",
+      "api_bus_types": [
+        0
+      ]
+    },
+    {
+      "route": "jr03",
+      "plate": "서울75사3164",
+      "vehicle_id": "100000067",
+      "group": "jr03",
+      "rows": 29006,
+      "arrival_events": 2109,
+      "days": 39,
+      "first_date": "20260923",
+      "last_date": "20261102",
+      "api_bus_types": [
+        0
+      ]
+    },
+    {
+      "route": "jr03",
+      "plate": "서울75사3170",
+      "vehicle_id": "100000069",
+      "group": "jr03",
+      "rows": 17368,
+      "arrival_events": 1404,
+      "days": 39,
+      "first_date": "20260923",
+      "last_date": "20261102",
+      "api_bus_types": [
+        0
+      ]
+    },
+    {
+      "route": "jr03",
+      "plate": "서울75사3171",
+      "vehicle_id": "100000070",
+      "group": "jr03",
+      "rows": 28843,
+      "arrival_events": 2137,
+      "days": 39,
+      "first_date": "20260923",
+      "last_date": "20261102",
+      "api_bus_types": [
+        0
+      ]
+    },
+    {
+      "route": "jr03",
+      "plate": "서울75사3176",
+      "vehicle_id": "100000071",
+      "group": "jr03",
+      "rows": 25821,
+      "arrival_events": 2047,
+      "days": 39,
+      "first_date": "20260923",
+      "last_date": "20261102",
+      "api_bus_types": [
+        1
+      ]
+    },
+    {
+      "route": "jr03",
+      "plate": "서울75사3189",
+      "vehicle_id": "100000073",
+      "group": "jr03",
+      "rows": 17493,
+      "arrival_events": 1294,
+      "days": 26,
+      "first_date": "20260923",
+      "last_date": "20261102",
+      "api_bus_types": [
+        0
+      ]
+    },
+    {
+      "route": "sb02",
+      "plate": "서울70사6418",
+      "vehicle_id": "107063706",
+      "group": "sb02_api0",
+      "rows": 39081,
+      "arrival_events": 2495,
+      "days": 39,
+      "first_date": "20260923",
+      "last_date": "20261102",
+      "api_bus_types": [
+        0
+      ]
+    },
+    {
+      "route": "sb02",
+      "plate": "서울70사6419",
+      "vehicle_id": "107063707",
+      "group": "sb02_api1",
+      "rows": 41695,
+      "arrival_events": 2494,
+      "days": 39,
+      "first_date": "20260923",
+      "last_date": "20261102",
+      "api_bus_types": [
+        1
+      ]
+    },
+    {
+      "route": "sb02",
+      "plate": "서울70사6421",
+      "vehicle_id": "107063708",
+      "group": "sb02_api1",
+      "rows": 37380,
+      "arrival_events": 2490,
+      "days": 39,
+      "first_date": "20260923",
+      "last_date": "20261102",
+      "api_bus_types": [
+        1
+      ]
+    },
+    {
+      "route": "sb02",
+      "plate": "서울70사6597",
+      "vehicle_id": "107063679",
+      "group": "sb02_api0",
+      "rows": 31646,
+      "arrival_events": 2162,
+      "days": 39,
+      "first_date": "20260923",
+      "last_date": "20261102",
+      "api_bus_types": [
+        0
+      ]
+    },
+    {
+      "route": "sb02",
+      "plate": "서울71사1601",
+      "vehicle_id": "107063771",
+      "group": "sb02_api0",
+      "rows": 35232,
+      "arrival_events": 2324,
+      "days": 38,
+      "first_date": "20260923",
+      "last_date": "20261102",
+      "api_bus_types": [
+        0
+      ]
+    }
+  ],
+  "evaluation": {
+    "validation": {
+      "dates": [
+        "20261003",
+        "20261004",
+        "20261005",
+        "20261006",
+        "20261007",
+        "20261008",
+        "20261009",
+        "20261010",
+        "20261011",
+        "20261012",
+        "20261013",
+        "20261014",
+        "20261015",
+        "20261016",
+        "20261017",
+        "20261018",
+        "20261019",
+        "20261020",
+        "20261021",
+        "20261022",
+        "20261023",
+        "20261024",
+        "20261025",
+        "20261026"
+      ],
+      "all": {
+        "models": {
+          "persistence": {
+            "rows": 240550,
+            "arrival_events": 16604,
+            "days": 24,
+            "mae": 4.409616754729693,
+            "bias": -3.0991695505424413,
+            "p90_absolute_error": 13.0,
+            "error_over_10_share": 0.1371032932973345
+          },
+          "historical_pooled": {
+            "rows": 240550,
+            "arrival_events": 16604,
+            "days": 24,
+            "mae": 2.804426501821526,
+            "bias": -0.6135971118778676,
+            "p90_absolute_error": 7.298784095556981,
+            "error_over_10_share": 0.052108713723518184
+          },
+          "realtime_pooled": {
+            "rows": 240550,
+            "arrival_events": 16604,
+            "days": 24,
+            "mae": 2.8677903236108393,
+            "bias": -0.7541738741012584,
+            "p90_absolute_error": 7.372642807915245,
+            "error_over_10_share": 0.0549466360214095
+          },
+          "realtime_2_routes": {
+            "rows": 240550,
+            "arrival_events": 16604,
+            "days": 24,
+            "mae": 2.802921571979226,
+            "bias": -0.7174983011052185,
+            "p90_absolute_error": 7.199376220836225,
+            "error_over_10_share": 0.05201556239220075
+          },
+          "realtime_3_groups": {
+            "rows": 240550,
+            "arrival_events": 16604,
+            "days": 24,
+            "mae": 2.8209161882386793,
+            "bias": -0.6890736762319255,
+            "p90_absolute_error": 7.2641376892225065,
+            "error_over_10_share": 0.05253998537682404
+          }
+        },
+        "paired_differences": {
+          "historical_pooled": {
+            "three_groups_minus_reference_mae": 0.016489686417153315,
+            "day_cluster_bootstrap_95_interval": [
+              -0.01245637591537855,
+              0.04156780149006941
+            ],
+            "bootstrap_days": 24
+          },
+          "realtime_pooled": {
+            "three_groups_minus_reference_mae": -0.04687413537216001,
+            "day_cluster_bootstrap_95_interval": [
+              -0.061057080177910984,
+              -0.03000340772398359
+            ],
+            "bootstrap_days": 24
+          },
+          "realtime_2_routes": {
+            "three_groups_minus_reference_mae": 0.01799461625945309,
+            "day_cluster_bootstrap_95_interval": [
+              0.008009136324444326,
+              0.028905942517612655
+            ],
+            "bootstrap_days": 24
+          }
+        }
+      },
+      "1_plus_stops": {
+        "models": {
+          "persistence": {
+            "rows": 181982,
+            "arrival_events": 15450,
+            "days": 24,
+            "mae": 5.54252404352048,
+            "bias": -3.8294389563507125,
+            "p90_absolute_error": 14.0,
+            "error_over_10_share": 0.16896694276897595
+          },
+          "historical_pooled": {
+            "rows": 181982,
+            "arrival_events": 15450,
+            "days": 24,
+            "mae": 3.5049236068395193,
+            "bias": -0.6737414788735926,
+            "p90_absolute_error": 8.095014835609918,
+            "error_over_10_share": 0.06322880480647208
+          },
+          "realtime_pooled": {
+            "rows": 181982,
+            "arrival_events": 15450,
+            "days": 24,
+            "mae": 3.5650621562552884,
+            "bias": -0.8089225106543783,
+            "p90_absolute_error": 8.112015208570414,
+            "error_over_10_share": 0.06512320145877451
+          },
+          "realtime_2_routes": {
+            "rows": 181982,
+            "arrival_events": 15450,
+            "days": 24,
+            "mae": 3.486149367224705,
+            "bias": -0.766598681476074,
+            "p90_absolute_error": 7.92121786623798,
+            "error_over_10_share": 0.062007489267678705
+          },
+          "realtime_3_groups": {
+            "rows": 181982,
+            "arrival_events": 15450,
+            "days": 24,
+            "mae": 3.505016563534246,
+            "bias": -0.7357407099973855,
+            "p90_absolute_error": 8.004459131279582,
+            "error_over_10_share": 0.06259780826095918
+          }
+        },
+        "paired_differences": {
+          "historical_pooled": {
+            "three_groups_minus_reference_mae": 9.295669472653145e-05,
+            "day_cluster_bootstrap_95_interval": [
+              -0.03709648024252518,
+              0.031752697230445014
+            ],
+            "bootstrap_days": 24
+          },
+          "realtime_pooled": {
+            "three_groups_minus_reference_mae": -0.060045592721042595,
+            "day_cluster_bootstrap_95_interval": [
+              -0.07893754914098997,
+              -0.03887639849528205
+            ],
+            "bootstrap_days": 24
+          },
+          "realtime_2_routes": {
+            "three_groups_minus_reference_mae": 0.018867196309540812,
+            "day_cluster_bootstrap_95_interval": [
+              0.007386176016575219,
+              0.03118983375072329
+            ],
+            "bootstrap_days": 24
+          }
+        }
+      },
+      "1_to_2_stops": {
+        "models": {
+          "persistence": {
+            "rows": 78152,
+            "arrival_events": 15059,
+            "days": 24,
+            "mae": 4.22862130019353,
+            "bias": -2.365897500530094,
+            "p90_absolute_error": 11.0,
+            "error_over_10_share": 0.11509432007550423
+          },
+          "historical_pooled": {
+            "rows": 78152,
+            "arrival_events": 15059,
+            "days": 24,
+            "mae": 3.06413384016805,
+            "bias": -0.6676535830708734,
+            "p90_absolute_error": 7.283573972764228,
+            "error_over_10_share": 0.04887006140748241
+          },
+          "realtime_pooled": {
+            "rows": 78152,
+            "arrival_events": 15059,
+            "days": 24,
+            "mae": 3.092778413144056,
+            "bias": -0.712147451336206,
+            "p90_absolute_error": 7.1752390840396245,
+            "error_over_10_share": 0.049439640875232005
+          },
+          "realtime_2_routes": {
+            "rows": 78152,
+            "arrival_events": 15059,
+            "days": 24,
+            "mae": 3.030967930252,
+            "bias": -0.738155179877371,
+            "p90_absolute_error": 7.057991667995929,
+            "error_over_10_share": 0.04725536235262069
+          },
+          "realtime_3_groups": {
+            "rows": 78152,
+            "arrival_events": 15059,
+            "days": 24,
+            "mae": 3.043741878048519,
+            "bias": -0.694893173080399,
+            "p90_absolute_error": 7.115234230493036,
+            "error_over_10_share": 0.047563281149482974
+          }
+        },
+        "paired_differences": {
+          "historical_pooled": {
+            "three_groups_minus_reference_mae": -0.02039196211953076,
+            "day_cluster_bootstrap_95_interval": [
+              -0.04728670519574741,
+              0.006937594517164882
+            ],
+            "bootstrap_days": 24
+          },
+          "realtime_pooled": {
+            "three_groups_minus_reference_mae": -0.04903653509553685,
+            "day_cluster_bootstrap_95_interval": [
+              -0.06399729761640656,
+              -0.03390852939349743
+            ],
+            "bootstrap_days": 24
+          },
+          "realtime_2_routes": {
+            "three_groups_minus_reference_mae": 0.012773947796519192,
+            "day_cluster_bootstrap_95_interval": [
+              0.0028560402524687384,
+              0.024293333719271372
+            ],
+            "bootstrap_days": 24
+          }
+        }
+      },
+      "groups_1_to_2_stops": {
+        "jr03": {
+          "models": {
+            "persistence": {
+              "rows": 47072,
+              "arrival_events": 7967,
+              "days": 24,
+              "mae": 4.794024368224603,
+              "bias": -3.7974451795029536,
+              "p90_absolute_error": 12.0,
+              "error_over_10_share": 0.13886207418912616
+            },
+            "historical_pooled": {
+              "rows": 47072,
+              "arrival_events": 7967,
+              "days": 24,
+              "mae": 3.0932536488570137,
+              "bias": -0.5222291536232551,
+              "p90_absolute_error": 7.188303405990164,
+              "error_over_10_share": 0.04144545406279388
+            },
+            "realtime_pooled": {
+              "rows": 47072,
+              "arrival_events": 7967,
+              "days": 24,
+              "mae": 3.166627307988444,
+              "bias": -0.530941350939227,
+              "p90_absolute_error": 7.238053965488623,
+              "error_over_10_share": 0.041493842013804044
+            },
+            "realtime_2_routes": {
+              "rows": 47072,
+              "arrival_events": 7967,
+              "days": 24,
+              "mae": 3.093743925331017,
+              "bias": -0.541499931097811,
+              "p90_absolute_error": 7.106042257762649,
+              "error_over_10_share": 0.03953833179872892
+            },
+            "realtime_3_groups": {
+              "rows": 47072,
+              "arrival_events": 7967,
+              "days": 24,
+              "mae": 3.093743925331017,
+              "bias": -0.541499931097811,
+              "p90_absolute_error": 7.106042257762649,
+              "error_over_10_share": 0.03953833179872892
+            }
+          },
+          "paired_differences": {
+            "historical_pooled": {
+              "three_groups_minus_reference_mae": 0.0004902764740033483,
+              "day_cluster_bootstrap_95_interval": [
+                -0.020596078222774237,
+                0.020807237944420062
+              ],
+              "bootstrap_days": 24
+            },
+            "realtime_pooled": {
+              "three_groups_minus_reference_mae": -0.07288338265742711,
+              "day_cluster_bootstrap_95_interval": [
+                -0.08548045814717523,
+                -0.060970139631491366
+              ],
+              "bootstrap_days": 24
+            },
+            "realtime_2_routes": {
+              "three_groups_minus_reference_mae": 0.0,
+              "day_cluster_bootstrap_95_interval": [
+                0.0,
+                0.0
+              ],
+              "bootstrap_days": 24
+            }
+          }
+        },
+        "sb02_api0": {
+          "models": {
+            "persistence": {
+              "rows": 17886,
+              "arrival_events": 4050,
+              "days": 24,
+              "mae": 3.5699413797692663,
+              "bias": -0.7753760938891657,
+              "p90_absolute_error": 10.0,
+              "error_over_10_share": 0.0896771543835814
+            },
+            "historical_pooled": {
+              "rows": 17886,
+              "arrival_events": 4050,
+              "days": 24,
+              "mae": 2.976437419691671,
+              "bias": -0.7434432086522368,
+              "p90_absolute_error": 7.387405885749109,
+              "error_over_10_share": 0.05757349358057419
+            },
+            "realtime_pooled": {
+              "rows": 17886,
+              "arrival_events": 4050,
+              "days": 24,
+              "mae": 2.970700443458066,
+              "bias": -0.8224308075217923,
+              "p90_absolute_error": 7.043431001112421,
+              "error_over_10_share": 0.05858219721455015
+            },
+            "realtime_2_routes": {
+              "rows": 17886,
+              "arrival_events": 4050,
+              "days": 24,
+              "mae": 2.9167536762597934,
+              "bias": -0.8862201933426441,
+              "p90_absolute_error": 6.9673897862538166,
+              "error_over_10_share": 0.056334597763246994
+            },
+            "realtime_3_groups": {
+              "rows": 17886,
+              "arrival_events": 4050,
+              "days": 24,
+              "mae": 2.915830564337953,
+              "bias": -0.9087583343121369,
+              "p90_absolute_error": 7.034742510855665,
+              "error_over_10_share": 0.057202545316379735
+            }
+          },
+          "paired_differences": {
+            "historical_pooled": {
+              "three_groups_minus_reference_mae": -0.060606855353718014,
+              "day_cluster_bootstrap_95_interval": [
+                -0.12031804376869414,
+                0.00018195549357432003
+              ],
+              "bootstrap_days": 24
+            },
+            "realtime_pooled": {
+              "three_groups_minus_reference_mae": -0.05486987912011321,
+              "day_cluster_bootstrap_95_interval": [
+                -0.09175161691935983,
+                -0.018068544971028132
+              ],
+              "bootstrap_days": 24
+            },
+            "realtime_2_routes": {
+              "three_groups_minus_reference_mae": -0.0009231119218404693,
+              "day_cluster_bootstrap_95_interval": [
+                -0.024928121884537656,
+                0.02424371087099652
+              ],
+              "bootstrap_days": 24
+            }
+          }
+        },
+        "sb02_api1": {
+          "models": {
+            "persistence": {
+              "rows": 13194,
+              "arrival_events": 3042,
+              "days": 24,
+              "mae": 3.6247710157473465,
+              "bias": -0.7342312738762443,
+              "p90_absolute_error": 9.0,
+              "error_over_10_share": 0.08668597820471588
+            },
+            "historical_pooled": {
+              "rows": 13194,
+              "arrival_events": 3042,
+              "days": 24,
+              "mae": 3.104624631458109,
+              "bias": -0.9476169117377549,
+              "p90_absolute_error": 7.5194173523614305,
+              "error_over_10_share": 0.05672770322671703
+            },
+            "realtime_pooled": {
+              "rows": 13194,
+              "arrival_events": 3042,
+              "days": 24,
+              "mae": 3.0618979502916632,
+              "bias": -1.039899393910535,
+              "p90_absolute_error": 7.1495000710007215,
+              "error_over_10_share": 0.05807765085378497
+            },
+            "realtime_2_routes": {
+              "rows": 13194,
+              "arrival_events": 3042,
+              "days": 24,
+              "mae": 3.0186179551941157,
+              "bias": -1.0560674292174104,
+              "p90_absolute_error": 6.994507368702908,
+              "error_over_10_share": 0.0553785309949018
+            },
+            "realtime_3_groups": {
+              "rows": 13194,
+              "arrival_events": 3042,
+              "days": 24,
+              "mae": 3.083082611062368,
+              "bias": -0.811898451149676,
+              "p90_absolute_error": 7.22197536817328,
+              "error_over_10_share": 0.055747288908038414
+            }
+          },
+          "paired_differences": {
+            "historical_pooled": {
+              "three_groups_minus_reference_mae": -0.021542020395741268,
+              "day_cluster_bootstrap_95_interval": [
+                -0.08055656596648839,
+                0.03946644979093262
+              ],
+              "bootstrap_days": 24
+            },
+            "realtime_pooled": {
+              "three_groups_minus_reference_mae": 0.02118466077070469,
+              "day_cluster_bootstrap_95_interval": [
+                -0.020089649215948958,
+                0.07426569075514405
+              ],
+              "bootstrap_days": 24
+            },
+            "realtime_2_routes": {
+              "three_groups_minus_reference_mae": 0.06446465586825223,
+              "day_cluster_bootstrap_95_interval": [
+                0.02712869357264547,
+                0.11362182329368829
+              ],
+              "bootstrap_days": 24
+            }
+          }
+        }
+      }
+    },
+    "holdout": {
+      "dates": [
+        "20261027",
+        "20261028",
+        "20261029",
+        "20261030",
+        "20261031",
+        "20261101",
+        "20261102"
+      ],
+      "all": {
+        "models": {
+          "persistence": {
+            "rows": 66120,
+            "arrival_events": 4623,
+            "days": 7,
+            "mae": 4.561710412371895,
+            "bias": -3.0798069673358897,
+            "p90_absolute_error": 13.0,
+            "error_over_10_share": 0.14408923752050862
+          },
+          "historical_pooled": {
+            "rows": 66120,
+            "arrival_events": 4623,
+            "days": 7,
+            "mae": 2.8597870655544795,
+            "bias": -0.6793576304536646,
+            "p90_absolute_error": 7.432166906160736,
+            "error_over_10_share": 0.05513225871628073
+          },
+          "realtime_pooled": {
+            "rows": 66120,
+            "arrival_events": 4623,
+            "days": 7,
+            "mae": 2.9494370485571775,
+            "bias": -0.7812287142826301,
+            "p90_absolute_error": 7.564762735956527,
+            "error_over_10_share": 0.057856550271010054
+          },
+          "realtime_2_routes": {
+            "rows": 66120,
+            "arrival_events": 4623,
+            "days": 7,
+            "mae": 2.869937519630879,
+            "bias": -0.7352996225192903,
+            "p90_absolute_error": 7.355031532933538,
+            "error_over_10_share": 0.05530460676219535
+          },
+          "realtime_3_groups": {
+            "rows": 66120,
+            "arrival_events": 4623,
+            "days": 7,
+            "mae": 2.87154122291921,
+            "bias": -0.7140939276746321,
+            "p90_absolute_error": 7.418635958350718,
+            "error_over_10_share": 0.05546005735798557
+          }
+        },
+        "paired_differences": {
+          "historical_pooled": {
+            "three_groups_minus_reference_mae": 0.0117541573647304,
+            "day_cluster_bootstrap_95_interval": [
+              -0.013880672636069846,
+              0.039895841004691776
+            ],
+            "bootstrap_days": 7
+          },
+          "realtime_pooled": {
+            "three_groups_minus_reference_mae": -0.0778958256379676,
+            "day_cluster_bootstrap_95_interval": [
+              -0.09295526202361551,
+              -0.06070373022248212
+            ],
+            "bootstrap_days": 7
+          },
+          "realtime_2_routes": {
+            "three_groups_minus_reference_mae": 0.0016037032883309266,
+            "day_cluster_bootstrap_95_interval": [
+              -0.00489053534495425,
+              0.010849768222054398
+            ],
+            "bootstrap_days": 7
+          }
+        }
+      },
+      "1_plus_stops": {
+        "models": {
+          "persistence": {
+            "rows": 49449,
+            "arrival_events": 4233,
+            "days": 7,
+            "mae": 5.777628797003706,
+            "bias": -3.8024562487602704,
+            "p90_absolute_error": 14.0,
+            "error_over_10_share": 0.17808499659085844
+          },
+          "historical_pooled": {
+            "rows": 49449,
+            "arrival_events": 4233,
+            "days": 7,
+            "mae": 3.594646840596053,
+            "bias": -0.7266288140108215,
+            "p90_absolute_error": 8.265502240333195,
+            "error_over_10_share": 0.06636299490259898
+          },
+          "realtime_pooled": {
+            "rows": 49449,
+            "arrival_events": 4233,
+            "days": 7,
+            "mae": 3.6911517912294727,
+            "bias": -0.8320185690566375,
+            "p90_absolute_error": 8.34123424071551,
+            "error_over_10_share": 0.06864072405059977
+          },
+          "realtime_2_routes": {
+            "rows": 49449,
+            "arrival_events": 4233,
+            "days": 7,
+            "mae": 3.5997470617828697,
+            "bias": -0.7642132748340705,
+            "p90_absolute_error": 8.159404290021463,
+            "error_over_10_share": 0.06578343858480733
+          },
+          "realtime_3_groups": {
+            "rows": 49449,
+            "arrival_events": 4233,
+            "days": 7,
+            "mae": 3.600506888962953,
+            "bias": -0.7500562520781678,
+            "p90_absolute_error": 8.220016649584982,
+            "error_over_10_share": 0.06604717434304087
+          }
+        },
+        "paired_differences": {
+          "historical_pooled": {
+            "three_groups_minus_reference_mae": 0.005860048366899573,
+            "day_cluster_bootstrap_95_interval": [
+              -0.019406478145148363,
+              0.03243541942647485
+            ],
+            "bootstrap_days": 7
+          },
+          "realtime_pooled": {
+            "three_groups_minus_reference_mae": -0.09064490226651989,
+            "day_cluster_bootstrap_95_interval": [
+              -0.10898314668991607,
+              -0.06673422802707596
+            ],
+            "bootstrap_days": 7
+          },
+          "realtime_2_routes": {
+            "three_groups_minus_reference_mae": 0.0007598271800830503,
+            "day_cluster_bootstrap_95_interval": [
+              -0.009202390407567197,
+              0.014427337360601844
+            ],
+            "bootstrap_days": 7
+          }
+        }
+      },
+      "1_to_2_stops": {
+        "models": {
+          "persistence": {
+            "rows": 22033,
+            "arrival_events": 4140,
+            "days": 7,
+            "mae": 4.460152117370939,
+            "bias": -2.310835449147621,
+            "p90_absolute_error": 12.0,
+            "error_over_10_share": 0.1259933200855039
+          },
+          "historical_pooled": {
+            "rows": 22033,
+            "arrival_events": 4140,
+            "days": 7,
+            "mae": 3.189189933054811,
+            "bias": -0.6764995932586415,
+            "p90_absolute_error": 7.626276559511583,
+            "error_over_10_share": 0.05453314158720337
+          },
+          "realtime_pooled": {
+            "rows": 22033,
+            "arrival_events": 4140,
+            "days": 7,
+            "mae": 3.2557852434053483,
+            "bias": -0.6705493564948055,
+            "p90_absolute_error": 7.530054445580464,
+            "error_over_10_share": 0.05523379262349851
+          },
+          "realtime_2_routes": {
+            "rows": 22033,
+            "arrival_events": 4140,
+            "days": 7,
+            "mae": 3.1601141981451466,
+            "bias": -0.6757220253078701,
+            "p90_absolute_error": 7.343154145146027,
+            "error_over_10_share": 0.052262834521892496
+          },
+          "realtime_3_groups": {
+            "rows": 22033,
+            "arrival_events": 4140,
+            "days": 7,
+            "mae": 3.1600112474866826,
+            "bias": -0.6560755056651851,
+            "p90_absolute_error": 7.393254791664384,
+            "error_over_10_share": 0.05268811040006692
+          }
+        },
+        "paired_differences": {
+          "historical_pooled": {
+            "three_groups_minus_reference_mae": -0.029178685568128415,
+            "day_cluster_bootstrap_95_interval": [
+              -0.07784555140178287,
+              0.013707710296782008
+            ],
+            "bootstrap_days": 7
+          },
+          "realtime_pooled": {
+            "three_groups_minus_reference_mae": -0.09577399591866564,
+            "day_cluster_bootstrap_95_interval": [
+              -0.11421454169133292,
+              -0.07680080557609242
+            ],
+            "bootstrap_days": 7
+          },
+          "realtime_2_routes": {
+            "three_groups_minus_reference_mae": -0.00010295065846399609,
+            "day_cluster_bootstrap_95_interval": [
+              -0.015672587165527673,
+              0.01734410869507244
+            ],
+            "bootstrap_days": 7
+          }
+        }
+      },
+      "groups_1_to_2_stops": {
+        "jr03": {
+          "models": {
+            "persistence": {
+              "rows": 13258,
+              "arrival_events": 2154,
+              "days": 7,
+              "mae": 4.776226137194394,
+              "bias": -3.638695384134393,
+              "p90_absolute_error": 12.0,
+              "error_over_10_share": 0.14079724445140074
+            },
+            "historical_pooled": {
+              "rows": 13258,
+              "arrival_events": 2154,
+              "days": 7,
+              "mae": 3.1153693186834004,
+              "bias": -0.4087420257491995,
+              "p90_absolute_error": 7.384561491961423,
+              "error_over_10_share": 0.044071609701282766
+            },
+            "realtime_pooled": {
+              "rows": 13258,
+              "arrival_events": 2154,
+              "days": 7,
+              "mae": 3.2284156041659053,
+              "bias": -0.3459595105157837,
+              "p90_absolute_error": 7.440627593712174,
+              "error_over_10_share": 0.044859662892802334
+            },
+            "realtime_2_routes": {
+              "rows": 13258,
+              "arrival_events": 2154,
+              "days": 7,
+              "mae": 3.135646060099132,
+              "bias": -0.35554028173594915,
+              "p90_absolute_error": 7.343055540184975,
+              "error_over_10_share": 0.04336145142900018
+            },
+            "realtime_3_groups": {
+              "rows": 13258,
+              "arrival_events": 2154,
+              "days": 7,
+              "mae": 3.135646060099132,
+              "bias": -0.35554028173594915,
+              "p90_absolute_error": 7.343055540184975,
+              "error_over_10_share": 0.04336145142900018
+            }
+          },
+          "paired_differences": {
+            "historical_pooled": {
+              "three_groups_minus_reference_mae": 0.020276741415731436,
+              "day_cluster_bootstrap_95_interval": [
+                -0.015409390602032514,
+                0.05856128794534786
+              ],
+              "bootstrap_days": 7
+            },
+            "realtime_pooled": {
+              "three_groups_minus_reference_mae": -0.09276954406677351,
+              "day_cluster_bootstrap_95_interval": [
+                -0.11764864411643718,
+                -0.06489319424996824
+              ],
+              "bootstrap_days": 7
+            },
+            "realtime_2_routes": {
+              "three_groups_minus_reference_mae": 0.0,
+              "day_cluster_bootstrap_95_interval": [
+                0.0,
+                0.0
+              ],
+              "bootstrap_days": 7
+            }
+          }
+        },
+        "sb02_api0": {
+          "models": {
+            "persistence": {
+              "rows": 5301,
+              "arrival_events": 1205,
+              "days": 7,
+              "mae": 3.7402581719801637,
+              "bias": -0.5110979868448748,
+              "p90_absolute_error": 10.0,
+              "error_over_10_share": 0.09831839437648567
+            },
+            "historical_pooled": {
+              "rows": 5301,
+              "arrival_events": 1205,
+              "days": 7,
+              "mae": 2.9979997173550132,
+              "bias": -0.5877088029821242,
+              "p90_absolute_error": 7.37785352209527,
+              "error_over_10_share": 0.0592676468298875
+            },
+            "realtime_pooled": {
+              "rows": 5301,
+              "arrival_events": 1205,
+              "days": 7,
+              "mae": 3.0193891690987447,
+              "bias": -0.6339328111098935,
+              "p90_absolute_error": 7.114132889679303,
+              "error_over_10_share": 0.05869665834396125
+            },
+            "realtime_2_routes": {
+              "rows": 5301,
+              "arrival_events": 1205,
+              "days": 7,
+              "mae": 2.922131680181074,
+              "bias": -0.6602920075892014,
+              "p90_absolute_error": 6.960945899971599,
+              "error_over_10_share": 0.055884631735254146
+            },
+            "realtime_3_groups": {
+              "rows": 5301,
+              "arrival_events": 1205,
+              "days": 7,
+              "mae": 2.9448909243979493,
+              "bias": -0.7705968598376028,
+              "p90_absolute_error": 7.177686803268255,
+              "error_over_10_share": 0.05686500452060618
+            }
+          },
+          "paired_differences": {
+            "historical_pooled": {
+              "three_groups_minus_reference_mae": -0.053108792957063944,
+              "day_cluster_bootstrap_95_interval": [
+                -0.10336116627012978,
+                -0.010765411018353111
+              ],
+              "bootstrap_days": 7
+            },
+            "realtime_pooled": {
+              "three_groups_minus_reference_mae": -0.07449824470079536,
+              "day_cluster_bootstrap_95_interval": [
+                -0.11655606012002581,
+                -0.037173408825428675
+              ],
+              "bootstrap_days": 7
+            },
+            "realtime_2_routes": {
+              "three_groups_minus_reference_mae": 0.022759244216875363,
+              "day_cluster_bootstrap_95_interval": [
+                -0.008175880944944577,
+                0.056671461508877044
+              ],
+              "bootstrap_days": 7
+            }
+          }
+        },
+        "sb02_api1": {
+          "models": {
+            "persistence": {
+              "rows": 3474,
+              "arrival_events": 781,
+              "days": 7,
+              "mae": 4.699139013012629,
+              "bias": -1.4253979870647793,
+              "p90_absolute_error": 13.0,
+              "error_over_10_share": 0.12786352801793038
+            },
+            "historical_pooled": {
+              "rows": 3474,
+              "arrival_events": 781,
+              "days": 7,
+              "mae": 3.687773560806764,
+              "bias": -1.5519704033720105,
+              "p90_absolute_error": 8.638408160300807,
+              "error_over_10_share": 0.07608123488405179
+            },
+            "realtime_pooled": {
+              "rows": 3474,
+              "arrival_events": 781,
+              "days": 7,
+              "mae": 3.6960047984133064,
+              "bias": -1.6222644210628359,
+              "p90_absolute_error": 8.509479067018262,
+              "error_over_10_share": 0.07850283519297603
+            },
+            "realtime_2_routes": {
+              "rows": 3474,
+              "arrival_events": 781,
+              "days": 7,
+              "mae": 3.594779119397165,
+              "bias": -1.5825909715369522,
+              "p90_absolute_error": 8.114372156915195,
+              "error_over_10_share": 0.07122482368961242
+            },
+            "realtime_3_groups": {
+              "rows": 3474,
+              "arrival_events": 781,
+              "days": 7,
+              "mae": 3.5591182935234413,
+              "bias": -1.3082581440337013,
+              "p90_absolute_error": 8.15832595682287,
+              "error_over_10_share": 0.07196655599344459
+            }
+          },
+          "paired_differences": {
+            "historical_pooled": {
+              "three_groups_minus_reference_mae": -0.12865526728332277,
+              "day_cluster_bootstrap_95_interval": [
+                -0.3463030603460309,
+                0.008358316331281354
+              ],
+              "bootstrap_days": 7
+            },
+            "realtime_pooled": {
+              "three_groups_minus_reference_mae": -0.1368865048898651,
+              "day_cluster_bootstrap_95_interval": [
+                -0.24400825148699332,
+                -0.039399994864018836
+              ],
+              "bootstrap_days": 7
+            },
+            "realtime_2_routes": {
+              "three_groups_minus_reference_mae": -0.035660825873723656,
+              "day_cluster_bootstrap_95_interval": [
+                -0.10966051001051719,
+                0.039936633389171326
+              ],
+              "bootstrap_days": 7
+            }
+          }
+        }
+      }
+    }
+  },
+  "interpretation_notes": [
+    "Negative paired difference favors the three-group model. No hyperparameter selection on the final seven days.",
+    "Day bootstrap is descriptive with only seven holdout dates and does not validate physical passenger accuracy.",
+    "Weights are equal per vehicle arrival at each target stop; snapshots are not independent trips.",
+    "Unknown vehicle size must not be inferred from busType or observed maximum occupancy.",
+    "Historical comparator uses the same point-model recipe, not the deployed legacy model.",
+    "No production model, frontend, capacity policy, collector or daily training job was changed."
+  ],
+  "artifact_hashes": {
+    "results.json": "ff5a36cc9a7a005268a8a0e030c47814748299e39ce14426ddab9607da04d924",
+    "predictions.csv": "04dcbd78b552fc1f409aa21d9c903504ecb3935ba4b5b1d73e679f40352c2ff1",
+    "source_manifest.json": "f2c84e54f6df84fab53d7178c6f5d6477d640a4b0485a7d6c7f32d9dd63daf5f",
+    "experiment_spec.json": "e1b107fd1db4d1315c9f67645a1663ff9c1b4bec640934753335c9d7bed5f667"
+  },
+  "report_method": {
+    "bootstrap_seed": 20261103,
+    "bootstrap_replicates": 10000,
+    "bootstrap_unit": "observed_date",
+    "mae_weighting": "each target-stop vehicle arrival has total weight one; queried snapshots within an arrival share that weight"
+  },
+  "validation": {
+    "unit_tests": 98,
+    "unit_tests_passed": true,
+    "model_reload_checks": [
+      {
+        "group": "jr03",
+        "feature_names_match_realtime_only": true,
+        "rows_checked": 25,
+        "max_reload_prediction_difference": 8.881784197001252e-16,
+        "model_sha256": "f70225ac81262c758bc0e6ca0a604b828db439d66ef272194539ba847ca5e90f"
+      },
+      {
+        "group": "sb02_api0",
+        "feature_names_match_realtime_only": true,
+        "rows_checked": 25,
+        "max_reload_prediction_difference": 4.440892098500626e-16,
+        "model_sha256": "8b6f1ca1d65d63ef365be99de98ddbfc4588edc2e257e3622150216ec0ddea6a"
+      },
+      {
+        "group": "sb02_api1",
+        "feature_names_match_realtime_only": true,
+        "rows_checked": 25,
+        "max_reload_prediction_difference": 8.881784197001252e-16,
+        "model_sha256": "6ef89f0f10f7f11535ded054c6e290dd4cc7bd96bb475160b17d56085eef17e2"
+      }
+    ],
+    "live_provider_calls": 0,
+    "production_promoted": false,
+    "vehicle_size_verified": false,
+    "source_files_sha256": {
+      "hanjari-ml/src/exp_realtime_groups.py": "e08ae443939b82cfaba0bafb317ce6d6372862b62d22ce2934d6dcfd5eefe910",
+      "hanjari-ml/tests/test_realtime_experiment.py": "e821af5a1f5ac2794a09a27d5f78407c14d578f54f151c727644ff2bcaf71b79"
+    },
+    "test_log_sha256": "5fc30abb77b528ac68da1fc969767ab06696b98754e4156ea638c820200b53c1"
+  },
+  "conclusion_ko": "수집한 실시간 API 기록만으로 학습한 노선별 모델은 과거 통계를 포함한 동일 조건 비교 모델과 비슷한 결과를 보였다. 성북02를 API 일반/저상 코드로 더 나눈 3개 모델의 추가 이점은 최종 7일에서 확인되지 않았다. 실제 차량 크기 분류와 실제 승객 수 정확성은 미검증이며 운영 모델로 교체하지 않았다."
+}

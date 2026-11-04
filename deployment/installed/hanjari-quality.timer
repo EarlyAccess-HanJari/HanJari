@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily HanJari passenger data consistency audit
+
+[Timer]
+OnCalendar=*-*-* 00:50:00 Asia/Seoul
+Persistent=true
+Unit=hanjari-quality.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,127 @@
+{
+  "dataset_sha256": "f4443d9c01b87be9e0268997c7b313d12011ef96e0e30e8bb1af6e4c7c2e05fc",
+  "date_min": "20260923",
+  "date_max": "20261102",
+  "days": 39,
+  "rows": 400949,
+  "school_rows": 297611,
+  "capacity_policy": {
+    "version": "fixed-unclipped-v1",
+    "fallback": 33,
+    "values": [
+      [
+        "jr03",
+        "0",
+        55
+      ],
+      [
+        "jr03",
+        "1",
+        55
+      ],
+      [
+        "sb02",
+        "0",
+        33
+      ],
+      [
+        "sb02",
+        "1",
+        55
+      ]
+    ]
+  },
+  "all_rows": [
+    {
+      "route": "jr03",
+      "bus_type": "0",
+      "provisional_capacity": 55,
+      "rows": 129997,
+      "input_over_capacity": 38,
+      "label_over_capacity": 57,
+      "either_over_capacity": 79,
+      "input_max": 57.0,
+      "label_max": 57.0
+    },
+    {
+      "route": "jr03",
+      "bus_type": "1",
+      "provisional_capacity": 55,
+      "rows": 74721,
+      "input_over_capacity": 54,
+      "label_over_capacity": 261,
+      "either_over_capacity": 264,
+      "input_max": 71.0,
+      "label_max": 71.0
+    },
+    {
+      "route": "sb02",
+      "bus_type": "0",
+      "provisional_capacity": 33,
+      "rows": 111966,
+      "input_over_capacity": 271,
+      "label_over_capacity": 1243,
+      "either_over_capacity": 1363,
+      "input_max": 43.0,
+      "label_max": 43.0
+    },
+    {
+      "route": "sb02",
+      "bus_type": "1",
+      "provisional_capacity": 55,
+      "rows": 84265,
+      "input_over_capacity": 64,
+      "label_over_capacity": 278,
+      "either_over_capacity": 317,
+      "input_max": 81.0,
+      "label_max": 81.0
+    }
+  ],
+  "training_population": [
+    {
+      "route": "jr03",
+      "bus_type": "0",
+      "provisional_capacity": 55,
+      "rows": 98562,
+      "input_over_capacity": 38,
+      "label_over_capacity": 57,
+      "either_over_capacity": 79,
+      "input_max": 57.0,
+      "label_max": 57.0
+    },
+    {
+      "route": "jr03",
+      "bus_type": "1",
+      "provisional_capacity": 55,
+      "rows": 53000,
+      "input_over_capacity": 46,
+      "label_over_capacity": 202,
+      "either_over_capacity": 205,
+      "input_max": 71.0,
+      "label_max": 71.0
+    },
+    {
+      "route": "sb02",
+      "bus_type": "0",
+      "provisional_capacity": 33,
+      "rows": 86723,
+      "input_over_capacity": 192,
+      "label_over_capacity": 1153,
+      "either_over_capacity": 1223,
+      "input_max": 43.0,
+      "label_max": 43.0
+    },
+    {
+      "route": "sb02",
+      "bus_type": "1",
+      "provisional_capacity": 55,
+      "rows": 59326,
+      "input_over_capacity": 17,
+      "label_over_capacity": 228,
+      "either_over_capacity": 234,
+      "input_max": 70.0,
+      "label_max": 70.0
+    }
+  ],
+  "interpretation": "API 입력과 API 정답의 잠정 기준 초과 후보. 반복 조회 포함; 실제 인원 오류나 실제 탑승률을 검증한 결과가 아님."
+}

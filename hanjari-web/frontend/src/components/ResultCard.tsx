@@ -1,5 +1,6 @@
 import type { Level, PredictItem } from "../types";
-import { pct, whyText } from "../utils/format";
+import { isStale, pct, whyText } from "../utils/format";
+import type { ArrivalState } from "../utils/format";
 import { LEVEL_CLASS } from "./LevelBadge";
 import lv from "./levels.module.css";
 import s from "./ResultCard.module.css";
@@ -16,9 +17,10 @@ interface Props {
   item: PredictItem;
   invalid: boolean;  // 입력이 잘못됐으면 결과 대신 안내
   busy: boolean;     // 새 인원으로 다시 불러오는 중
+  arrivalState: ArrivalState;
 }
 
-export default function ResultCard({ item, invalid, busy }: Props) {
+export default function ResultCard({ item, invalid, busy, arrivalState }: Props) {
   if (invalid) {
     return (
       <section className={`${s.card} ${lv.hold}`} aria-live="polite" data-testid="result">
@@ -28,9 +30,19 @@ export default function ResultCard({ item, invalid, busy }: Props) {
     );
   }
 
+  if (arrivalState !== "upcoming") {
+    return (
+      <section className={`${s.card} ${lv.hold}`} aria-live="polite" data-testid="result" data-level="확률 보류">
+        <div className={s.head}><span className={s.title}><span className={s.dot} />버스 정보 갱신 중</span></div>
+        <p className={s.why}>{arrivalState === "stale" && isStale(item)
+          ? item.reason : "최신 도착 정보가 들어오면 자동으로 다시 표시해요."}</p>
+      </section>
+    );
+  }
+
   // F-04: 보류·판단 이른 단계에선 확률·예상 인원을 숨긴다
-  const showP = item.level !== "확률 보류" && item.level !== "판단하기 일러요";
-  const p = pct(item.p_board);
+  const showP = item.level !== "확률 보류" && item.level !== "판단하기 일러요" && item.p_board != null && Number.isFinite(item.p_board);
+  const p = item.p_board == null ? null : pct(item.p_board);
   return (
     <section className={`${s.card} ${LEVEL_CLASS[item.level]}`} aria-live="polite" aria-busy={busy}
       data-testid="result" data-level={item.level}>

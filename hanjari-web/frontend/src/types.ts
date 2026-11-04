@@ -16,20 +16,32 @@ export interface PredictItem {
   plate: string;
   stops_away: number;    // 몇 정류장 전
   eta_sec: number;       // 도착까지 초
-  r_now: number;         // 지금 재차
-  load_pred: number;     // 도착 때 예상 재차
-  load_10: number;
-  load_90: number;
-  p_board: number;       // 0~1
+  r_now: number | null;  // API 인원(실측 아님). 결측은 null
+  load_pred: number | null; // 확률 보류이면 예상 인원·확률 모두 null
+  load_10: number | null;
+  load_90: number | null;
+  p_board: number | null;
   level: Level;
   reason: string;
   updated: string;       // "HH:MM:SS" KST
+  updated_at?: string;   // 날짜·시간대 포함 수집 시각
+  source_updated?: string | null; // API 제공 시각(인원 자체의 갱신 시각은 아님)
+  vehicle_id?: string;
+  data_status?: string;
+  prediction_status?: string;
+  arrival_stale?: boolean;
+  arrival_at?: string;   // 제공 시각 + ETA, 날짜·시간대 포함
+  arrival_status?: "upcoming" | "checking" | "passed";
 }
 
 /** GET /api/predict 응답. results 가 빈 배열이면 운행 시간 아님(새벽). */
 export interface PredictResponse {
   n_ahead: number;
   results: PredictItem[];
+  service?: { mode: string; data_status: string; release: string; routes: Partial<Record<RouteCode, {
+    status: "fresh" | "stale" | "missing" | "outside_service";
+    collected_at: string | null; age_sec: number | null;
+  }>> };
 }
 
 export type ApiError =

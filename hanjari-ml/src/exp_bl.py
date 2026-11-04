@@ -44,7 +44,6 @@ for arm, modes, peak in [("A 대면만·피크20(지금)", {"대면수업"}, 20)
     d = d[~d.holiday & (d.weekday != "일")].assign(rule=lambda x: S.lite_rule(x))
     for day in DAYS:
         tr, te = d[d.date != day], d[d.date == day]
-        E.setcap(tr)
         p, Pm = T.run(tr, te, S.LITE)
         m = T.metrics(p, Pm, te)
         err, w = np.abs(p - te.y.values), te.w.values

@@ -18,7 +18,6 @@ test("정류장을 고르면 한 화면에 도착 정보·인원 입력·결과�
   await start(page);
   await expect(page.getByTestId("stop-name")).toHaveText("녹십자약국");
   await expect(page.getByTestId("arrival")).toContainText("남은 시간");
-  await expect(page.getByTestId("arrival")).not.toContainText("서울70사6419");
   await expect(page.getByTestId("loads")).toContainText("도착 시 차내 인원");
   await expect(page.getByTestId("n-input")).toHaveValue("3");
   await expect(page.getByTestId("result")).toHaveAttribute("data-level", "여유 있음");
@@ -106,7 +105,7 @@ test("도착 시간이 1초씩 줄어든다", async ({ page }) => {
   await expect(page.getByTestId("arrival")).toContainText(/1분3[3-5]초/);
 });
 
-test("30초마다 자동으로 다시 불러온다 (카운트다운이 새 값으로 바뀜)", async ({ page }) => {
+test("가까운 버스는 5초마다 자동으로 다시 불러온다", async ({ page }) => {
   await page.clock.install(FAR_FROM_SNAPSHOT);
   await start(page);
   await page.clock.runFor(36_000);

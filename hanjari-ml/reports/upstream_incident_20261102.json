@@ -1,0 +1,101 @@
+{
+  "incident_date": "2026-11-02",
+  "timezone": "Asia/Seoul",
+  "status": "upstream_503_unresolved",
+  "routes": [
+    "종로03",
+    "성북02"
+  ],
+  "official_sources": [
+    "https://www.data.go.kr/data/15000314/openapi.do",
+    "https://www.data.go.kr/data/15000332/openapi.do",
+    "https://data.seoul.go.kr/dataList/OA-15346/L/1/datasetView.do",
+    "https://news.seoul.go.kr/traffic/archives/510878"
+  ],
+  "request_paths_match_official_specification": true,
+  "collection_evidence": {
+    "first_failure_at": "2026-11-02T18:26:33+09:00",
+    "last_arrival_saved": {
+      "jr03": "2026-11-02T18:35:06+09:00",
+      "sb02": "2026-11-02T18:36:00+09:00"
+    },
+    "last_reviewed_authenticated_attempt": "2026-11-02T23:55:00+09:00",
+    "authenticated_endpoint_http_status": {
+      "jr03:arr": 503,
+      "jr03:pos": 503,
+      "sb02:arr": 503,
+      "sb02:pos": 503
+    },
+    "internal_budget_reconciled_at": "2026-11-02T23:13:25+09:00",
+    "provider_quota_exhaustion_proven": false,
+    "provider_internal_root_cause_known": false,
+    "authenticated_failure_stage": "request",
+    "authenticated_response_kind": "html",
+    "authenticated_response_sample_bytes": 192,
+    "authenticated_response_prefix_sha256": "494756fba1426c9041353308d8511aa01eb8bc959e553332b119f9131fb5d2d4",
+    "authenticated_response_matches_unauthenticated_control": true
+  },
+  "unauthenticated_control": {
+    "checked_at": "2026-11-02T23:46:30+09:00",
+    "url": "http://ws.bus.go.kr/api/rest/arrive/getArrInfoByRouteAll?busRouteId=100900010&resultType=json",
+    "credential_included": false,
+    "http_status": 503,
+    "response_kind": "text/html",
+    "response_sample_bytes": 192,
+    "response_prefix_sha256": "494756fba1426c9041353308d8511aa01eb8bc959e553332b119f9131fb5d2d4",
+    "server_date": "Mon, 02 Nov 2026 14:46:30 GMT",
+    "proxy_environment_present": false,
+    "same_host_root_status": 200,
+    "interpretation": "API 경로에서 HTTP 503을 관측했다. 키 없는 요청은 정상 데이터 요청이 아니므로 이것만으로 모든 계정의 장애나 내부 원인을 확정하지 않는다."
+  },
+  "mitigation": {
+    "failed_calls_reserved_before_request": true,
+    "usage_preserved_across_restart": true,
+    "backoff_enabled": true,
+    "stale_and_conflicting_passenger_counts_rejected": true,
+    "new_error_diagnostics_deployed_at": "2026-11-02T23:53:47+09:00",
+    "new_diagnostics": [
+      "failure_stage",
+      "http_status",
+      "api_header_code",
+      "response_kind",
+      "response_prefix_sha256",
+      "response_sample_bytes"
+    ],
+    "response_text_or_credentials_saved": false,
+    "frontend_changed": false
+  },
+  "passenger_accuracy": {
+    "separate_from_http_availability": true,
+    "field_accuracy_verified": false,
+    "terminal_correction_applied_to_display": false,
+    "note": "제보 조건과 일치한 로그의 앞차는 53~54명, 이후 첫 차량 3170은 22명이다. 실제 탑승 차량과 당시 브라우저 응답은 확정되지 않았다. 이 자료만으로 미태그 오차 32명이나 보정된 실인원을 확정하지 않는다."
+  },
+  "provider_inquiry": {
+    "state": "draft_not_sent",
+    "subject": "서울 버스 도착·위치 OpenAPI HTTP 503 지속 및 오류 응답 확인 요청",
+    "facts": [
+      "2026-11-02 18:26 KST부터 기존 정상 수집 경로에 HTTP 503 발생",
+      "공식 문서에 있는 도착·위치 주소에서 두 노선 모두 실패",
+      "호출 장부 수정 후 재개한 실제 요청도 503 반환",
+      "인증키를 제외한 재현 요청은 192바이트 HTML 503 응답을 반환"
+    ],
+    "questions": [
+      "해당 시간대 API 게이트웨이·기관 연계 장애 또는 점검 여부와 복구 전망",
+      "503이 계정/IP 제한일 경우 이를 구분하는 공식 응답 코드와 확인 방법",
+      "현재 공식 대체 경로가 있다면 지원 주소와 응답 계약",
+      "마을버스 인원 집계의 종점 초기화·중간 보정 여부, 인원 자체의 갱신 시각 또는 품질 신호 제공 여부"
+    ]
+  },
+  "alternate_method_control": {
+    "checked_at": "2026-11-02T23:54:52+09:00",
+    "url": "http://ws.bus.go.kr/api/rest/arrive/getArrInfoByRoute?busRouteId=100900010&resultType=json",
+    "credential_included": false,
+    "complete_data_request": false,
+    "http_status": 503,
+    "response_kind": "text/html",
+    "response_sample_bytes": 192,
+    "response_prefix_sha256": "494756fba1426c9041353308d8511aa01eb8bc959e553332b119f9131fb5d2d4",
+    "interpretation": "다른 공식 메서드 경로도 503을 반환했다. 인증키와 정류소 인자가 없는 진단 요청으로, 대체 메서드의 실제 데이터 제공 가능성을 검증한 결과는 아니다."
+  }
+}

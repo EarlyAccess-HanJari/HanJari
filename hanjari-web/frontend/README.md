@@ -49,3 +49,9 @@ npm test
 테스트는 입력·정류장 전환·오류 안내, 로컬 UI의 반응형 배치, 스냅샷 시각을 반영한 카운트다운을 확인합니다. 최종 커밋 전 테스트와 운영용 빌드를 모두 실행합니다.
 
 `npm run mock:pull`과 해당 스크립트는 과거 작업용으로 남겨 두었습니다. 이전 저장소의 `pm/jeongwon` 브랜치에 의존하므로 새 저장소에서는 실행하지 않습니다. 현재 목업 파일은 이미 `src/mock/`에 포함되어 있습니다.
+
+## 인원 정보 품질 검사
+
+보류 시 nullable 인원·확률을 숨기고 `arrival_stale`로 도착 안내를 판단합니다. 실제 HTTP 응답 경로 검사는 `VITE_MOCK=0 npx playwright test tests/api-quality.spec.ts`, 기존 목업 시나리오는 `VITE_MOCK=1 npx playwright test tests/scenarios.spec.ts tests/flow.spec.ts tests/countdown.spec.ts tests/layout.spec.ts`로 실행합니다. 두 실행 사이에 이전 Vite 개발 서버를 종료해 환경 변수가 섞이지 않게 합니다.
+
+도착 예정 시각은 API 제공 시각을 기준으로 계산합니다. 2정류장·2분 이내 또는 갱신 대기 중에는 서버 기록을 5초 간격으로 조회하고, ETA 만료/통과한 차량의 인원·확률은 최신 값처럼 유지하지 않습니다. 같은 응답을 다시 받아도 예정 시각은 연장되지 않으며 오래된 응답으로 되돌아가지 않습니다. 차량번호는 내부 식별에 사용합니다. 관련 HTTP 회귀 검사는 `tests/api-quality.spec.ts`의 자동 차량 전환·만료 시나리오입니다.

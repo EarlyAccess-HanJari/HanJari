@@ -1,14 +1,16 @@
 """수집 감시 — 10분마다(systemd 타이머). '켜져 있는데 못 받는' 조용한 실패를 잡는다.
 
-  - 노선 시간표 안인데 최신 스냅샷이 STALE 분보다 오래됨 → 수집기 재시작(30분에 한 번까지) + 알림
+  - 노선 시간표 안인데 최신 스냅샷이 STALE 분보다 오래됨 → 알림. 수집기 생존 신호도 끊긴 경우에만 재시작
   - 최근 스냅샷 RECENT 개가 전부 API 오류 응답(키 만료·한도 초과) → 알림
   - 남은 디스크 MIN_FREE_GB 미만 → 알림
-같은 문제는 한 번만 알리고(reports/watchdog.json), 사라지면 '복구' 알림.
+같은 문제는 한 번만 알리고(reports/watchdog.json), 운행 중 사라지면 '복구' 알림.
+운행 종료는 장애 복구의 증거가 아니므로 해당 노선은 다음 운행에서 다시 확인한다.
 """
 import datetime as dt, json, shutil, subprocess
 import build_dataset as B
 import collect as C
 import notify as N
+from api_response import response_items
 
 STALE = 10          # 분. 한산한 시간 수집 간격이 2분 반이라 넉넉히
 RECENT = 10
@@ -17,9 +19,20 @@ RESTART_GAP = 30    # 분
 STATE = N.REPORTS / "watchdog.json"
 
 
+def collector_alive(now):
+    """API 장애/한도 대기 중인 살아 있는 수집기는 재시작하지 않는다."""
+    try:
+        state = json.loads((B.LOG / "collector_state.json").read_text())
+        heartbeat = dt.datetime.fromisoformat(state["heartbeat"]).astimezone(N.KST).replace(tzinfo=None)
+        return 0 <= (now - heartbeat).total_seconds() <= 600
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+
+
 def ok_header(f):
     try:
-        return json.loads(f.read_bytes())["msgHeader"].get("headerCd") == "0"
+        response_items(json.loads(f.read_bytes()))
+        return True
     except (OSError, ValueError):
         return False
 
@@ -40,7 +53,7 @@ def check(now):
         age = (now - dt.datetime.strptime(fs[-1].parent.name + fs[-1].stem[-6:], "%Y%m%d%H%M%S")).total_seconds() / 60 if fs else None
         if age is None or age > STALE:
             problems.append(f"{route} 새 데이터 없음({'이틀간 0개' if age is None else f'{age:.0f}분째'})")
-            stale = True
+            stale = not collector_alive(now)
         elif fs and not any(ok_header(f) for f in fs[-RECENT:]):
             problems.append(f"{route} 최근 {RECENT}개 모두 API 오류 응답(키·한도 확인)")
     free = shutil.disk_usage(B.LOG.resolve()).free / 1e9
@@ -60,14 +73,19 @@ def main():
             problems.append("수집기 재시작 " + ("함" if r.returncode == 0 else f"실패({r.stderr.strip()[:80]})"))
             st["restarted"] = now.isoformat()
     key = sorted(p.split("(")[0] for p in problems if not p.startswith("수집기 재시작"))
-    if key and key != st.get("open"):
+    previous = st.get("open", [])
+    sched = C.load_sched()
+    inactive = [route for route in C.ROUTES if not C.allowed(now, route, sched)]
+    pending = [problem for problem in previous if any(problem.startswith(route+" ") for route in inactive)]
+    tracked = sorted(set(key + pending))
+    if set(key) - set(previous):
         N.send("수집 감시: " + " / ".join(problems), "ERROR")
-    elif not key and st.get("open"):
-        N.send("수집 감시: 복구됨 (" + " / ".join(st["open"]) + ")", "INFO")
-    st["open"], st["checked"] = key, now.isoformat()
+    elif not tracked and previous:
+        N.send("수집 감시: 복구됨 (" + " / ".join(previous) + ")", "INFO")
+    st["open"], st["checked"], st["outside_service_routes"] = tracked, now.isoformat(), inactive
     N.REPORTS.mkdir(exist_ok=True)
     STATE.write_text(json.dumps(st, ensure_ascii=False))
-    print(now.strftime("%H:%M"), "문제 없음" if not problems else problems)
+    print(now.strftime("%H:%M"), problems or ("운행시간 밖 노선은 다음 운행에서 재확인" if pending else "문제 없음"))
 
 
 if __name__ == "__main__":

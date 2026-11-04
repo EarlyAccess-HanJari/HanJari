@@ -68,7 +68,6 @@ FOLDS = [(["20260923", "20260929", "20260930"], "20260928"),
 rows = []
 for trd, ted in FOLDS:
     tr, te = d[d.date.astype(str).isin(trd)], d[d.date.astype(str) == ted]
-    E.setcap(tr)
     T.XGB_KW = dict(D5)
     bp, bP = T.run(tr, te, FEATS)  # 깊이5 기준 (k=0 포함)
     peak = te.time.between("07:00", "11:00").values
