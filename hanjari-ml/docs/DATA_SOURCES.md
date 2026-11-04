@@ -18,6 +18,7 @@
 ## C. 서울시 버스노선별 정류장별 (일별) 승하차 인원 (CSV, 선택)
 - https://data.seoul.go.kr/dataList/OA-12912/S/1/datasetView.do
 - 일별 합계(시간대 없음). 날짜 간 변동 확인용. → `data/raw/seoul_daily/`
+- 서울마을 포함(2026-11-05 페이지 확인). 공공누리 1유형.
 
 ## D. 실시간 버스도착정보 API (핵심, 자동 수집용)
 - 서울시 버스도착정보조회 (공공데이터포털 https://www.data.go.kr/dataset/15000314/openapi.do / api.bus.go.kr)

@@ -171,7 +171,7 @@ HanJari/
 
 정확한 버전은 [`requirements-runtime.txt`](requirements-runtime.txt)와 [`package-lock.json`](hanjari-web/frontend/package-lock.json)에 고정되어 있습니다. OSS 원본은 수정하지 않았으며, 프로젝트 활용 예제와 실행 문서를 공개하는 방식으로 기여합니다.
 
-**프로젝트 라이선스:** 코드는 [MIT](LICENSE)입니다. 공공데이터 CSV와 수집 샘플은 MIT 대상이 아니며, 서울시 등 제공처의 이용 조건을 따릅니다.
+**프로젝트 라이선스:** 코드는 [MIT](LICENSE)입니다. 서울특별시 공공데이터(공공누리 1유형)를 사용하며 출처는 [서울 열린데이터광장](https://data.seoul.go.kr)입니다.
 
 ## 🎯 검증 목표
 
@@ -217,5 +217,5 @@ HanJari/
 ---
 
 <div align="center">
-<sub>Project Charter v1.8(2026.11.05) 기준 · 일정은 [PRD v1.8·WBS v1.11·마일스톤 v1.4(2026.11.05)](docs/plan/) 기준 · 운영 상태는 2026-11-05 05:04(KST) v8 전환·서버 검증 기준 · README 작성일 2026.11.05</sub>
+<sub>Project Charter v1.8(2026.11.05) 기준 · 일정은 [PRD v1.8·WBS v1.12·마일스톤 v1.4(2026.11.05)](docs/plan/) 기준 · 운영 상태는 2026-11-05 05:04(KST) v8 전환·서버 검증 기준 · README 작성일 2026.11.05</sub>
 </div>
