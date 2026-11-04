@@ -63,6 +63,41 @@ export function whyText(i: PredictItem): string {
     : `지금 ${i.r_now}명 탄 버스가 ${i.stops_away}정류장을 더 지나면 약 ${load}명이 될 것 같아요.`;
 }
 
+export type Tone = "ok" | "warn" | "bad" | "hold";
+export interface Verdict { badge: string; guide: string; tone: Tone }
+
+/** 한눈에 보는 판정. 뱃지 이름은 '탑승 확률'로 고정하고, 색·안내 문구만 확률(p_board) 기준으로 정한다.
+ *  80% 이상 초록 / 50~79% 주황 / 50% 미만 빨강(문구는 80·60·40% 경계). 보류·판단 이른 단계는 회색.
+ *  '빠듯함'은 확률이 높아도 백엔드가 수업 시간·거리 때문에 내리는 단계라 '탑승 가능'으로 낮추고 시간 빠듯함을 안내.
+ *  확률이 낮은 이유는 대기 줄일 수도 있어 차내 혼잡을 말하지 않는다 — 혼잡도는 crowdLabel */
+export function verdict(i: PredictItem): Verdict {
+  if (i.level === "확률 보류" || i.p_board == null)
+    return { badge: "확률 보류", tone: "hold", guide: "확률은 잠시 보류했어요. 위의 도착 정보만 참고해 주세요." };
+  if (i.level === "판단하기 일러요")
+    return { badge: "판단하기 일러요", tone: "hold", guide: "버스가 가까워지면 다시 확인해 주세요." };
+  const p = i.p_board;
+  const badge = "탑승 확률";
+  const hasNext = i.eta2_sec != null;
+  if (p >= 0.8)
+    return i.level === "빠듯함"
+      ? { badge, tone: "ok", guide: "탈 수 있지만 수업 시간엔 빠듯할 수 있어요." }
+      : { badge, tone: "ok", guide: "줄을 서면 안정적으로 탑승할 수 있어요." };
+  if (p >= 0.6)
+    return { badge, tone: "warn", guide: "앞줄에 서면 탈 수 있지만, 못 탈 수도 있어요." };
+  const unsure = `탑승이 불확실해요.${hasNext ? " 다음 버스 도착 시간도 확인해보세요." : ""}`;
+  if (p >= 0.5) return { badge, tone: "warn", guide: unsure };
+  if (p >= 0.4) return { badge, tone: "bad", guide: unsure };
+  return { badge, tone: "bad", guide: `이번 버스는 타기 힘들어요.${hasNext ? " 다음 버스를 권장해요." : ""}` };
+}
+
+/** 도착 시 탑승 인원 기준 혼잡도. 응답에 차종별 정원이 없어 모든 버스에 같은 구간을 쓴다 */
+export function crowdLabel(load: number): string {
+  if (load <= 15) return "여유";
+  if (load <= 30) return "보통";
+  if (load <= 45) return "혼잡";
+  return "매우 혼잡";
+}
+
 /** serve.py 가 스냅샷이 오래됐을 때 붙이는 reason("…N분 전 것…", "정보가 N초 전 것")으로 판별 */
 export function isStale(i: PredictItem): boolean {
   return i.arrival_stale === true || (i.level === "확률 보류" && i.reason.includes("전 것"));
@@ -89,4 +124,12 @@ export function arrivalState(i: PredictItem, now: number, fetchedAt: number): Ar
   if (isStale(i) || stamps.some(t => t !== null && (now - t > MAX_SNAP_AGE_SEC * 1000 || t - now > 5000))) return "stale";
   if (i.arrival_status === "passed" || i.arrival_status === "checking" || now >= arrivalAt(i, fetchedAt)) return "checking";
   return "upcoming";
+}
+
+/** 정류장 목록 한 줄의 도착 문구. 시간이 지나면 '곧 도착'이 남지 않도록 상태를 먼저 본다 */
+export function arrivalText(i: PredictItem, now: number, fetchedAt: number): string {
+  const state = arrivalState(i, now, fetchedAt);
+  if (state === "stale") return "정보 없음";
+  if (state === "checking") return "도착 확인 중";
+  return etaText(Math.max(0, (arrivalAt(i, fetchedAt) - now) / 1000));
 }

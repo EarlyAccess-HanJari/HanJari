@@ -1,5 +1,29 @@
-.app { display: flex; flex-direction: column; min-height: 100dvh; }
-.main { padding: 4px 14px 28px; display: flex; flex-direction: column; gap: 10px; }
-.loading { margin: 8px 4px; color: var(--muted); font-size: 14px; }
-.card { background: var(--card); border-radius: 16px; padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 12px; }
-.divider { height: 1px; background: var(--line-3); }
+/* 색 변수를 애니메이션할 수 있게 등록: 상태가 바뀌면 카드 색이 뚝 바뀌지 않고 스르르 변함 */
+@property --tint { syntax: "<color>"; inherits: true; initial-value: #ffffff; }
+/* 화면 높이에 고정: 페이지 자체는 스크롤하지 않고, 넘치는 내용은 각 장(pane) 안에서만 */
+.app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; }
+.main { flex: 1; min-height: 0; padding: 4px 14px calc(12px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+.fill { overflow: hidden; }
+.card { background: #fff; border: 1px solid var(--c-line-1); border-radius: 24px; padding: 16px 18px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 12px; }
+/* 한 장의 통합 카드: 도착 시간·탑승 상태 → 게이지·가이드 → 대기 인원 → 차내 인원.
+   위쪽 내용은 위에서부터 쌓고 차내·대기 인원은 아래에 고정(LoadCompare 의 margin-top:auto) —
+   안내 문구 길이가 달라져도 누르던 버튼이 움직이지 않게 함 */
+.hero { flex: 1 0 auto; position: relative; overflow: hidden; --tint: color-mix(in srgb, var(--lv-bar) 18%, #fff); background: linear-gradient(180deg, var(--tint) 0%, #fff 58%), #fff; transition: --tint .5s ease; border: 1px solid var(--c-line-1); border-radius: 24px; padding: 24px 20px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 14px; min-height: 372px; }
+.hero > * { transition: opacity .2s; }
+/* 다시 불러오는 중: 카드는 그대로, 살짝 흐리게 + 맨 위 얇은 진행 막대 */
+.hero[aria-busy="true"] > :not(.loadbar) { opacity: .6; }
+.loadbar { position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, transparent, var(--lv-bar), transparent); background-size: 40% 100%; background-repeat: no-repeat; animation: slide 1s ease-in-out infinite; }
+@keyframes slide { from { background-position: -40% 0; } to { background-position: 140% 0; } }
+/* 첫 불러오기 스켈레톤 — 실제 카드와 같은 높이라 데이터가 들어와도 안 출렁임 */
+.skel { min-height: 372px; background: #fff; border: 1px solid var(--c-line-1); border-radius: 24px; box-shadow: var(--shadow); animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .skel, .loadbar { animation: none; } }
+/* 첫 불러오기·오류 화면도 실제 카드와 같은 틀 */
+.sk { border-radius: 10px; background: linear-gradient(90deg, rgba(0,0,0,.06) 25%, rgba(0,0,0,.1) 37%, rgba(0,0,0,.06) 63%); background-size: 400% 100%; animation: shimmer 1.4s ease infinite; }
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
+@media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
+/* 아래 다른 정류장 목록까지 한 화면에 들어오도록 카드 여백을 줄임 */
+/* min-height: 가장 긴 문구가 들어가는 높이. 짧은 화면에서 카드가 넘쳐도 상태마다 대기 인원 버튼이 움직이지 않게 함 */
+@media (max-height: 860px) { .hero { padding: 14px 18px; gap: 10px; min-height: calc(355px + 12dvh); } }
+/* 아주 작은 화면(세로 600px 미만): 여백을 더 줄임 */
+@media (max-height: 600px) { .main { gap: 8px; } .hero { padding: 12px 14px; gap: 8px; min-height: 410px; } }

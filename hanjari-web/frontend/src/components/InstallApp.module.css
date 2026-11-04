@@ -1,8 +1,0 @@
-.install { border: 1px solid var(--line); background: var(--card); min-height: 44px; color: var(--blue); border-radius: 22px; padding: 0 12px; font-size: 13px; font-weight: 600; }
-.dialog { width: min(400px, calc(100% - 32px)); max-height: calc(100dvh - 40px); color: var(--ink); background: var(--card); border: 0; border-radius: 20px; padding: 24px; line-height: 1.7; }
-.dialog::backdrop { background: #111b2e73; }
-.head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.head h2 { margin: 0; font-size: 20px; }
-.close { background: var(--bg); border: 0; border-radius: 50%; flex-shrink: 0; width: 44px; height: 44px; padding: 0; font-size: 26px; }
-.dialog a { color: var(--blue); font-weight: 600; }
-.note { color: var(--muted); margin-bottom: 0; font-size: 13px; }

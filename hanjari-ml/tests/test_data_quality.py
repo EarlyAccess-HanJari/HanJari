@@ -214,7 +214,11 @@ class SnapshotIntegration(unittest.TestCase):
                         result = S.predict_live(10, log_dir=self.folder)
                         unaffected = lambda rows: [r for r in rows if (r["route"],r["stop"]) != (route,stop)]
                         self.assertEqual(unaffected(result), unaffected(baseline))
-                        if field != "plainNo1":
+                        if field == "traTime2":  # 다음 버스 값만 함께 비고 이번 버스 도착은 그대로
+                            no_next = lambda rows: [{k: v for k, v in r.items() if k != "eta2_sec"} for r in arrival(rows)]
+                            self.assertEqual(no_next(result), no_next(baseline))
+                            self.assertIsNone(next(r for r in result if (r["route"], r["stop"]) == (route, stop))["eta2_sec"])
+                        elif field != "plainNo1":
                             self.assertEqual(arrival(result), arrival(baseline))
                         else:
                             self.assertFalse(any(r["route"] == route and r["stop"] == stop and r["r_now"] is not None for r in result))

@@ -204,15 +204,12 @@ test("empty upstream outage is not called end of service and recovers automatica
   await expect(page.getByTestId("arrival")).toBeVisible();
 });
 
-test("installed app entry and install guidance survive the release", async ({ page }) => {
+test("manifest stays for installed apps while the install button is hidden", async ({ page }) => {
   await page.route("**/api/predict?*", r => r.fulfill({ json: held() }));
   await page.goto("/");
   await page.getByTestId("stop-jr03-23").click();
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("href", "/manifest.webmanifest");
-  await page.getByTestId("install-app").click();
-  await expect(page.getByRole("dialog", { name: "한자리를 홈 화면에" })).toBeVisible();
-  await page.getByRole("button", { name: "설치 안내 닫기" }).click();
-  await expect(page.getByRole("dialog")).not.toBeVisible();
+  await expect(page.getByTestId("install-app")).toHaveCount(0);
 });
 
 test("connection restoration immediately refreshes the installed app", async ({ page }) => {

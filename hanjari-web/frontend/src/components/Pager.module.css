@@ -1,0 +1,6 @@
+/* 화면 높이를 넘지 않게: 뷰포트는 남은 높이를 채우고, 넘치는 내용은 각 장 안에서만 스크롤 */
+.viewport { flex: 1; min-height: 0; overflow: hidden; touch-action: pan-y; }
+.track { display: flex; width: 200%; height: 100%; transition: transform .32s cubic-bezier(.2, .8, .2, 1); will-change: transform; }
+.drag { transition: none; }
+.pane { width: 50%; height: 100%; overflow-y: auto; overscroll-behavior: contain; padding: 4px 1px 8px; display: flex; flex-direction: column; gap: 12px; }
+@media (prefers-reduced-motion: reduce) { .track { transition: none; } }

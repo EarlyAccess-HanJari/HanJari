@@ -1,5 +1,12 @@
 :root {
-  --bg: #F1F4F8;
+  --c-text-1: #111827;
+  --c-text-2: #4B5563;
+  --c-text-3: #6B7280;
+  --c-line-1: #F3F4F6;
+  --c-line-2: #E5E7EB;
+  --c-surface: #F9FAFB;
+  --c-brand: #2563EB;
+  --bg: #F8F9FA;
   --card: #FFFFFF;
   --ink: #111B2E;
   --ink-2: #3A4558;
@@ -20,8 +27,9 @@
   --route-sb02: #1D4F91;
   --route-jr03: #0F6D77;
   --time: #E0352B;
-  --font: "IBM Plex Sans KR", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-  --mono: "IBM Plex Mono", ui-monospace, monospace;
+  --font: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  --mono: ui-monospace, monospace;
 }
 
 * { box-sizing: border-box; }
@@ -33,7 +41,11 @@ body {
   line-height: 1.45;
 }
 button { font: inherit; color: inherit; cursor: pointer; }
+button { -webkit-tap-highlight-color: transparent; transition: transform .12s ease, background-color .15s, opacity .15s; }
+button:active:not(:disabled) { transform: scale(.97); }
 button:disabled { cursor: default; opacity: .45; }
 input { font: inherit; }
 :focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
-#root { max-width: 480px; margin: 0 auto; min-height: 100dvh; }
+#root { max-width: 480px; margin: 0 auto; height: 100vh; height: 100dvh; }
+
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }

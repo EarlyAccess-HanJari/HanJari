@@ -431,6 +431,15 @@ def source_health(now=None):
     return routes
 
 
+def next_bus_sec(eta2):
+    """다음 버스 도착까지 초. 원본의 0·결측은 다음 버스 없음."""
+    try:
+        sec = float(eta2)
+    except (TypeError, ValueError):
+        return None
+    return int(sec) if math.isfinite(sec) and sec > 0 else None
+
+
 def results(rows, m, meta, n_ahead, now, max_age, lite, approaching=()):
     out, eligible, indices = [], [], []
     for row in rows:
@@ -448,6 +457,7 @@ def results(rows, m, meta, n_ahead, now, max_age, lite, approaching=()):
         result = dict(route=r["route"], stop=str(r["stop"]), stop_name=NAMES[(r["route"], str(r["stop"]))],
                       plate=r["plate"], vehicle_id=str(r.get("vehicle_id", "")),
                       stops_away=int(r["stops_away"]), eta_sec=int(r["eta"]), r_now=DQ.integer(r["r_now"]),
+                      eta2_sec=next_bus_sec(r.get("eta2")),
                       updated=t_snap.strftime("%H:%M:%S"), updated_at=t_snap.replace(tzinfo=KST).isoformat(),
                       source_updated=r.get("source_updated"), data_status=status, arrival_stale=stale,
                       arrival_at=(arrival_base + dt.timedelta(seconds=int(r["eta"]))).replace(tzinfo=KST).isoformat(),

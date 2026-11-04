@@ -1,13 +1,17 @@
-.arrival { display: flex; flex-direction: column; gap: 8px; }
-.stale { background: var(--warn-bg); color: var(--warn); font-size: 13px; font-weight: 600; padding: 8px 12px; border-radius: 10px; }
-/* 최소 높이 38: 숫자·'곧 도착'·안내 어느 쪽이어도 아래 결과 블록이 같은 자리에서 시작 */
-.row { display: flex; align-items: baseline; flex-wrap: wrap; column-gap: 14px; row-gap: 2px; min-height: 38px; }
-.label { font-size: 17px; font-weight: 700; color: var(--ink); }
-.group { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
-.eta { display: flex; align-items: baseline; gap: 1px; color: var(--time); }
-.num { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; font-variant-numeric: tabular-nums; }
-.unit { font-size: 15px; font-weight: 600; margin-right: 4px; }
+.arrival { display: flex; flex-direction: column; gap: 10px; }
+.stale { background: #FFFBEB; color: #B45309; font-size: 13px; font-weight: 600; padding: 8px 12px; border-radius: 12px; }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.label { font-size: 14px; color: var(--c-text-3); }
+.away { font-size: 12px; font-weight: 500; color: var(--c-text-2); background: var(--c-line-1); padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+/* 최소 높이: 숫자·'곧 도착'·안내 어느 쪽이어도 아래 블록이 같은 자리에서 시작 */
+.timeRow { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 52px; }
+.eta { display: flex; align-items: baseline; gap: 2px; color: var(--c-text-1); white-space: nowrap; }
+/* 폭 제한(vw): 긴 시간(12분 56초)과 탑승 확률이 좁은 폰에서도 한 줄에 들어가게 */
+.num { font-size: min(clamp(40px, 7.5dvh, 64px), 12.5vw); font-weight: 800; letter-spacing: -0.04em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.unit { font-size: min(clamp(20px, 3dvh, 28px), 5vw); font-weight: 600; margin-right: 4px; color: var(--c-text-2); }
 .unit:last-child { margin-right: 0; }
-.soon { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
-.away { font-size: 13px; color: var(--muted); white-space: nowrap; }
-.sub { font-size: 14px; color: var(--ink-2); }
+.soon { color: var(--time); font-size: min(clamp(36px, 6.5dvh, 56px), 11.5vw); font-weight: 800; letter-spacing: -0.04em; line-height: 1.2; }
+.verdict { flex: none; display: inline-flex; align-items: center; padding: 5px 10px; border-radius: 999px; background: #fff; color: var(--lv-fg); border: 1px solid var(--lv-line); font-size: min(clamp(15px, 2.2dvh, 18px), 3.7vw); font-weight: 700; letter-spacing: -0.02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.sub { font-size: 14px; color: var(--c-text-2); }
+.next { min-height: 18px; font-size: 13px; line-height: 18px; color: var(--c-text-3); }
+@media (max-height: 600px) { .arrival { gap: 4px; } .timeRow { min-height: 44px; gap: 4px; } .verdict { padding: 3px 8px; } }

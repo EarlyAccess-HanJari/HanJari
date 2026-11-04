@@ -29,6 +29,11 @@ test("자정을 넘긴 KST 스냅샷도 정상 계산한다", () => {
   expect(arrivalAt({ ...item, updated: "23:59:50", eta_sec: 100 }, received)).toBe(received + 80_000);
 });
 
+test("서버가 arrival_at 을 주면 그 시각을 그대로 쓴다", () => {
+  const at = "2026-09-30T13:13:00+09:00";
+  expect(arrivalAt({ ...item, arrival_at: at }, timestamp("13:11:43"))).toBe(Date.parse(at));
+});
+
 test("원본 제공 시각으로 ETA를 계산하여 수집 지연을 더하지 않는다", () => {
   const i = { ...item, updated_at: "2026-11-02T17:40:39+09:00", source_updated: "2026-11-02 17:40:14.0", eta_sec: 96 };
   expect(arrivalAt(i, Date.parse("2026-11-02T17:40:40+09:00"))).toBe(Date.parse("2026-11-02T17:41:50+09:00"));

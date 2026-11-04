@@ -2,7 +2,7 @@ import s from "./Notice.module.css";
 
 export type NoticeKind = "offline" | "night" | "no_stop" | "data_delayed" | "server_down" | "timeout" | "bad_input" | "unknown";
 
-const TEXT: Record<NoticeKind, { title: string; body: string }> = {
+export const TEXT: Record<NoticeKind, { title: string; body: string }> = {
   offline:     { title: "인터넷 연결을 확인해 주세요", body: "실시간 버스 정보는 인터넷 연결이 필요해요. 연결되면 최신 정보를 다시 불러올게요." },
   night:       { title: "지금은 버스가 다니지 않아요", body: "새벽 시간이라 도착 정보가 없어요. 운행이 시작되면 이 화면에서 바로 보여드릴게요." },
   no_stop:     { title: "이 정류장 버스 정보가 없어요", body: "잠시 뒤 다시 확인해 주세요." },

@@ -2,10 +2,12 @@
 
 ## 현재 서버에서 확인한 구성
 
-확인 시각: 2026년 11월 4일 17:45(KST).
+확인 시각: 2026년 11월 5일(KST).
 
-- 웹: `/home/ubuntu/hanjari-releases/practical-20261104-v6/hanjari-web/backend`. 실행 환경은 `/home/ubuntu/hanjari-web/backend/.venv`를 사용합니다.
-- 웹의 AI 코드: `/home/ubuntu/hanjari-releases/practical-20261104-v6/hanjari-ml`. 경로는 `installed/hanjari-web.service.d/20261102-freshness.conf`가 지정합니다.
+- 웹: `/home/ubuntu/hanjari-releases/practical-20261104-v7/hanjari-web/backend`. 실행 환경은 `/home/ubuntu/hanjari-web/backend/.venv`를 사용합니다.
+- 웹의 AI 코드: `/home/ubuntu/hanjari-releases/practical-20261104-v7/hanjari-ml`. 경로는 `installed/hanjari-web.service.d/20261102-freshness.conf`가 지정합니다.
+- v7은 커밋 `b3f0134`로 11월 4일 18:20(KST)에 전환했습니다. 되돌릴 때 쓰는 v6 설정은 v7 폴더의 `previous-service.conf`에 있습니다.
+- 이 레포의 `serve.py`·`train.py`는 서버 두 폴더의 변경을 합친 코드입니다. 서버의 웹(v7)에는 메모리 수정(PR #11)이 없고, 매일 작업 폴더에는 다음 버스 응답(`eta2_sec`)이 없습니다. 웹을 `/home/ubuntu/hanjari-ml`로 돌리면 다음 버스 표시가 사라집니다.
 - 릴리스의 `hanjari-ml/models`와 `hanjari-ml/data`는 `/home/ubuntu/hanjari-ml` 아래를 가리키는 심볼릭 링크입니다. 따라서 매일 작업이 모델을 교체하면 웹 재시작 후 웹에도 반영되며, 그 뒤에는 `models/lite`가 Git과 달라질 수 있습니다.
 - 매일 작업: `/home/ubuntu/hanjari-ml`
 - 수집기: `/home/ubuntu/hanjari`. 코드는 `hanjari/src/`와 같습니다.

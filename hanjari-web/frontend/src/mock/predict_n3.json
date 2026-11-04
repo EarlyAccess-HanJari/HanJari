@@ -39,7 +39,7 @@
    "stop_name": "녹십자약국",
    "plate": "서울70사6419",
    "stops_away": 0,
-   "eta_sec": 100,
+   "eta_sec": 100, "eta2_sec": 716,
    "r_now": 39,
    "load_pred": 45.0,
    "load_10": 41.4,

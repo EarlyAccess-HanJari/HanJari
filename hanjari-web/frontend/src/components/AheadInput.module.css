@@ -1,20 +1,23 @@
-.wrap { display: flex; flex-direction: column; gap: 10px; }
-.row { display: flex; justify-content: center; align-items: center; gap: 40px; }
-.labelCol { display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 0; }
-.label { font-size: 15px; font-weight: 600; }
-.help { font-size: 12px; color: var(--muted); }
-.stepper { display: flex; align-items: center; gap: 4px; flex: none; }
-.step { width: 44px; height: 44px; flex: none; border-radius: 12px; border: 1px solid var(--line); background: var(--card); display: flex; align-items: center; justify-content: center; padding: 0; }
-/* 고정 폭 + 가운데 정렬: 1자리·2자리 어느 쪽이어도 − 와 + 사이 간격이 같게 */
-.field { display: flex; align-items: baseline; justify-content: center; width: 60px; height: 44px; border-radius: 10px; border: 1px solid transparent; padding: 0 2px; }
-.field:focus-within { border-color: var(--ink); }
-.fieldError { border-color: var(--bad-line); }
-.input { min-width: 1ch; height: 42px; line-height: 42px; border: 0; outline: none; background: transparent; text-align: right; font-size: 18px; font-weight: 700; color: var(--ink); padding: 0; font-variant-numeric: tabular-nums; }
-.unit { font-size: 18px; font-weight: 700; }
-/* 알약 높이는 32px, 회색 상자 여백까지 누르는 범위로 넓혀 높이 44px을 확보 */
-/* 테두리도 함께: 삼성 인터넷 등 브라우저 강제 다크 모드에서 배경색 차이가 줄어도 상자가 구분되게 */
-.quick { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; padding: 6px; border-radius: 16px; background: var(--bg); border: 1px solid var(--line); }
-.chip { position: relative; height: 32px; border-radius: 16px; font-size: 14px; font-weight: 500; color: var(--ink-2); border: 1px solid var(--line-2); background: var(--card); padding: 0; }
-.chip::before { content: ""; position: absolute; inset: -6px -3px; }
-.chipOn { border-color: var(--ink); background: var(--ink); color: #fff; }
-.error { margin: 0; font-size: 13px; color: var(--bad); font-weight: 600; text-align: center; }
+/* 히어로 카드 안에 이어지는 연한 박스 */
+.wrap { display: flex; flex-direction: column; gap: clamp(8px, 1.6dvh, 16px); background: var(--c-surface); border-radius: 16px; padding: clamp(12px, 2dvh, 20px) 12px; }
+.row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.labelCol { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.label { font-size: 14px; color: var(--c-text-3); white-space: nowrap; }
+/* 밑줄 없이 숫자만 크게. 입력 중엔 옅은 배경으로 표시 */
+.field { display: flex; align-items: baseline; height: 36px; border-radius: 8px; padding: 0 4px; }
+.field:focus-within { background: var(--c-line-1); }
+.fieldError .input, .fieldError .unit { color: var(--bad-line); }
+.input { min-width: 1ch; height: 34px; line-height: 34px; border: 0; outline: none; background: transparent; text-align: left; font-size: 24px; font-weight: 800; color: var(--c-text-1); padding: 0; font-variant-numeric: tabular-nums; }
+.unit { font-size: 24px; font-weight: 800; color: var(--c-text-1); }
+.stepper { display: flex; align-items: center; gap: 6px; flex: none; }
+.step { width: 40px; height: 40px; flex: none; border-radius: 12px; border: 1px solid var(--c-line-2); background: #fff; color: var(--c-text-1); display: flex; align-items: center; justify-content: center; padding: 0; }
+.quick { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; }
+/* 보이는 칩은 36px 이상, ::before 로 눌리는 범위를 넓힘 */
+.chip { position: relative; height: clamp(36px, 5dvh, 46px); border-radius: 999px; font-size: 13px; font-weight: 600; color: #374151; border: 1px solid var(--c-line-2); background: #fff; padding: 0; }
+.chip::before { content: ""; position: absolute; inset: -4px -1px; }
+/* 선택: 채우지 않고 파란 테두리 + 연한 파랑 바탕 (테두리는 안쪽 그림자로 줘서 칩 크기가 변하지 않음) */
+.chipOn { border-color: var(--c-brand); background: #EFF6FF; color: #1D4ED8; font-weight: 700; box-shadow: inset 0 0 0 1px var(--c-brand); }
+.error { margin: 0; font-size: 13px; color: var(--bad); font-weight: 600; }
+.step, .chip { transition: transform .1s, background-color .15s; }
+.step:active:not(:disabled), .chip:active { transform: scale(.95); }
+@media (max-width: 340px) { .chip { font-size: 12px; } .label { font-size: 13px; } }

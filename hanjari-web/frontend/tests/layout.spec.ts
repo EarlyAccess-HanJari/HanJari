@@ -14,29 +14,70 @@ for (const [width, height] of PHONES) {
     expect(await top("arrival")).toBeLessThan(await top("result"));
     expect(await top("result")).toBeLessThan(await top("loads"));
     expect(await top("loads")).toBeLessThan(await top("n-input"));
-    expect(await top("n-input")).toBeLessThan(await top("card-sb02-31"));
+    // 첫 화면은 세로 스크롤 없이 한 화면 안에 — 페이지 자체는 스크롤하지 않음
+    expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(height);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
-    await expect(page.getByRole("button", { name: "30명", exact: true })).toHaveCount(1);
+    await expect(page.getByRole("button", { name: "20명", exact: true })).toHaveCount(1);
     await expect(page.getByTestId("dev-switcher")).toHaveCount(0);
+    await page.getByTestId("tab-1").click();
+    await expect(page.getByTestId("card-sb02-31")).toBeVisible();
   });
 }
 
-test("재계산 중 숫자를 숨기고 입력 위치를 유지한다", async ({ page }) => {
+test("재계산 중 카드는 그대로 두고 흐리게만 하며 입력 위치를 유지한다", async ({ page }) => {
   await page.clock.install({ time: new Date("2026-09-30T08:00:00+09:00") });
   await page.goto("/");
   await page.getByTestId("stop-sb02-32").click();
   await page.clock.runFor(1000);
   const input = page.getByTestId("n-input");
+  const hero = page.getByTestId("hero");
   const before = (await input.boundingBox())!.y;
+  const heroH = (await hero.boundingBox())!.height;
   await page.getByTestId("n-plus").click();
   await page.clock.runFor(260);
-  const result = page.getByTestId("result");
-  await expect(result).toHaveAttribute("aria-busy", "true");
-  await expect(result.getByText("다시 계산 중…")).toBeVisible();
-  await expect(result.getByText(/^\d+%$/)).toBeHidden();
+  await expect(hero).toHaveAttribute("aria-busy", "true");
   expect((await input.boundingBox())!.y).toBe(before);
+  expect((await hero.boundingBox())!.height).toBe(heroH);
   await page.clock.runFor(400);
-  await expect(result).toHaveAttribute("aria-busy", "false");
-  await expect(result.getByText(/^\d+%$/)).toBeVisible();
+  await expect(hero).toHaveAttribute("aria-busy", "false");
   expect((await input.boundingBox())!.y).toBe(before);
 });
+
+// 상태·문구 길이가 달라져도 대기 인원 버튼은 같은 자리 (누르던 버튼이 손 밑에서 밀리지 않게)
+for (const [width, height] of [[375, 812], [360, 780], [412, 915]] as [number, number][]) {
+  test(`${width}x${height}: 상태가 바뀌어도 대기 인원 버튼 위치가 같다`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    const ys: Record<string, number> = {};
+    for (const scenario of ["", "stale", "wide", "down"]) {
+      await page.goto(`/?scenario=${scenario}`);
+      await page.evaluate(() => localStorage.setItem("hanjari.sel", JSON.stringify({ route: "sb02", stop: "32" })));
+      await page.reload();
+      await expect(page.getByTestId("n-minus")).toBeVisible();
+      await expect(page.getByTestId("hero-skeleton")).toHaveCount(0);
+      ys[scenario || "normal"] = (await page.getByTestId("n-minus").boundingBox())!.y;
+    }
+    await page.goto("/");
+    await page.getByTestId("n-input").fill("20");                // 목업 n30: 확률이 낮아 안내 문구가 길어짐
+    await expect(page.getByTestId("hero")).toHaveAttribute("data-level", "어려울 수 있음");
+    await expect(page.getByTestId("hero")).toHaveAttribute("aria-busy", "false");
+    ys.low = (await page.getByTestId("n-minus").boundingBox())!.y;
+    expect(Math.max(...Object.values(ys)) - Math.min(...Object.values(ys))).toBeLessThanOrEqual(1);
+  });
+}
+
+// 탑승 확률은 남은 시간 오른쪽 같은 줄에 있다
+for (const width of [320, 360, 412]) {
+  test(`${width}px: 탑승 확률이 남은 시간 오른쪽에 있다`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 780 });
+    await page.goto("/");
+    await page.evaluate(() => localStorage.setItem("hanjari.sel", JSON.stringify({ route: "sb02", stop: "30" })));
+    await page.reload();
+    const { gap, sameRow } = await page.getByTestId("verdict").evaluate((v) => {
+      const a = v.getBoundingClientRect();
+      const b = v.previousElementSibling!.getBoundingClientRect();
+      return { gap: a.left - b.right, sameRow: a.top < b.bottom && a.bottom > b.top };
+    });
+    expect(gap).toBeGreaterThanOrEqual(0);
+    expect(sameRow).toBe(true);
+  });
+}

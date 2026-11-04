@@ -6,6 +6,7 @@ const start = async (page: Page, query = "") => {
   await page.goto("/" + query);
   await page.getByTestId("stop-sb02-32").click();
 };
+const chip = (page: Page, n: number) => page.getByRole("button", { name: `${n}명`, exact: true });
 
 test("첫 방문엔 정류장 시트가 열리고 6곳이 전부 보인다", async ({ page }) => {
   await page.goto("/");
@@ -17,27 +18,40 @@ test("첫 방문엔 정류장 시트가 열리고 6곳이 전부 보인다", asy
 test("정류장을 고르면 한 화면에 도착 정보·인원 입력·결과가 보인다", async ({ page }) => {
   await start(page);
   await expect(page.getByTestId("stop-name")).toHaveText("녹십자약국");
-  await expect(page.getByTestId("arrival")).toContainText("남은 시간");
+  await expect(page.getByTestId("arrival")).toContainText("이번 버스");
+  await expect(page.getByTestId("arrival")).not.toContainText("서울70사6419");
   await expect(page.getByTestId("loads")).toContainText("도착 시 차내 인원");
   await expect(page.getByTestId("n-input")).toHaveValue("3");
-  await expect(page.getByTestId("result")).toHaveAttribute("data-level", "여유 있음");
+  await expect(page.getByTestId("hero")).toHaveAttribute("data-level", "여유 있음");
+  await expect(page.getByTestId("verdict")).toContainText(/탑승 확률 · \d+%/);   // 퍼센트가 보인다
   await expect(page.getByText("버스 정보 13:11:33 기준")).toBeVisible();
 });
 
 test("인원을 바꾸면 결과가 바로 다시 계산된다", async ({ page }) => {
   await start(page);
-  await expect(page.getByTestId("result")).toHaveAttribute("data-level", "여유 있음");
-  await page.getByRole("button", { name: "20명" }).click();     // 목업 n30 → 녹십자약국 '어려울 수 있음'
-  await expect(page.getByTestId("result")).toHaveAttribute("data-level", "어려울 수 있음");
-  await expect(page.getByTestId("result")).toContainText(/탑승 가능성 \d+%/);
+  await expect(page.getByTestId("hero")).toHaveAttribute("data-level", "여유 있음");
+  await chip(page, 20).click();                                   // 목업 n30 → 녹십자약국 '어려울 수 있음'
+  await expect(page.getByTestId("hero")).toHaveAttribute("data-level", "어려울 수 있음");
+  await expect(page.getByTestId("verdict")).toContainText(/\d+%/);
   await expect(page.getByTestId("result")).toContainText("이번 버스는 타기 힘들어요.");
 });
 
-test("빠른 선택 30명으로 입력과 결과가 갱신된다", async ({ page }) => {
+test("+/-로 만든 인원이 칩에 있으면 그 칩이 바로 선택 표시된다", async ({ page }) => {
   await start(page);
-  await page.getByRole("button", { name: "30명", exact: true }).click();
-  await expect(page.getByTestId("n-input")).toHaveValue("30");
-  await expect(page.getByTestId("result")).toHaveAttribute("data-level", "어려울 수 있음");
+  await expect(chip(page, 3)).toHaveAttribute("aria-pressed", "true");
+  for (let i = 0; i < 12; i++) await page.getByTestId("n-plus").click();   // 3 → 15
+  await expect(page.getByTestId("n-input")).toHaveValue("15");
+  await expect(chip(page, 15)).toHaveAttribute("aria-pressed", "true");
+  await expect(chip(page, 3)).toHaveAttribute("aria-pressed", "false");
+  await page.getByTestId("n-plus").click();                                // 16 → 칩에 없으니 선택 없음
+  await expect(page.locator('[aria-pressed="true"]')).toHaveCount(0);
+});
+
+test("빠른 선택 20명으로 입력과 결과가 갱신된다", async ({ page }) => {
+  await start(page);
+  await chip(page, 20).click();
+  await expect(page.getByTestId("n-input")).toHaveValue("20");
+  await expect(page.getByTestId("hero")).toHaveAttribute("data-level", "어려울 수 있음");
 });
 
 test("입력 검증: 글자·빈칸·범위 밖·경계값", async ({ page }) => {
@@ -57,17 +71,19 @@ test("입력 검증: 글자·빈칸·범위 밖·경계값", async ({ page }) =>
 
   await input.fill("40");
   await expect(hint).toHaveCount(0);
-  await expect(page.getByTestId("n-plus")).toBeDisabled();      // 40 에서 더 못 늘림
+  await expect(page.getByTestId("n-plus")).toBeDisabled();
 
   await input.fill("0");
-  await expect(page.getByTestId("n-minus")).toBeDisabled();     // 0 에서 더 못 줄임
+  await expect(page.getByTestId("n-minus")).toBeDisabled();
   await page.getByTestId("n-plus").click();
   await expect(input).toHaveValue("1");
 });
 
-test("같은 노선 다른 정류장을 누르면 그 정류장으로 바뀐다", async ({ page }) => {
+test("다른 정류장 카드를 누르면 그 정류장으로 바뀌고 첫 화면으로 돌아온다", async ({ page }) => {
   await start(page);
+  await page.getByTestId("tab-1").click();
   await page.getByTestId("card-sb02-30").click();
+  await expect(page.getByTestId("tab-0")).toHaveAttribute("aria-selected", "true");
   await expect(page.getByTestId("stop-name")).toHaveText("한성대입구역5번출구");
 });
 
@@ -76,6 +92,7 @@ test("정류장 이름을 눌러 다른 노선으로 바꿀 수 있다", async (
   await page.getByTestId("stop-switch").click();
   await page.getByTestId("stop-jr03-23").click();
   await expect(page.getByTestId("stop-name")).toHaveText("창신역4번출구");
+  await page.getByTestId("tab-1").click();
   await expect(page.getByTestId("card-jr03-19")).toBeVisible();
 });
 
@@ -105,12 +122,13 @@ test("도착 시간이 1초씩 줄어든다", async ({ page }) => {
   await expect(page.getByTestId("arrival")).toContainText(/1분3[3-5]초/);
 });
 
-test("가까운 버스는 5초마다 자동으로 다시 불러온다", async ({ page }) => {
+test("버스가 멀면 30초마다 자동으로 다시 불러온다 (카운트다운이 새 값으로 바뀜)", async ({ page }) => {
   await page.clock.install(FAR_FROM_SNAPSHOT);
-  await start(page);
+  await page.goto("/");
+  await page.getByTestId("stop-sb02-30").click();  // 목업 eta_sec = 451 (7분 31초), 9정류장 전
   await page.clock.runFor(36_000);
-  // 새로고침이 없었다면 1분 0x초까지 내려갔어야 함
-  await expect(page.getByTestId("arrival")).toContainText(/1분3\d초/);
+  // 새로고침이 없었다면 6분 5x초까지 내려갔어야 함
+  await expect(page.getByTestId("arrival")).toContainText(/7분2\d초/);
 });
 
 test("남은 시간이 1분 미만이면 '곧 도착'", async ({ page }) => {
@@ -132,4 +150,50 @@ test("같은 스냅샷을 다시 받아도 카운트다운이 되감기지 않�
   await expect(page.getByTestId("arrival")).toContainText(/1분(2[89]|30)초/);  // 100 − 10 − 1
   await page.clock.runFor(32_000);                                           // 30초 자동 새로고침을 지나도
   await expect(page.getByTestId("arrival")).toContainText("곧 도착");         // 예전엔 1분3x초로 되감김
+});
+
+test("다음 버스: 있으면 몇 분 뒤인지 보여주고, 없으면 숨긴다", async ({ page }) => {
+  await start(page);                                             // 녹십자약국: 목업 eta2_sec 716
+  await expect(page.getByTestId("next-bus")).toHaveText("다음 버스 약 12분 후");
+  await page.getByTestId("stop-switch").click();
+  await page.getByTestId("stop-sb02-30").click();                // 필드가 없는 응답
+  await expect(page.getByTestId("stop-name")).toHaveText("한성대입구역5번출구");
+  await expect(page.getByTestId("next-bus")).toHaveCount(0);
+});
+
+test("입력이 잘못되면 이전 인원으로 계산한 판정을 보이지 않는다", async ({ page }) => {
+  await start(page);
+  await expect(page.getByTestId("verdict")).toBeVisible();
+  await page.getByTestId("n-input").fill("41");
+  await expect(page.getByTestId("n-hint")).toContainText("0~40");
+  await expect(page.getByTestId("verdict")).toHaveCount(0);
+  await page.getByTestId("n-input").fill("3");
+  await expect(page.getByTestId("verdict")).toBeVisible();
+});
+
+test("혼잡도는 확률이 아니라 도착 시 탑승 인원으로 정한다", async ({ page }) => {
+  await start(page);                                             // 확률이 높아도 45명이면 혼잡
+  await expect(page.getByTestId("verdict")).toContainText("탑승 확률");
+  await expect(page.getByTestId("loads")).toContainText("약 45명 (혼잡)");
+  for (const [stop, text] of [["jr03-19", "약 15명 (여유)"], ["jr03-20", "약 20명 (보통)"]]) {
+    await page.getByTestId("stop-switch").click();
+    await page.getByTestId(`stop-${stop}`).click();
+    await expect(page.getByTestId("loads")).toContainText(text);
+  }
+});
+
+test("첫 화면 아래 같은 노선 다른 정류장 2곳이 보이고, 누르면 그 정류장으로 바뀐다", async ({ page }) => {
+  await start(page);
+  await expect(page.getByTestId("other-sb02-30")).toBeVisible();
+  await expect(page.getByTestId("other-sb02-31")).toBeVisible();
+  await expect(page.getByTestId("other-sb02-32")).toHaveCount(0);                 // 내 정류장은 빠짐
+  await expect(page.getByTestId("other-sb02-30")).toContainText(/탑승 확률 \d+%|확률 보류|판단하기 일러요/);
+  await page.getByTestId("other-sb02-30").click();
+  await expect(page.getByTestId("stop-name")).toHaveText("한성대입구역5번출구");
+  await expect(page.getByTestId("other-sb02-32")).toBeVisible();
+});
+
+test("정류장 고르기에는 ARS 번호를 표시하지 않는다", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByTestId("stop-sb02-30")).toHaveText("한성대입구역5번출구");
 });
