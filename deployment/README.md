@@ -12,6 +12,7 @@
 - v8 검증: 서버 ML 테스트 114개, 백엔드 테스트 2개와 `serve.py check`를 통과했습니다. 샘플 자료에서 6개 정류장 모두 `eta2_sec`를 확인했고, 전환 후 HTTPS 정상·공개 8000 무응답을 확인했습니다. 실제 운행 시간의 화면은 아직 확인 전입니다.
 - 릴리스의 `hanjari-ml/models`와 `hanjari-ml/data`는 `/home/ubuntu/hanjari-ml` 아래를 가리키는 심볼릭 링크입니다. 따라서 매일 작업이 모델을 교체하면 웹 재시작 후 웹에도 반영되며, 그 뒤에는 `models/lite`가 Git과 달라질 수 있습니다.
 - 매일 작업: `/home/ubuntu/hanjari-ml`
+- 관측용 모델 보관: 자동 재학습은 계속하며 서비스 모델을 고정하지 않습니다. 최지용이 11/8 관측 전 모델과 11/9~11/20 관측 기간 모델 버전을 복사해 보관합니다. 최근 7개 버전만 남기는 정리에서 보관본이 삭제되지 않게 하고, 기록표 시각과 `models.csv`로 예측 모델을 찾습니다. 보관 작업은 아직 미실시입니다.
 - 수집기: `/home/ubuntu/hanjari`. 코드는 `hanjari/src/`와 같습니다.
 - 품질 점검: `/home/ubuntu/hanjari-quality`, `validation-20261103-v4` 릴리스를 가리키는 링크입니다.
 - HTTPS: `https://161.33.132.80/`. `installed/nginx-hanjari.conf`가 443 포트를 받아 내부 `127.0.0.1:8000`으로 전달합니다. 80의 일반 요청은 HTTPS로 308 이동하며 인증서 검증용 ACME 경로는 예외입니다. 인증서 갱신은 `installed/hanjari-cert-renew.*`가 맡습니다.
