@@ -9,7 +9,7 @@
 피처는 학습과 **같은 코드**(build_dataset.build(open_=True) → train.features)로 만든다 → 학습/서비스 어긋남 방지.
 단계(기능흐름도 F-04 순서):
   1. 확률 보류     — 정보가 오래됨 / 수업 없는 날(일요일·공휴일) / 그 칸(시간대×거리)에 기준을 정할 데이터 부족
-  2. 판단하기 일러요 — 도착재차 10~90% 구간이 WIDE 명보다 넓음
+  (11-04: '판단하기 일러요'는 내지 않음 — 범위가 넓어도 확률이 그 불확실성을 담는다. 만차 버스도 보류 대신 낮은 확률로 안내)
   3. 여유 있음     — P ≥ 칸별 '여유' 기준(API 기준 계산 탑승 97%, 수업 직전 98% 를 지킨 가장 낮은 P)
   4. 어려울 수 있음 — P ≤ 0.3
   5. 빠듯함        — 그 사이
@@ -41,7 +41,6 @@ def lite_rule(d):
 KST = dt.timezone(dt.timedelta(hours=9))
 # ponytail: 기능흐름도는 60초지만 수집 간격이 한산한 시간 150초라 180초. 백엔드가 API 를 직접 부르게 되면 60초로.
 MAX_AGE = 180
-WIDE = 20      # ponytail: 10~90% 구간 폭(명) 잠정값. 데이터 쌓이면 '판단 이르다' 비율·정확도로 다시 정할 것
 HARD = 0.3
 NAMES = {("sb02", "30"): "한성대입구역5번출구", ("sb02", "31"): "한성대입구역2번출구", ("sb02", "32"): "녹십자약국",
          ("jr03", "19"): "동대문역.흥인지문", ("jr03", "20"): "동묘앞역", ("jr03", "23"): "창신역4번출구"}
@@ -58,9 +57,7 @@ def calibration_mask(d, Q, qs):
     import numpy as np
     import train as T
     caps = T.verified_capacities(d)
-    widths = np.array([np.interp(0.9, qs, q) - np.interp(0.1, qs, q) for q in Q])
-    return (np.isfinite(caps) & (d.r_now.values <= caps) & (widths <= WIDE)
-            & ~d.holiday.values & d.weekday.notna().values & (d.weekday.values != "일"))
+    return np.isfinite(caps) & ~d.holiday.values & d.weekday.notna().values & (d.weekday.values != "일")
 
 
 def export(lite=False, until=None, out_dir=None):
@@ -99,7 +96,7 @@ def export(lite=False, until=None, out_dir=None):
     meta = dict(
         feats=feats, f0=T.F0, qs=T.QS.tolist(), cats=d.attrs["cats"],
         capacity_policy=T.capacity_policy(), calibration_rows=len(Pm),
-        res0={str(k): v.tolist() for k, v in m["res0"].items()},
+        res0={str(k): v.tolist() for k, v in m["res0"].items()}, gain_q=m["gain_q"],
         thresholds=[[p, s, None if t in (None, "부족") else float(t), t == "부족"] for (p, s), (t, _, _) in th.items()],
         hist_all={r: [[j, h, v] for (j, h), v in tab.items()] for r, tab in B.HIST_ALL.items()},
         lite=lite, tab={r: [[j, h, *v] for (j, h), v in B.csv_tables(r).items()] for r in B.STOPS},  # 원본 CSV 없이 쓰는 과거 평균 표
@@ -127,6 +124,7 @@ def load(lite, src=None):
             m[k].load_model(src / f"{f}.json")
         m["res0"] = {k == "True": np.array(v) for k, v in meta["res0"].items()}
         m["qs"] = np.array(meta["qs"])
+        m["gain_q"] = meta.get("gain_q", {})
         meta["hist_d"] = {r: {(j, h): v for j, h, v in tab} for r, tab in meta["hist_all"].items()}
         meta["tab_d"] = {r: {(j, h): tuple(v) for j, h, *v in tab} for r, tab in meta["tab"].items()} if "tab" in meta else {}
         _M[src] = (m, meta)
@@ -143,8 +141,6 @@ def level(p, q10, q90, k, peak, weekday_ok, th, age):
     t, short = th[cell]
     if short:
         return "확률 보류", "이 시간대·거리는 검증 데이터 부족"
-    if q90 - q10 > WIDE:
-        return "판단하기 일러요", f"도착 인원 예상 폭이 {q10:.0f}~{q90:.0f}명으로 넓음"
     if t is not None and p >= t:
         return "여유 있음", f"P {p:.2f} ≥ 기준 {t:.2f}"
     if p <= HARD:
@@ -166,12 +162,9 @@ def probability_issue(route, bus_type, r_now, meta, plate="", vehicle_id=""):
     import train as T
     if meta.get("capacity_policy") != T.capacity_policy():
         return "model_unverified"
-    capacity = DQ.verified_capacity(route, plate, str(vehicle_id))
     if r_now is None or not math.isfinite(r_now) or r_now < 0:
         return "passenger_unavailable"
-    if r_now > capacity:
-        return "capacity_exceeded"
-    return None
+    return None  # 정원을 넘은 만차 버스도 보류하지 않고 확률(거의 0)로 '어려울 수 있음'을 안내
 
 
 def probability_hold(route, bus_type, r_now, meta, plate="", vehicle_id=""):

@@ -24,10 +24,11 @@ from feature_schema import GROUPS
 P = Path(__file__).resolve().parents[1] / "data/processed"
 DATASET = P / "dataset.csv"  # sweep.py 가 고정 스냅샷으로 바꿔 씀
 MIN_DAYS, FOLDS = 5, 4
-CAPACITY = {  # (노선, busType) → 잠정 판단 기준. 확인된 차량별 법정 정원이 아님.
-    ("sb02", "0"): 33, ("sb02", "1"): 55,
-    # 기존 잠정값을 유지. 차종·정원은 현장 확인 후 수정하고 확률 기준을 다시 검증해야 함.
-    ("jr03", "0"): 55, ("jr03", "1"): 55,
+CAPACITY = {  # (노선, busType) → 실제 만차 인원(API 기준, 11-04 src/exp_practical_capacity.py). busType 은 일반/저상 구분일 뿐
+    # 법정 정원(카운티 마을버스형 승객 20~22)보다 훨씬 끼어 탄다. 혼잡 시간 붐비는 정류장을 떠날 때 인원 상위 1%·더 못 타는 인원으로 정함.
+    # 차량별 값은 config/boarding_policy.json 이 우선. 관측 최대로 올리지 않는다(그 방식이 종로03 71명·98% 오표시를 만들었다).
+    ("sb02", "0"): 38, ("sb02", "1"): 60,
+    ("jr03", "0"): 52, ("jr03", "1"): 54,
 }
 
 
@@ -39,7 +40,7 @@ def cap(route, bt):
 def capacity_policy():
     """확률 검증에 쓴 판단 기준. 정원표나 예측 후처리가 바뀌면 이전 검증을 재사용하지 않는다."""
     return {"version": "verified-vehicles-unclipped-v2", "source_schema": DQ.SCHEMA_VERSION, "fallback": 33,
-            "calibration": "verified-school-nonwide-v1",
+            "calibration": "practical-capacity-surge-v1",
             "values": [[r, b, c] for (r, b), c in sorted(CAPACITY.items())],
             "vehicles": sorted([[v["route"], v["plate"], v["vehicle_id"], v["capacity"]]
                                 for v in DQ.boarding_policy()["vehicles"]])}
@@ -189,7 +190,28 @@ def fit(tr, feats):
         res0 = tk.y.values - tk.r_now.values - m["m0"].predict(tk[F0].astype(float))
         dwell = (tk.pos_dwell == 1).values
         m["res0"] = {dw: np.sort(res0[dwell == dw] if (dwell == dw).sum() >= 20 else res0) for dw in (True, False)}
+    m["gain_q"] = gain_table(tr)
     return m
+
+
+GAIN_Q = np.linspace(0, 1, 41)
+
+
+def gain_slot(d):
+    return ((d.minute.values + np.nan_to_num(d.eta.values.astype(float)) / 60) // 30).astype(int)
+
+
+def gain_table(tr):
+    """1~2정류장 전 조회에서 도착까지 실제로 늘어난 인원(y − 지금 재차)의 분위수 — (노선, 정류장, 거리, 30분 칸)별.
+    11-04: 몰림 시간(2번출구 08:45 등)엔 한 정류장에서 +30명도 생겨 모델 분위수가 과신했다(15명+ 몰림의 55%가 90% 위쪽 초과).
+    예측 확률을 이 경험 분포로 계산한 값 이하로 낮춘다 → 몰림 시간 '여유' 오류 5.4%→3.6%, 평균 P 0.95→0.92(실제 0.92)."""
+    x = tr[tr.stops_away.between(1, 2) & tr.y.notna() & tr.r_now.notna()]
+    gain = (x.y - x.r_now).values
+    out = {}
+    for key, idx in pd.Series(range(len(x))).groupby([x.route.values, x.stop.values, x.stops_away.values.astype(int), gain_slot(x)]).groups.items():
+        if len(idx) >= 30:
+            out["|".join(map(str, key))] = np.quantile(gain[idx], GAIN_Q).tolist()
+    return out
 
 
 def predict(m, te, quantiles=False):
@@ -201,6 +223,12 @@ def predict(m, te, quantiles=False):
     thr = thresholds(te)
     qs = m.get("qs", QS)  # 모델마다 분위수 개수가 다를 수 있음(19 → 9, 10-01) — 모델에 저장된 값으로
     Pm = quantile_p(Q, thr, qs)
+    gq = m.get("gain_q") or {}
+    if gq:  # 1~2정류장 전: 과거 같은 칸의 실제 증가 분포로 낸 확률보다 높게 말하지 않는다(몰림 과신 방지)
+        for i, key in enumerate(zip(te.route.values, te.stop.values, te.stops_away.values, gain_slot(te))):
+            q = gq.get(f"{key[0]}|{key[1]}|{int(key[2])}|{key[3]}") if 1 <= key[2] <= 2 else None
+            if q is not None and np.isfinite(te.r_now.values[i]):
+                Pm[i] = np.minimum(Pm[i], np.interp(thr[i] - te.r_now.values[i], q, GAIN_Q, left=0, right=1))
     k0 = te.stops_away.values == 0
     if k0.any() and m["m0"] is not None:
         te0 = te[k0]
