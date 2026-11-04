@@ -188,7 +188,7 @@ def fit(tr, feats):
     if len(tk) >= 50:
         m["m0"] = xgb.XGBRegressor(objective="reg:absoluteerror", **kw).fit(tk[F0].astype(float), tk.y - tk.r_now, sample_weight=tk.w)
         res0 = tk.y.values - tk.r_now.values - m["m0"].predict(tk[F0].astype(float))
-        dwell = (tk.pos_dwell == 1).values
+        dwell = (tk.pos_dwell != 0).values  # 위치 결측은 정차 쪽(넓은 분포)으로 — 주행으로 보면 과신
         m["res0"] = {dw: np.sort(res0[dwell == dw] if (dwell == dw).sum() >= 20 else res0) for dw in (True, False)}
     m["gain_q"] = gain_table(tr)
     return m
@@ -234,7 +234,8 @@ def predict(m, te, quantiles=False):
         te0 = te[k0]
         point[k0] = np.maximum(te0.r_now.values + m["m0"].predict(te0[F0].astype(float)), 0)
         for dw in (True, False):
-            me = k0 & ((te.pos_dwell.values == 1) == dw)
+            # 11-04: 위치 API 가 빠지면 정차 중인 차도 '주행'으로 봐 P 0.92→0.99 로 과신했다 → 결측은 정차 분포로
+            me = k0 & ((te.pos_dwell.values != 0) == dw)
             if me.any():
                 Pm[me] = empirical_p(m["res0"][dw], point[me], thr[me])
                 Q[me] = np.maximum(point[me, None] + np.quantile(m["res0"][dw], qs)[None, :], 0)

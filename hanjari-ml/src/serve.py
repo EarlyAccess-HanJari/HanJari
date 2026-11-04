@@ -86,9 +86,9 @@ def export(lite=False, until=None, out_dir=None):
     m = T.fit(d, feats)
     if m["m0"] is None:
         raise ValueError("바로 앞 버스 학습 데이터가 50행 미만: 모델 저장 보류")
-    log_days = sorted(p.name for p in B.LOG.glob("2026*") if p.is_dir() and (not until or p.name <= until))
-    for route in B.STOPS:  # q_hist 용 과거 순증감 표 (로그 한 번 읽음)
-        B.build(route, log_days)
+    for route in B.STOPS:  # q_hist 용 과거 순증감 표 — 날짜별 캐시 합산(학습 q_hist 와 같은 정의, 원본 재읽기 없음)
+        if B.hist_from_cache(route, until) is None:  # 캐시가 없는 설치: 예전처럼 원본에서
+            B.build(route, sorted(p.name for p in B.LOG.glob("2026*") if p.is_dir() and (not until or p.name <= until)))
     out_dir.mkdir(parents=True, exist_ok=True)
     m["pt"].save_model(out_dir / "point.json")
     m["qm"].save_model(out_dir / "quantile.json")

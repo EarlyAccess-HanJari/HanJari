@@ -97,6 +97,14 @@ class SourceQuality(unittest.TestCase):
             self.assertEqual(dataset.read_text(), "previous data")
 
 
+MODEL_KEYS = {"load_pred", "load_10", "load_90", "p_board", "level", "reason"}
+
+
+def arrival(rows):
+    """모델 출력만 뺀 응답 — 선택 필드가 빠져 특징값이 바뀌면 확률은 조금 달라질 수 있지만 도착·상태는 그대로여야 한다."""
+    return [{k: v for k, v in r.items() if k not in MODEL_KEYS} for r in rows]
+
+
 class SnapshotIntegration(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -109,7 +117,12 @@ class SnapshotIntegration(unittest.TestCase):
 
     def run_sample(self):
         self.arr.write_text(json.dumps(self.body))
-        with patch.object(T, "predict", side_effect=AssertionError("held rows must not infer")):
+        real = T.predict
+
+        def guarded(m, d, **kw):  # 다른 정류장은 확률을 내도 되지만, 보류된 행은 모델에 들어가면 안 된다
+            assert not ((d.route == "jr03") & (d.stop.astype(str) == "23")).any(), "held rows must not infer"
+            return real(m, d, **kw)
+        with patch.object(T, "predict", side_effect=guarded):
             results = S.predict_live(10, log_dir=self.folder)
         self.assertEqual(len(results), 6)
         return next(r for r in results if r["route"] == "jr03" and r["stop"] == "23")
@@ -202,7 +215,7 @@ class SnapshotIntegration(unittest.TestCase):
                         unaffected = lambda rows: [r for r in rows if (r["route"],r["stop"]) != (route,stop)]
                         self.assertEqual(unaffected(result), unaffected(baseline))
                         if field != "plainNo1":
-                            self.assertEqual(result, baseline)
+                            self.assertEqual(arrival(result), arrival(baseline))
                         else:
                             self.assertFalse(any(r["route"] == route and r["stop"] == stop and r["r_now"] is not None for r in result))
                         path.write_bytes(original)
@@ -222,7 +235,7 @@ class SnapshotIntegration(unittest.TestCase):
                             else:
                                 item[field] = None
                         path.write_text(json.dumps(body))
-                        self.assertEqual(S.predict_live(10, log_dir=self.folder), baseline)
+                        self.assertEqual(arrival(S.predict_live(10, log_dir=self.folder)), arrival(baseline))
                         path.write_bytes(original)
 
     def test_malformed_identity_and_noninteger_arrival_never_become_valid_counts(self):

@@ -179,6 +179,14 @@ class SurgeGain(unittest.TestCase):
         self.assertTrue((np.diff(p, axis=1) <= 1e-12).all())  # 앞사람이 늘면 확률은 줄기만
         self.assertLessEqual(p[0, 0], base + 1e-12)
 
+    def test_missing_position_uses_dwelling_spread_for_nearby_bus(self):
+        row, m, _ = fixture(50, stops=0)
+        m["res0"] = {True: np.linspace(-20, 20, 41), False: np.zeros(41)}
+        running, dwelling, unknown = (T.predict(m, pd.DataFrame([dict(row, pos_dwell=v)]))[1][0, 0] for v in (0, 1, np.nan))
+        self.assertEqual(running, 1)
+        self.assertLess(dwelling, 0.9)
+        self.assertEqual(unknown, dwelling)  # 위치를 모르면 '주행'으로 과신하지 않는다
+
     def test_gain_table_needs_enough_history_and_skips_nearby_bus(self):
         rows = [dict(route="sb02", stop="32", stops_away=1, minute=525, eta=60, y=30 + i % 5, r_now=10) for i in range(40)]
         rows += [dict(route="sb02", stop="32", stops_away=0, minute=525, eta=60, y=30, r_now=10)] * 40
