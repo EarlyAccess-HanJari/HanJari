@@ -217,5 +217,5 @@ HanJari/
 ---
 
 <div align="center">
-<sub>Project Charter v1.8(2026.11.05) 기준 · 일정은 [PRD v1.8·WBS v1.12·마일스톤 v1.4(2026.11.05)](docs/plan/) 기준 · 운영 상태는 2026-11-05 05:04(KST) v8 전환·서버 검증 기준 · README 작성일 2026.11.05</sub>
+<sub>Project Charter v1.8(2026.11.05) 기준 · 일정은 [PRD v1.9·WBS v1.12·마일스톤 v1.4(2026.11.05)](docs/plan/) 기준 · 운영 상태는 2026-11-05 05:04(KST) v8 전환·서버 검증 기준 · README 작성일 2026.11.05</sub>
 </div>
