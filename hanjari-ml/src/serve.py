@@ -33,6 +33,8 @@ SAMPLE = B.ROOT / "data/sample/20260930"  # 실제 스냅샷 1장(도착·위치
 HISTORY = ["since_prev", "hw_ratio", "q_bias3", "q_prev", "q_today", "q_eb", "q_live2", "q_today2", "q_rate", "gap_sum"]
 FULL = sum(GROUPS.values(), [])
 LITE = [f for f in FULL if f not in HISTORY]
+# 라이트 학습에서 피처를 만든 뒤엔 안 쓰는 열(중간값·기록용 글자). trip·time 은 날짜가 적을 때 운행 단위 분할에 쓰여 남긴다.
+LITE_UNUSED = ["q_live", "q_cover", "pos_sect", "source_updated", "source_schema", "data_status", "arrive_time", "term", "exam"]
 
 
 def lite_rule(d):
@@ -72,6 +74,9 @@ def export(lite=False, until=None, out_dir=None):
         d = d[d.date <= until]
     feats, out_dir = (LITE, Path(out_dir or MODELS / "lite")) if lite else (FULL, Path(out_dir or MODELS))
     if lite:
+        # 11-04: 라이트 학습에 안 쓰는 열(전체 모델용 이력 피처·중간값·기록용 글자)은 들고 다니지 않는다.
+        #   폴드마다 표 전체를 복사해 마감 메모리가 1.26GB(서버 상한 650MB)였다. 모델 입력(LITE)은 그대로.
+        d = d.drop(columns=[c for c in HISTORY + LITE_UNUSED if c in d.columns and c not in feats])
         # 평일만 학습(10-01 실험: 평일 4폴드 모두 개선, MAE 3.09→2.84, 수업 직전 6.0→4.6). 일요일·공휴일은 서비스에서 '확률 보류'
         # 10-05: 토요일도 정규수업이 있어(지용) 학습에 포함 — 빼는 건 일요일·공휴일만
         d = d[~d.holiday & (d.weekday != "일")].assign(rule=lambda x: lite_rule(x))
@@ -80,12 +85,18 @@ def export(lite=False, until=None, out_dir=None):
         point, Pm, Q = T.predict(T.fit(tr, feats), te, quantiles=True)
         oof.append(T.metrics(point, Pm, te))
         valid = calibration_mask(te, Q, T.QS)
-        keep.append((Pm[valid], (te.y.values[:, None] <= T.thresholds(te)).astype(float)[valid],
-                     np.repeat(te.stops_away.values[:, None], len(T.NS), 1)[valid], np.repeat(te.is_peak.values[:, None] == 1, len(T.NS), 1)[valid]))
+        # 탑승 여부는 bool, 거리는 int16 으로 보관(값은 같고 크기는 1/8·1/4) — 기준 고르기 결과 동일
+        keep.append((Pm[valid], (te.y.values[:, None] <= T.thresholds(te))[valid],
+                     np.repeat(te.stops_away.values.astype(np.int16)[:, None], len(T.NS), 1)[valid],
+                     np.repeat(te.is_peak.values[:, None] == 1, len(T.NS), 1)[valid]))
+        del tr, te, point, Pm, Q, valid
     if not keep:
         raise ValueError("날짜 분할 검증에 필요한 데이터가 부족함")
     Pm, Bd, K, PK = (np.concatenate(x) for x in zip(*keep))
+    del keep
     th = T.pick_thresholds(Pm, Bd, K, PK)
+    calibration_rows = len(Pm)
+    del Pm, Bd, K, PK
     m = T.fit(d, feats)
     if m["m0"] is None:
         raise ValueError("바로 앞 버스 학습 데이터가 50행 미만: 모델 저장 보류")
@@ -98,7 +109,7 @@ def export(lite=False, until=None, out_dir=None):
     m["m0"].save_model(out_dir / "k0.json")
     meta = dict(
         feats=feats, f0=T.F0, qs=T.QS.tolist(), cats=d.attrs["cats"],
-        capacity_policy=T.capacity_policy(), calibration_rows=len(Pm),
+        capacity_policy=T.capacity_policy(), calibration_rows=calibration_rows,
         res0={str(k): v.tolist() for k, v in m["res0"].items()}, gain_q=m["gain_q"],
         thresholds=[[p, s, None if t in (None, "부족") else float(t), t == "부족"] for (p, s), (t, _, _) in th.items()],
         hist_all={r: [[j, h, v] for (j, h), v in tab.items()] for r, tab in B.HIST_ALL.items()},

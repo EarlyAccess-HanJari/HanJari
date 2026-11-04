@@ -49,12 +49,14 @@ def capacity_policy():
 def row_capacities(d):
     """현장 확인 정원 우선. 미확인 차량의 잠정값은 오프라인 API 대리지표에만 쓴다."""
     verified = verified_capacities(d)
-    return np.where(np.isfinite(verified), verified, [cap(r.route, r.bus_type) for r in d.itertuples()])
+    return np.where(np.isfinite(verified), verified, [cap(r, b) for r, b in zip(d["route"], d["bus_type"])])
 
 
 def verified_capacities(d):
+    # 필요한 세 열만 읽는다(11-04: itertuples 가 60열 전체로 행마다 튜플을 만들어 마감이 느리고 메모리를 썼다)
     registry = {(v["route"], v["plate"], v["vehicle_id"]): v["capacity"] for v in DQ.boarding_policy()["vehicles"]}
-    return np.array([registry.get((r.route, r.plate, str(getattr(r, "vehicle_id", ""))), np.nan) for r in d.itertuples()])
+    ids = d["vehicle_id"].astype(str) if "vehicle_id" in d else [""] * len(d)
+    return np.array([registry.get(k, np.nan) for k in zip(d["route"], d["plate"], ids)], dtype=float)
 
 
 NS = np.arange(0, 41)
@@ -85,12 +87,14 @@ def features(d=None, cats=None):
     if "y" in d and d.y.notna().any() and not (np.isfinite(d.y) & (d.y >= 0) & (d.y % 1 == 0)).all():
         raise ValueError("잘못된 학습 정답")
     d = d.astype({"date": str, "stop": str, "bus_type": str})
-    cal = pd.read_csv(P / "calendar.csv", dtype=str)
-    d = d.merge(cal[["date", "weekday", "term", "exam", "holiday"]], on="date", how="left")
+    cal = pd.read_csv(P / "calendar.csv", dtype=str).set_index("date")
+    # 11-04: merge 는 42만 행 표 전체를 한 번 더 복사해 마감 메모리 최대치였다 → 날짜로 열만 붙인다(값·순서 동일)
+    d = d.reset_index(drop=True)
+    for c in ("weekday", "term", "exam", "holiday"):
+        d[c] = d["date"].map(cal[c])
     d["holiday"] = d["holiday"].notna() & (d["holiday"] != "")
     d["exam"] = d["exam"].fillna("")
-    hh, mm, _ = d["time"].str.split(":", expand=True).astype(int).T.values
-    d["minute"] = hh * 60 + mm
+    d["minute"] = d["time"].str.slice(0, 2).astype(int) * 60 + d["time"].str.slice(3, 5).astype(int)
     # ponytail: 모든 날짜에 2026-2 시간표 적용. 다른 학기 데이터가 섞이면 yearhakgi 로 맞출 것.
     cs = pd.read_csv(P / "class_starts.csv", dtype=str)
     cs["m"] = cs["start"].str[:2].astype(int) * 60 + cs["start"].str[3:].astype(int)
