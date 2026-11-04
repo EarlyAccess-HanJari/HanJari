@@ -39,6 +39,8 @@
 import calendar, csv, datetime as dt, glob, json, os
 from collections import defaultdict
 from pathlib import Path
+import data_quality as DQ
+from api_response import response_items
 
 ROOT = Path(__file__).resolve().parents[1]
 LOG, OUT = ROOT / "data/api_logs", ROOT / "data/processed"
@@ -60,17 +62,35 @@ def snapshots(route, days=None):
     for f in files(route, "arr", days):
         day, hms = f.split(os.sep)[-2], os.path.basename(f).split("_")[-1][:6]
         try:
-            items = json.load(open(f))["msgBody"]["itemList"] or []
-        except ValueError:  # 복사 중 잘린 파일(수집기가 쓰는 도중에 가져옴) — 건너뜀
+            items = read_items(f)
+        except (OSError, ValueError, KeyError, TypeError):
             continue
-        yield dt.datetime.strptime(day + hms, "%Y%m%d%H%M%S"), {int(i["staOrd"]): i for i in items}
+        try:
+            positions = {str(p.get("plainNo") or "").strip(): str(p.get("vehId") or "")
+                         for p in read_items(f.replace("_arr_", "_pos_"))}
+        except (OSError, ValueError, KeyError, TypeError):
+            positions = {}
+        counts = defaultdict(set)
+        for it in items:
+            for slot in "12":
+                n = DQ.passenger_count(it, slot)
+                if n is not None:
+                    counts[DQ.vehicle_key(it, slot)].add(n)
+        for it in items:
+            for slot in "12":
+                plate = str(it.get("plainNo" + slot) or "").strip()
+                it["_vehicle_mismatch" + slot] = plate in positions and str(it.get("vehId" + slot)) != positions[plate]
+                it["_passenger_conflict" + slot] = len(counts[DQ.vehicle_key(it, slot)]) > 1
+        yield dt.datetime.strptime(day + hms, "%Y%m%d%H%M%S"), {num(i.get("staOrd")): i for i in items if num(i.get("staOrd")) is not None}
+
+
+def read_items(path):
+    with open(path) as f:
+        return response_items(json.load(f))
 
 
 def num(x):
-    try:
-        return int(x)
-    except (TypeError, ValueError):
-        return None
+    return DQ.integer(x)
 
 
 def segments(route, days=None, open_=False):
@@ -80,11 +100,15 @@ def segments(route, days=None, open_=False):
     for t, items in snapshots(route, days):
         gap = last_t is not None and (t - last_t).total_seconds() > MAX_GAP
         for s, it in items.items():
-            plate = it["plainNo1"].strip()
-            if s in cur and (gap or plate != cur[s][0]):
+            plate = DQ.vehicle_key(it)[0]
+            if s in cur and (gap or plate != cur[s][0] or it.get("vehId1") != cur[s][1][-1][1].get("vehId1")
+                             or (t - cur[s][1][-1][0]).total_seconds() > MAX_GAP):
                 p, seen = cur.pop(s)
                 end = seen[-1][1]
-                if not gap and num(end["staOrd"]) - num(end["sectOrd1"]) == 0 and num(end["reride_Num1"]) is not None:
+                if (not gap and plate != p and (t - seen[-1][0]).total_seconds() <= MAX_GAP
+                        and num(end.get("staOrd")) == num(end.get("sectOrd1"))
+                        and num(end.get("staOrd")) is not None
+                        and DQ.valid_count(end, seen[-1][0]) is not None):
                     yield s, p, seen, True
             if plate:
                 cur.setdefault(s, (plate, []))[1].append((t, it))
@@ -129,7 +153,7 @@ def build(route, days=None, open_=False, hist_all=None, tab=None):
                 target.append((s, plate, seen[-1:], None, None))
             continue
         t_end, end = seen[-1]
-        y = num(end["reride_Num1"])
+        y = DQ.valid_count(end, t_end)
         arr[s].append((t_end, plate, y))
         if s in STOPS[route] and not open_:
             target.append((s, plate, seen, t_end, y))
@@ -152,26 +176,35 @@ def build(route, days=None, open_=False, hist_all=None, tab=None):
         loads = {}
         for it in items.values():
             for i in "12":
-                p, r = it["plainNo" + i].strip(), num(it["reride_Num" + i])
+                p, r = DQ.vehicle_key(it, i)[0], DQ.valid_count(it, t, i)
                 if p and r is not None:
                     loads[p] = r
         route_load[t] = round(sum(loads.values()) / len(loads), 2) if loads else None
     tab = csv_tables(route) if tab is None else tab  # 서비스(라이트)는 저장해 둔 표를 씀(원본 CSV 60MB 없이)
     # 위치 스냅샷: 조회 시각 → {차량: (마지막 정류장, 정차중, 구간 진행률)}
-    pos = {}
+    pos, pos_ids = {}, {}
     for f in files(route, "pos", days):
         day, hms = f.split(os.sep)[-2], os.path.basename(f).split("_")[-1][:6]
         vs = {}
         try:
-            its = json.load(open(f))["msgBody"]["itemList"] or []
-        except ValueError:
+            its = read_items(f)
+        except (OSError, ValueError, KeyError, TypeError):
             continue
+        stamp = dt.datetime.strptime(day + hms, "%Y%m%d%H%M%S")
+        pos_ids[stamp] = {}
         for v in its:
+            plate = DQ.vehicle_key(v, "")[0]
+            if not plate:
+                continue
+            pos_ids[stamp][plate] = str(v.get("vehId") or "")
+            made = DQ.source_time(v.get("dataTm"))
+            if made is None or made.tzinfo is not None or not -5 <= (stamp - made).total_seconds() <= DQ.MAX_SOURCE_AGE:
+                continue
             try:
                 frac = float(v["sectDist"]) / float(v["fullSectDist"])
-            except (ValueError, ZeroDivisionError):
+            except (KeyError, TypeError, ValueError, ZeroDivisionError):
                 frac = None
-            vs[v["plainNo"].strip()] = (num(v["sectOrd"]), num(v["stopFlag"]), frac)
+            vs[plate] = (num(v.get("sectOrd")), num(v.get("stopFlag")), frac)
         pos[dt.datetime.strptime(day + hms, "%Y%m%d%H%M%S")] = vs
     # 위치 기반 정밀 순승차 사건: pev[j] = [(출발시각, 차량, net, 배차간격초, 알 수 있게 된 시각)]
     #   net 은 구간 j 를 달리는 동안의 마지막 재차로 계산 → 알 수 있는 시각 = 그 구간을 마지막으로 본 시각(출발 시각 아님, 09-24 누설 수정)
@@ -179,8 +212,8 @@ def build(route, days=None, open_=False, hist_all=None, tab=None):
     for t, items in snapshots(route, days):
         for it in items.values():
             for i in "12":
-                pl, r = it["plainNo" + i].strip(), num(it["reride_Num" + i])
-                if pl and r is not None:
+                pl, r = DQ.vehicle_key(it, i)[0], DQ.valid_count(it, t, i)
+                if pl and r is not None and str(it.get("vehId" + i)) == pos_ids.get(t, {}).get(pl):
                     rr[(t, pl)] = r
     segs = defaultdict(list)  # 차량 → [구간 p, 출발시각, 구간 안 달리는 중 마지막 재차, 마지막으로 본 시각, 그 재차를 본 시각]
     for t in sorted(pos):
@@ -228,8 +261,15 @@ def build(route, days=None, open_=False, hist_all=None, tab=None):
     rows = []
     for s, plate, seen, t_end, y in target:
         for t, it in seen:
-            eta, k = num(it["traTime1"]), num(it["staOrd"]) - num(it["sectOrd1"])
-            if eta is None or k is None or k < 0:
+            eta, seq, sect = num(it.get("traTime1")), num(it.get("staOrd")), num(it.get("sectOrd1"))
+            if eta is None or eta < 0 or seq is None or sect is None or seq < sect:
+                continue
+            k = seq - sect
+            status = DQ.source_issue(it, t)
+            vehicle_id = str(it.get("vehId1") or "")
+            if plate in pos_ids.get(t, {}) and vehicle_id != pos_ids[t][plate]:
+                status = "vehicle_mismatch"
+            if not open_ and status != "ok":
                 continue
             J = range(s - k, s)
             q_live, used = 0.0, 0
@@ -257,6 +297,8 @@ def build(route, days=None, open_=False, hist_all=None, tab=None):
                 q_prev = 0.0
             h = t.hour
             ps, pdw, pfr = pos.get(t, {}).get(plate, (None, None, None))
+            if status == "vehicle_mismatch":
+                ps = pdw = pfr = None
             q_live2 = q_today2 = q_rate = gap_sum = None
             if ps is not None and ps < s:
                 J2 = range(ps if pdw == 1 else ps + 1, s)
@@ -321,10 +363,12 @@ def build(route, days=None, open_=False, hist_all=None, tab=None):
                     hw_ratio = round(hw_ratio, 3)
             rows.append(dict(
                 date=t.strftime("%Y%m%d"), time=t.strftime("%H:%M:%S"), route=route, stop=s, plate=plate,
-                bus_type=it["busType1"], eta=eta, stops_away=k, r_now=num(it["reride_Num1"]),
-                eta2=num(it["traTime2"]), r2=num(it["reride_Num2"]),
+                source_schema=DQ.SCHEMA_VERSION, data_status=status, vehicle_id=vehicle_id,
+                source_updated=it.get("mkTm"),
+                bus_type=it.get("busType1"), eta=eta, stops_away=k, r_now=DQ.passenger_count(it),
+                eta2=num(it.get("traTime2")), r2=DQ.valid_count(it, t, "2"),
                 q_live=round(q_live, 2), q_cover=round(used / len(J), 2) if len(J) else 1.0, q_prev=q_prev, q_today=q_today, q_eb=q_eb, q_hist=q_hist, q_bias3=q_bias3, since_prev=since_prev, hw_ratio=hw_ratio,
-                eta_gap=(num(it["traTime2"]) - eta) if num(it["traTime2"]) else None, route_load=route_load.get(t),
+                eta_gap=(num(it.get("traTime2")) - eta) if num(it.get("traTime2")) else None, route_load=route_load.get(t),
                 pos_sect=ps, pos_dwell=pdw, pos_frac=None if pfr is None else round(pfr, 3), q_pending=q_pending,
                 q_live2=q_live2, q_today2=q_today2, q_rate=q_rate, gap_sum=gap_sum,
                 q_csv=round(sum(tab.get((j, h), (0, 0))[0] for j in J), 2),
@@ -342,6 +386,24 @@ def build_day(route, folders, i, acc):
     return [r for r in rows if r["date"] == day], ev
 
 
+def hist_from_cache(route, until=None):
+    """날짜별 캐시(days/*.json 의 ev)를 합산해 HIST_ALL 을 만든다 — 원본 로그를 다시 읽지 않는다.
+    11-04: export 가 원본을 통째로 다시 읽어 41일에 30분+ 걸렸고, 서버는 압축 안 된 최근 3일만 읽혀
+    학습 행의 q_hist(전체 기간 누적)와 서비스 표(최근 3일)가 달랐다. 캐시가 없으면 None."""
+    acc, n = defaultdict(lambda: [0.0, 0]), 0
+    for f in sorted((OUT / "days").glob(f"2026*_{route}.json")):
+        if until and f.name[:8] > until:
+            continue
+        n += 1
+        for j, h, s_, c in json.loads(f.read_text()).get("ev", []):
+            acc[(j, h)][0] += s_
+            acc[(j, h)][1] += c
+    if not n:
+        return None
+    HIST_ALL[route] = {k: v[0] / v[1] for k, v in acc.items() if v[1]}
+    return HIST_ALL[route]
+
+
 def main(full=False, out=None):
     """기본은 증분: data/processed/days/ 에 날짜별 행·순증감을 저장해 두고, 파일 수가 바뀐 날(과 그 뒤)만 다시 계산.
     메모리는 한 번에 3일치만 → 로그가 몇 달 쌓여도 일정. full=True 면 예전처럼 전체를 한 번에."""
@@ -352,6 +414,12 @@ def main(full=False, out=None):
         cache.mkdir(exist_ok=True)
         # 원본 폴더가 압축·삭제된 날(daily.py ⑥ 정리)도 캐시가 있으면 그대로 이어 붙임
         folders = sorted({p.name for p in LOG.glob("2026*") if p.is_dir()} | {f.name.split("_")[0] for f in cache.glob("2026*_*.json")})
+        # 검증 규칙이 바뀐 캐시는 원본 전체를 복구하기 전에는 손대지 않는다.
+        outdated = any(json.loads(f.read_text()).get("source_schema") != DQ.SCHEMA_VERSION
+                       for f in cache.glob("2026*_*.json"))
+        missing = [d for d in folders if not (LOG / d).is_dir()]
+        if outdated and missing:
+            raise RuntimeError(f"데이터 검증 규칙 변경: 원본 archive 복구 후 재빌드 필요 ({', '.join(missing)}). 기존 캐시 보존.")
         rows, redo = [], 0
         for route in STOPS:
             acc, dirty = defaultdict(lambda: [0.0, 0]), False
@@ -365,7 +433,7 @@ def main(full=False, out=None):
                 mf, rf = cache / f"{day}_{route}.json", cache / f"{day}_{route}.csv"
                 files = n[max(i - 1, 0):i + 2]
                 meta = json.loads(mf.read_text()) if mf.exists() else None
-                dirty = dirty or meta is None or meta["files"] != files  # 한 날이 바뀌면 뒤 날들의 q_hist 도 바뀜
+                dirty = dirty or meta is None or meta.get("source_schema") != DQ.SCHEMA_VERSION or meta["files"] != files
                 if dirty and not (LOG / day).is_dir():
                     raise RuntimeError(f"{day} 원본이 압축돼 있어 다시 계산 불가 → tar xzf archive/{day}.tar.gz -C api_logs 후 재실행")
                 if meta and "n" not in meta and (LOG / day).is_dir():  # 압축 전에 그날 파일 수를 캐시에 남겨 둠
@@ -378,7 +446,7 @@ def main(full=False, out=None):
                             w = csv.DictWriter(f, fieldnames=list(got[0]))
                             w.writeheader()
                             w.writerows(got)
-                    meta = dict(files=files, n=n[i], ev=ev)
+                    meta = dict(files=files, n=n[i], ev=ev, source_schema=DQ.SCHEMA_VERSION)
                     mf.write_text(json.dumps(meta))
                     redo += 1
                 else:
@@ -388,10 +456,14 @@ def main(full=False, out=None):
                     acc[(j, h)][1] += c
                 rows += got
         print(f"다시 계산한 날·노선 {redo}개")
-    with open(out or OUT / "dataset.csv", "w", newline="") as f:
+    if not rows:
+        raise RuntimeError("유효한 학습 행이 없음. 기존 dataset.csv는 보존합니다.")
+    target_path = Path(out or OUT / "dataset.csv")
+    with open(target_path.with_suffix(".csv.tmp"), "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0]))
         w.writeheader()
         w.writerows(rows)
+    target_path.with_suffix(".csv.tmp").replace(target_path)
     n_trip = len({(r["date"], r["route"], r["stop"], r["plate"], r["arrive_time"]) for r in rows})
     print(f"rows {len(rows)}, 운행 {n_trip}")
 

@@ -1,0 +1,251 @@
+{
+  "reviewed_at": "2026-11-03T09:52:17.554007+00:00",
+  "source_commit": "73ec4a45b9ccbe005d422b336f14342a9d230b0e",
+  "findings": [
+    {
+      "id": "partial_second_vehicle_record",
+      "severity": "high",
+      "trigger": "The first vehicle has departed and a second-vehicle field is missing, or its first-vehicle counterpart is missing.",
+      "before": "Existing slot-1 fields could survive under slot-2 identity; a synthetic missing second count returned vehicle next with the first vehicle count 53 and data_status ok. A valid second count could also fail to copy when slot 1 lacked that key.",
+      "after": "Remove both vehicle-slot records, promote only fields actually present for vehicle 2, and clear the second slot. Missing count/division remains unavailable.",
+      "evidence": "test_promotion_never_inherits_missing_second_vehicle_fields; test_promotion_copies_second_count_when_first_count_field_is_missing"
+    },
+    {
+      "id": "lost_recent_departure_evidence",
+      "severity": "high",
+      "trigger": "A departed vehicle is missing from the latest position response, or a position was collected before the arrival response but has a newer provider timestamp.",
+      "before": "Only the newest/coincident position files could be selected, leaving an already departed vehicle visible.",
+      "after": "Retain the recent position window and compare each vehicle using its latest valid provider timestamp; keep only coincident positions as model features. Newer wrapped positions override older departure evidence.",
+      "evidence": "test_recent_departure_survives_vehicle_missing_from_latest_position; test_provider_time_can_prove_departure_before_arrival_file_was_collected; test_newer_wrapped_position_overrides_previous_departure"
+    },
+    {
+      "id": "midnight_and_folder_order",
+      "severity": "high",
+      "trigger": "Arrival data is in the previous date folder and departure positions or a newer empty arrival are in the next folder.",
+      "before": "Position evidence was isolated per folder and the caller-supplied folder order could select an older arrival.",
+      "after": "Order snapshots by full collection date/time and merge departure evidence across date folders while preserving original arrival timestamps and latest empty-result barriers.",
+      "evidence": "test_after_midnight_position_is_used_for_previous_day_arrival; test_newer_empty_arrival_wins_regardless_of_folder_order; test_combined_snapshot_clock_uses_the_latest_date"
+    },
+    {
+      "id": "backend_default_ml_path",
+      "severity": "medium",
+      "trigger": "Start the backend without HANJARI_ML in the current repository layout.",
+      "before": "The default pointed to hanjari-web/src and failed with ModuleNotFoundError: No module named serve, with backend dependencies installed.",
+      "after": "Default to the adjacent hanjari-ml directory; an explicit override still takes precedence, regardless of working directory.",
+      "evidence": "BackendStartup: 2 subprocess startup/sample-response tests, provider calls forbidden"
+    }
+  ],
+  "tests": {
+    "ml_tests": 106,
+    "backend_tests": 2,
+    "local_passed": true,
+    "production_environment_passed": true,
+    "before_fix_failed_assertions": 8
+  },
+  "source_replay": {
+    "started_at": "2026-11-03T09:40:23.609362+00:00",
+    "mode": "saved_source_replay_with_recent_position_history",
+    "field_accuracy_verified": false,
+    "routes": {
+      "sb02": {
+        "counts": {
+          "snapshots": 7442,
+          "rows": 22164,
+          "compared_counts": 21304,
+          "promoted_second_vehicle": 1
+        },
+        "statuses": {
+          "ok": 22035,
+          "passenger_unavailable": 129
+        }
+      },
+      "jr03": {
+        "counts": {
+          "snapshots": 7471,
+          "rows": 22165,
+          "compared_counts": 20882,
+          "promoted_second_vehicle": 1
+        },
+        "statuses": {
+          "ok": 22165
+        }
+      }
+    },
+    "issues": [],
+    "finished_at": "2026-11-03T09:42:51.412866+00:00",
+    "source_manifest_sha256": "22064660e184418507ab31b57a81ddb7165ab830a8f4c8ec254f23f12fa20ac4"
+  },
+  "staging": {
+    "release": "validation-20261103-v4",
+    "commit": "73ec4a45b9ccbe005d422b336f14342a9d230b0e",
+    "source_files": 45,
+    "preserved_files": 27,
+    "stage_pid": 277245,
+    "tests": [
+      {
+        "suite": "hanjari-ml/tests",
+        "summary": [
+          "Ran 106 tests in 10.122s",
+          "OK"
+        ]
+      },
+      {
+        "suite": "hanjari-web/backend",
+        "summary": [
+          "Ran 2 tests in 3.082s",
+          "OK"
+        ]
+      }
+    ],
+    "health": {
+      "status": "ok",
+      "mode": "latest",
+      "release": "validation-20261103-v4",
+      "data_status": "ok",
+      "routes": {
+        "sb02": {
+          "status": "fresh",
+          "collected_at": "2026-11-03T18:44:06+09:00",
+          "age_sec": 12
+        },
+        "jr03": {
+          "status": "fresh",
+          "collected_at": "2026-11-03T18:44:06+09:00",
+          "age_sec": 12
+        }
+      }
+    },
+    "external_provider_calls": 0
+  },
+  "deployment": {
+    "release": "validation-20261103-v4",
+    "commit": "73ec4a45b9ccbe005d422b336f14342a9d230b0e",
+    "previous_release": "validation-20261103-v3",
+    "activated_at": "2026-11-03T09:49:02.318940+00:00",
+    "stage_checks": [
+      {
+        "n": 0,
+        "status": 200,
+        "rows": 6,
+        "matched_non_null_counts": 6
+      },
+      {
+        "n": 3,
+        "status": 200,
+        "rows": 6,
+        "matched_non_null_counts": 6
+      },
+      {
+        "n": 40,
+        "status": 200,
+        "rows": 6,
+        "matched_non_null_counts": 6
+      },
+      {
+        "n": -1,
+        "status": 400
+      },
+      {
+        "n": 41,
+        "status": 400
+      }
+    ],
+    "live_checks": [
+      {
+        "n": 0,
+        "status": 200,
+        "rows": 6,
+        "matched_non_null_counts": 6
+      },
+      {
+        "n": 3,
+        "status": 200,
+        "rows": 6,
+        "matched_non_null_counts": 6
+      },
+      {
+        "n": 40,
+        "status": 200,
+        "rows": 6,
+        "matched_non_null_counts": 6
+      },
+      {
+        "n": -1,
+        "status": 400
+      },
+      {
+        "n": 41,
+        "status": 400
+      }
+    ],
+    "public_health": {
+      "status": "ok",
+      "mode": "latest",
+      "release": "validation-20261103-v4",
+      "data_status": "ok",
+      "routes": {
+        "sb02": {
+          "status": "fresh",
+          "collected_at": "2026-11-03T18:48:36+09:00",
+          "age_sec": 24
+        },
+        "jr03": {
+          "status": "fresh",
+          "collected_at": "2026-11-03T18:48:36+09:00",
+          "age_sec": 24
+        }
+      }
+    },
+    "collector_pid_unchanged": "273690",
+    "protected_files_unchanged": {
+      "/home/ubuntu/hanjari/src/collect.py": "6f4327b183a933936d38ce1102666774405bc4fdb32b7cb77d9a2d8d7bf63848",
+      "/home/ubuntu/hanjari-ml/src/daily.py": "0b258ba5289867c3f4e8cf799d10b59ec312511ade60ee1b2a2ffd441c08c2ee",
+      "/etc/systemd/system/hanjari-daily.service.d/20261103-frozen-web.conf": "23e4a2c8af5b39958aab05b33a631d2878ac28e0eb6c8ac2ccbf64fc4e3806a1"
+    },
+    "nginx_config_restored": true,
+    "frontend_and_models_preserved": true,
+    "stage_stopped": true,
+    "external_provider_calls": 0,
+    "method": "verified staging process served traffic during primary restart"
+  },
+  "rollout_http_monitor": {
+    "samples": 180,
+    "errors": 0,
+    "releases": [
+      "validation-20261103-v3",
+      "validation-20261103-v4"
+    ],
+    "first": {
+      "time": "2026-11-03T09:46:46.561802+00:00",
+      "status": 200,
+      "release": "validation-20261103-v3",
+      "data_status": "ok",
+      "elapsed_sec": 0.242
+    },
+    "last": {
+      "time": "2026-11-03T09:49:45.940184+00:00",
+      "status": 200,
+      "release": "validation-20261103-v4",
+      "data_status": "ok",
+      "elapsed_sec": 0.403
+    }
+  },
+  "rollout_note": "The initial immediate Nginx release assertion saw the old worker response and restored the prior config before restarting the primary service. Retry waited for the new release and drained old workers. All 180 sampled health responses were HTTP 200.",
+  "artifact_hashes": {
+    "before.log": "e7942c7c7b359e82d08f73398be506d4725d7dc5dc7b83099596015251f8259b",
+    "all-tests.log": "f05b09343de4f7a2e7b8b67ed88f9a391b5bb6d6ce354b1346c71e3bce631815",
+    "backend-tests.log": "c69dacdc4c4df1d4b0b99c460467f1e8fb8c203bff4e02fb22b2fa97ac43b507",
+    "replay.py": "75590ac82414812452bd81a94b92d53ac79863f1fd7c6b9b69efacc5ee5c7157",
+    "all-snapshots-replay.json": "f2edd44339fef60700279963d9c434329e691d215f4a2f3d5186c8d4db72accb",
+    "source-manifest.json": "c0e96527aa37de2163f11f8ef51e9df4e593ef76e567126c9b045a6652a8d9c8",
+    "preserved-manifest.json": "744991a40541b0187734f7e7e247af897a1796c7d9077eed1f9168a4915c981b",
+    "switch-samples.jsonl": "7924f461645d523591186cf1fe64585fad3f15e8a960663b2f7c2e4ca76bc79b",
+    "deployment.json": "72945592c5fc1276e9d4a2c69cfcaf26ff9a79dcbb9f682927cf5424317101e7"
+  },
+  "limits": [
+    "Fault-injection and date-boundary reproductions establish code defects, not the exact cause of the originally reported 53-versus-21 observation.",
+    "Saved-source replay and live response comparisons verify vehicle/count consistency against the API, not physical passenger accuracy.",
+    "Frontend assets, frozen model files, original collector and daily-training code were preserved; no extra provider API requests were made.",
+    "The previous ten-hour goal remains paused. The three-minute rollout monitor is a separate bounded deployment check."
+  ]
+}

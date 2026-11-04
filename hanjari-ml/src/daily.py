@@ -1,10 +1,10 @@
 """하루 마감 자동 작업 (MLOps). 매일 01:00 KST — 수집기가 쉬는 새벽(막차 00:42 ~ 첫차 05:45)에 돈다.
 
   ① 데이터 점검  어제 로그: 노선별 스냅샷 수, 07~22시 최대 공백, API 오류 응답 → OK / WARN / FAIL(그날 학습 안 함)
-  ② 어제 성적    지금 서비스 중인 모델(models/lite)로 어제를 채점 → reports/daily_metrics.csv 한 줄
+  ② API 재생 평가 models/lite로 그날 API 집계를 재계산 → reports/daily_metrics.csv 한 줄 (현장 검증 별도)
                  (처음 보는 날 성적 = 모니터링. 정답은 버스 도착 때 재차라 자동으로 생김)
   ③ 재학습      어제까지 전체 데이터로 후보 모델 → models/versions/YYYYMMDD/ (일요일·공휴일은 건너뜀 — 수업 있는 날만 학습, 토요일 포함)
-  ④ 합격 판정    후보의 날짜 분할 성적이 지금 모델보다 10% 넘게 나쁘지 않음 · '여유' 후 실제 탑승 ≥ 97% · 자체 점검 통과
+  ④ 합격 판정    후보의 날짜 분할 성적이 지금 모델보다 10% 넘게 나쁘지 않음 · '여유' 후 API 기준 계산 탑승 ≥ 97% · 자체 점검 통과
   ⑤ 배포        합격이면 models/lite 교체(이전 모델은 versions/ 에 남음 → 되돌리기 = 폴더 복사)
   ⑥ 정리        원본 로그는 최근 KEEP_RAW 일만 폴더로, 그 전은 tar.gz 로 압축(223MB → 15MB/일, 개수 확인 후 폴더 삭제)
                 모델 버전은 최근 KEEP_VERSIONS 개만. 남은 디스크 < MIN_FREE_GB 면 경고
@@ -22,6 +22,7 @@ import collect as C
 import notify as N
 import serve as S
 import train as T
+from api_response import response_items
 
 REPORTS = B.ROOT / "reports"
 VERS = S.MODELS / "versions"
@@ -35,8 +36,9 @@ MIN_FREE_GB = 5
 
 def header_ok(f):
     try:
-        return json.loads(f.read_bytes())["msgHeader"].get("headerCd") == "0"
-    except ValueError:  # 잘린 파일
+        response_items(json.loads(f.read_bytes()))
+        return True
+    except (OSError, ValueError):
         return False
 
 
@@ -44,15 +46,23 @@ def check_data(day):
     """(상태, 설명). 로그 폴더를 읽기만 한다."""
     folder = B.LOG / day
     notes, status = [], "OK"
+    base = dt.datetime.strptime(day, "%Y%m%d")
+    sched = C.load_sched()
+    busy_start, busy_end = (t.hour*60 + t.minute for t in map(dt.time.fromisoformat, BUSY))
     for route in B.STOPS:
         fs = sorted(folder.glob(f"{route}_arr_*.json"))
         if not fs:
             return "FAIL", f"{route} 스냅샷 0개"
         ts = [dt.datetime.strptime(day + f.stem[-6:], "%Y%m%d%H%M%S") for f in fs]
-        busy = [t for t in ts if BUSY[0] <= t.strftime("%H:%M:%S") <= BUSY[1]]
+        first, last = sched.get(route, {}).get(C.day_type(base.date()), C.FALLBACK)
+        start = base + dt.timedelta(minutes=max(busy_start, first-C.PAD))
+        end = base + dt.timedelta(minutes=min(busy_end, last+C.PAD))
+        # 파일 사이뿐 아니라 첫 파일 전/마지막 파일 뒤의 운행 중 누락도 검사한다.
+        # 막차 이후와 첫차 이전의 정상 공백은 이 창에 포함하지 않는다.
+        busy = [start] + [t for t in ts if start <= t <= end] + [end] if start < end else []
         gap = max(((b - a).total_seconds() for a, b in zip(busy, busy[1:])), default=0) / 60
         bad = sum(not header_ok(f) for f in fs)
-        notes.append(f"{route} 스냅샷 {len(fs)}개 · 07~22시 최대 공백 {gap:.1f}분 · 오류 응답 {bad}개")
+        notes.append(f"{route} 스냅샷 {len(fs)}개 · 운행 중 점검창 {start:%H:%M}~{end:%H:%M} 최대 공백 {gap:.1f}분 · 오류 응답 {bad}개")
         if gap > 30 or bad > 0.05 * len(fs):
             status = "FAIL"
         elif (gap > 5 or bad) and status == "OK":
@@ -61,18 +71,22 @@ def check_data(day):
 
 
 def monitor(day, model_dir):
-    """지금 모델로 그날을 채점. 서비스와 같은 칸별 '여유' 기준으로 '여유'→실제 탑승을 잰다."""
+    """그날의 API 기록을 models/lite로 재생 평가한다. '여유'와 계산 탑승은 모델 내부의 판정이다."""
     m, meta = S.load(True, model_dir)
     d = T.features(cats=meta["cats"])
     d = d[d.date == day]
     if d.empty:
         return None
     d = d.assign(rule=S.lite_rule(d))
-    point, Pm = T.predict(m, d)
+    point, Pm, Q = T.predict(m, d, quantiles=True)
     board = (d.y.values[:, None] <= T.thresholds(d)).astype(bool)
     th = {(p, s): t for p, s, t, _ in meta["thresholds"]}
     cell = np.array([th[("수업 직전" if pk else "평소", S.seg_name(k))] or 9 for pk, k in zip(d.is_peak == 1, d.stops_away)])
     shown = Pm >= cell[:, None]                                   # 서비스가 '여유'를 띄웠을 칸
+    valid = np.array([S.probability_hold(r.route, r.bus_type, r.r_now, meta, r.plate, r.vehicle_id) is None
+                      for r in d.itertuples()])
+    valid &= S.calibration_mask(d, Q, np.array(meta["qs"]))
+    shown &= valid[:, None]
     w, err = d.w.values, np.abs(point - d.y.values)
     far, pk = d.stops_away.values >= 3, d.is_peak.values == 1
     wavg = lambda x, msk: float(np.average(x[msk], weights=w[msk])) if msk.any() else np.nan
@@ -140,11 +154,11 @@ def run(day):
     mon = monitor(day, LIVE) if (LIVE / "meta.json").exists() else None
     if mon:
         append(REPORTS / "daily_metrics.csv", mon)
-        lines += [f"② 어제 성적(모델 ~{mon['model']}): 오차 {mon['mae']:.2f}명 (지금 재차 그대로 {mon['persistence_mae']:.2f}) · "
+        lines += [f"② API 재생 평가(학습 모델 ~{mon['model']}): 오차 {mon['mae']:.2f}명 (지금 재차 그대로 {mon['persistence_mae']:.2f}) · "
                   f"Brier {mon['brier']:.4f} · 3정류장+ {mon['far_mae']:.2f} · 수업 직전 {mon['peak_mae']:.2f} · "
-                  f"'여유' {mon['yeoyu_share']:.0%} 표시 → 실제 탑승 {mon['yeoyu_ok']:.1%}"]
+                  f"'여유' 기준 해당 {mon['yeoyu_share']:.0%} → API 기준 계산 탑승 {mon['yeoyu_ok']:.1%}"]
         if mon["yeoyu_ok"] < T.TARGET["평소"]:
-            warn.append(f"'여유' 후 실제 탑승 {mon['yeoyu_ok']:.1%} < {T.TARGET['평소']:.0%}")
+            warn.append(f"'여유' 후 API 기준 계산 탑승 {mon['yeoyu_ok']:.1%} < {T.TARGET['평소']:.0%}")
         if mon["mae"] >= mon["persistence_mae"]:
             warn.append(f"모델 오차 {mon['mae']:.2f} ≥ 지금 재차 그대로 {mon['persistence_mae']:.2f}")
     if status == "FAIL":
@@ -159,7 +173,7 @@ def run(day):
         if old and meta["oof"]["mae"] > old["mae"] * MAX_WORSE:
             why.append(f"날짜분할 오차 {meta['oof']['mae']:.2f} > 지금 {old['mae']:.2f}×{MAX_WORSE}")
         if not meta["oof"]["hi_ok"] >= T.TARGET["평소"]:
-            why.append(f"'여유' 후 탑승 {meta['oof']['hi_ok']:.1%} < {T.TARGET['평소']:.0%}")
+            why.append(f"'여유' 후 API 기준 계산 탑승 {meta['oof']['hi_ok']:.1%} < {T.TARGET['평소']:.0%}")
         try:
             S.demo(cand)
         except AssertionError as e:

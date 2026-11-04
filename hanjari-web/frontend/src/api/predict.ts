@@ -1,5 +1,6 @@
 import type { ApiError, ApiResult, PredictResponse } from "../types";
 import { N_MAX, N_MIN } from "../types";
+import { isPredictResponse } from "./contract";
 
 import mockN0 from "../mock/predict_n0.json";
 import mockN3 from "../mock/predict_n3.json";
@@ -55,12 +56,13 @@ async function fetchReal(n: number): Promise<ApiResult> {
   try {
     const res =
       REQUEST_STYLE === "get"
-        ? await fetch(`${API_URL}?${N_PARAM}=${n}`, { signal: ctrl.signal })
+        ? await fetch(`${API_URL}?${N_PARAM}=${n}`, { signal: ctrl.signal, cache: "no-store" })
         : await fetch(API_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ [N_BODY_KEY]: n }),
             signal: ctrl.signal,
+            cache: "no-store",
           });
 
     if (res.status === 400 || res.status === 422) {
@@ -76,10 +78,10 @@ async function fetchReal(n: number): Promise<ApiResult> {
 
     const data = (await res.json()) as unknown;
     if (!isPredictResponse(data)) {
-      // 연결은 됐지만 명세와 다른 모양(예: 정원 연습 서버의 dummy 응답) → 받은 그대로 보여줌
+      // 불완전한 인원·확률 응답은 결과로 표시하지 않는다.
       return {
         ok: false,
-        error: { kind: "unknown", message: `응답 형식이 명세와 달라요. 받은 데이터: ${JSON.stringify(data).slice(0, 300)}` },
+        error: { kind: "unknown", message: "버스 정보를 확인할 수 없어요. 잠시 뒤 다시 시도해 주세요." },
       };
     }
     return { ok: true, data };
@@ -91,10 +93,6 @@ async function fetchReal(n: number): Promise<ApiResult> {
   } finally {
     clearTimeout(timer);
   }
-}
-
-function isPredictResponse(d: unknown): d is PredictResponse {
-  return !!d && typeof d === "object" && Array.isArray((d as PredictResponse).results);
 }
 
 /** FastAPI 의 detail — 문자열이거나 422 배열 [{loc, msg}] */

@@ -20,13 +20,17 @@ export function mmss(sec: number): { m: number; s: string } {
 
 const DAY_SEC = 86_400;
 const KST_OFFSET_SEC = 9 * 3600;
-const MAX_SNAP_AGE_SEC = 180;  // 이보다 오래됐거나 미래로 보이면(폰 시계 어긋남·목업) 받은 시각 기준으로 셈
+const MAX_SNAP_AGE_SEC = 180;
 
-/** 버스가 도착할 시각(ms). 서버가 arrival_at 을 주면 그대로 쓴다(수집 지연이 더해지지 않음).
- *  eta_sec 는 스냅샷 시각(updated, KST "HH:MM:SS")의 남은 시간이라, 받은 시각이 아니라 스냅샷 시각에 더한다.
- *  받은 시각에 더하면 스냅샷 나이(최대 약 27초)만큼 새로고침마다 숫자가 출렁인다. */
+/** 도착 예정 시각(ms). 서버의 제공 시각 + ETA를 사용하여 수집·수신 지연을 더하지 않는다.
+ *  날짜 없는 구버전/목업 응답만 HH:MM:SS 또는 수신 시각으로 계산한다. */
 export function arrivalAt(i: PredictItem, fetchedAt: number): number {
   if (i.arrival_at) return Date.parse(i.arrival_at);
+  if (i.updated_at) {
+    const snap = Date.parse(i.updated_at);
+    const source = sourceAt(i);
+    if (Number.isFinite(snap)) return (source ?? snap) + i.eta_sec * 1000;
+  }
   const [h, m, sec] = i.updated.split(":").map(Number);
   const snapSod = h * 3600 + m * 60 + sec;
   const nowSod = Math.floor(fetchedAt / 1000 + KST_OFFSET_SEC) % DAY_SEC;
@@ -49,6 +53,7 @@ export function parseN(raw: string, min: number, max: number): { n: number } | {
  *  확률 보류의 reason("평일 아님…", "N분 전 것…")은 그대로 읽혀서 그대로 쓴다. */
 export function whyText(i: PredictItem): string {
   if (i.level === "확률 보류") return i.reason;
+  if (i.load_pred == null || i.load_10 == null || i.load_90 == null || i.r_now == null) return "인원 정보를 확인하고 있어요.";
   if (i.level === "판단하기 일러요") {
     return `버스가 ${stopsAwayText(i.stops_away)}이라 도착 때 인원이 ${Math.round(i.load_10)}~${Math.round(i.load_90)}명으로 아직 폭이 넓어요.`;
   }
@@ -66,7 +71,7 @@ export interface Verdict { badge: string; guide: string; tone: Tone }
  *  '빠듯함'은 확률이 높아도 백엔드가 수업 시간·거리 때문에 내리는 단계라 '탑승 가능'으로 낮추고 시간 빠듯함을 안내.
  *  확률이 낮은 이유는 대기 줄일 수도 있어 차내 혼잡을 말하지 않는다 — 혼잡도는 crowdLabel */
 export function verdict(i: PredictItem): Verdict {
-  if (i.level === "확률 보류")
+  if (i.level === "확률 보류" || i.p_board == null)
     return { badge: "확률 보류", tone: "hold", guide: "확률은 잠시 보류했어요. 위의 도착 정보만 참고해 주세요." };
   if (i.level === "판단하기 일러요")
     return { badge: "판단하기 일러요", tone: "hold", guide: "버스가 가까워지면 다시 확인해 주세요." };
@@ -95,10 +100,36 @@ export function crowdLabel(load: number): string {
 
 /** serve.py 가 스냅샷이 오래됐을 때 붙이는 reason("…N분 전 것…", "정보가 N초 전 것")으로 판별 */
 export function isStale(i: PredictItem): boolean {
-  return i.level === "확률 보류" && i.reason.includes("전 것");
+  return i.arrival_stale === true || (i.level === "확률 보류" && i.reason.includes("전 것"));
 }
 
-/** 도착 예정 시간이 지나 서버가 새 도착 정보를 확인하는 중 — 이미 지나간 버스일 수 있어 '곧 도착'으로 보이면 안 된다 */
-export function arrivalChecking(i: PredictItem): boolean {
-  return i.arrival_status === "checking" || i.arrival_status === "passed";
+function sourceAt(i: PredictItem): number | null {
+  if (!i.source_updated) return null;
+  const raw = i.source_updated.replace(" ", "T");
+  const stamp = Date.parse(/(Z|[+-]\d{2}:\d{2})$/.test(raw) ? raw : `${raw}+09:00`);
+  return Number.isFinite(stamp) ? stamp : null;
+}
+
+export type ArrivalState = "upcoming" | "checking" | "stale";
+
+export function isOlderSnapshot(next: PredictItem, previous: PredictItem): boolean {
+  const source = sourceAt(next), before = sourceAt(previous);
+  return Boolean(next.updated_at && previous.updated_at && Date.parse(next.updated_at) < Date.parse(previous.updated_at))
+    || (source !== null && before !== null && source < before);
+}
+
+/** 응답 후에도 시간이 흐른다. 같은 응답을 다시 받아도 유효 시간을 연장하지 않는다. */
+export function arrivalState(i: PredictItem, now: number, fetchedAt: number): ArrivalState {
+  const stamps = [i.updated_at ? Date.parse(i.updated_at) : null, sourceAt(i)];
+  if (isStale(i) || stamps.some(t => t !== null && (now - t > MAX_SNAP_AGE_SEC * 1000 || t - now > 5000))) return "stale";
+  if (i.arrival_status === "passed" || i.arrival_status === "checking" || now >= arrivalAt(i, fetchedAt)) return "checking";
+  return "upcoming";
+}
+
+/** 정류장 목록 한 줄의 도착 문구. 시간이 지나면 '곧 도착'이 남지 않도록 상태를 먼저 본다 */
+export function arrivalText(i: PredictItem, now: number, fetchedAt: number): string {
+  const state = arrivalState(i, now, fetchedAt);
+  if (state === "stale") return "정보 없음";
+  if (state === "checking") return "도착 확인 중";
+  return etaText(Math.max(0, (arrivalAt(i, fetchedAt) - now) / 1000));
 }

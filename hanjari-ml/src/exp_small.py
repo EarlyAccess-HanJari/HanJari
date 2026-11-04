@@ -16,11 +16,9 @@ d = d[d.date.isin(WD)].assign(rule=lambda x: S.lite_rule(x))
 ms = []
 for day in WD[1:]:
     tr, te = d[d.date != day], d[d.date == day]
-    E.setcap(tr)
     p, Pm = T.run(tr, te, S.LITE)
     ms.append(T.metrics(p, Pm, te))
 t0 = time.time()
-E.setcap(d)
 m = T.fit(d, S.LITE)
 sec = time.time() - t0
 print(json.dumps(dict(trees=n, lr=lr, quantiles=nq, jobs=jobs,

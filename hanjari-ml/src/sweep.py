@@ -67,12 +67,6 @@ def run(cfg, tr, te):
     return T.metrics(point, Pm, te)
 
 
-def set_cap(tr):
-    T.CAP_OBS.clear()
-    T.CAP_OBS.update(pd.concat([tr.y, tr.r_now]).groupby(pd.concat([tr.route + "|" + tr.bus_type] * 2)).max()
-                     .rename(lambda k: tuple(k.split("|"))).to_dict())
-
-
 def main():
     snap = T.P / "sweep_snapshot.csv"
     shutil.copy(T.P / "dataset.csv", snap)
@@ -86,7 +80,6 @@ def main():
         cfg = sample()
         ms = []
         for tr, te in sel:
-            set_cap(tr)
             ms.append(run(cfg, tr, te))
         res.append(dict(id=i, **cfg, subset_name=" / ".join(SUBSETS[cfg["subset"]]),
                         mae=np.mean([m["mae"] for m in ms]), brier=np.mean([m["brier"] for m in ms]),
@@ -102,10 +95,8 @@ def main():
                     ("규칙+잔차", lambda tr, te: T.metrics(te.rule.values, T.empirical_p(tr.y.values - tr.rule.values, te.rule.values, T.thresholds(te)), te))]:
         ms = []
         for tr, te in sel:
-            set_cap(tr)
             ms.append(f(tr, te))
         tr, te = sealed
-        set_cap(tr)
         base[name] = (np.mean([m["brier"] for m in ms]), np.mean([m["mae"] for m in ms]), f(tr, te))
 
     print("\n=== 선택 점수 상위 / 하위 ===")
@@ -124,7 +115,6 @@ def main():
     for name, (sb, smae, m) in base.items():
         print(f"{name:28} {sb:10.4f} {m['brier']:10.4f} {smae:9.3f} {m['mae']:9.3f} {m['hi_ok']:12.1%}")
     tr, te = sealed
-    set_cap(tr)
     for _, row in r.head(TOP).iterrows():
         cfg = {k: row[k] for k in ["model", "subset", "base", "depth", "n", "lr", "mcw", "sub", "weight", "k0"]}
         cfg.update(subset=int(cfg["subset"]), depth=int(cfg["depth"]), n=int(cfg["n"]), mcw=int(cfg["mcw"]), k0=bool(cfg["k0"]))

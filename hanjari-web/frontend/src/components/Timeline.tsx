@@ -1,5 +1,5 @@
 import type { PredictItem } from "../types";
-import { arrivalChecking, etaText } from "../utils/format";
+import { arrivalState, arrivalText } from "../utils/format";
 import LevelBadge from "./LevelBadge";
 import s from "./Timeline.module.css";
 
@@ -12,7 +12,7 @@ const BusIcon = () => (
 /** 같은 노선 정류장을 노선 순서(정류장 번호 순 = 버스가 지나가는 순서)로 세로 타임라인에 그린다.
  *  - 정류장마다 보이는 버스는 '그 정류장에 가장 먼저 오는 버스'라서 내 정류장의 버스와 다른 차일 수 있다 → '다른 버스'로 밝힌다
  *  - 버스 아이콘은 내 정류장 버스(plate)의 실제 위치: 어느 정류장에 닿기 직전이면 그 줄, 그보다 앞이면 첫 줄 위쪽에 둔다 */
-export default function Timeline({ items, mine, onPick }: { items: PredictItem[]; mine: PredictItem; onPick: (i: PredictItem) => void }) {
+export default function Timeline({ items, mine, onPick, now, fetchedAt }: { items: PredictItem[]; mine: PredictItem; onPick: (i: PredictItem) => void; now: number; fetchedAt: number }) {
   const ordered = [...items].sort((a, b) => Number(a.stop) - Number(b.stop));
   const at = ordered.findIndex((i) => i === mine);
 
@@ -26,7 +26,7 @@ export default function Timeline({ items, mine, onPick }: { items: PredictItem[]
       <ol className={s.list}>
         {ordered.map((i, idx) => {
           const isMine = i === mine;
-          const eta = arrivalChecking(i) ? "도착 확인 중" : etaText(i.eta_sec);
+          const eta = arrivalText(i, now, fetchedAt);
           const tag = isMine ? "내 정류장" : idx < at ? "직전" : "다음";
           const other = !isMine && i.plate !== mine.plate;
           const hasBus = busAtRow && idx === lead.idx;
@@ -45,11 +45,11 @@ export default function Timeline({ items, mine, onPick }: { items: PredictItem[]
                   <span className={s.tag}>{tag}</span>
                   <span className={s.name}>{i.stop_name}</span>
                   <span className={s.eta}>
-                    {eta === "곧 도착" || eta === "도착 확인 중" ? eta : <><b>{eta.replace(" 후", "")}</b> 후 도착</>}
+                    {eta === "곧 도착" || eta === "도착 확인 중" || eta === "정보 없음" ? eta : <><b>{eta.replace(" 후", "")}</b> 후 도착</>}
                     {other && <span className={s.other}> · 다른 버스</span>}
                   </span>
                 </span>
-                <LevelBadge item={i} />
+                <LevelBadge item={i} held={arrivalState(i, now, fetchedAt) !== "upcoming"} />
               </button>
             </li>,
           ];

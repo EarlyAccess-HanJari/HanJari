@@ -2,7 +2,7 @@
 frontend/dist 가 있으면(npm run build:prod) 화면도 같이 내준다 → 서버 하나로 전체 서비스.
 
 환경 변수
-  HANJARI_ML    AI 레포 폴더. 기본: 이 파일의 상위 폴더(레포 루트)
+  HANJARI_ML    AI 폴더. 기본: hanjari-web 옆의 hanjari-ml 폴더
   HANJARI_MODE  sample(기본) 레포에 든 9/30 13:11 실제 스냅샷 — 키·서버·API 호출 없이 개발용
                 latest       수집기가 방금 저장한 스냅샷 — 운영 서버(161.33.132.80) 전용, API 호출 없음
 
@@ -19,9 +19,10 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 
 ROOT = Path(__file__).resolve().parents[1]
-ML = Path(os.environ.get("HANJARI_ML", ROOT))
+ML = Path(os.environ.get("HANJARI_ML", ROOT.parent / "hanjari-ml"))
 DIST = ROOT / "frontend" / "dist"
 MODE = os.environ.get("HANJARI_MODE", "sample")
+RELEASE = os.environ.get("HANJARI_RELEASE", "development")
 if MODE not in ("sample", "latest"):
     raise SystemExit(f"HANJARI_MODE 는 sample 또는 latest (지금: {MODE})")
 
@@ -30,7 +31,7 @@ import serve  # noqa: E402
 
 log = logging.getLogger("hanjari")
 
-# serve.predict_live 는 모듈 전역(B.LOG, T.CAP_OBS)을 바꿔치기하며 돌아서, 두 요청이 겹치면 결과가 섞인다
+# serve.predict_live 는 모듈 전역을 바꿔치기하며 돌아서, 두 요청이 겹치면 결과가 섞인다
 _lock = threading.Lock()
 
 
@@ -53,9 +54,21 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(title="한자리 API", lifespan=lifespan)
 
 
+@app.middleware("http")
+async def prevent_prediction_cache(request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["X-HanJari-Release"] = RELEASE
+    return response
+
+
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "mode": MODE}
+    routes = serve.source_health() if MODE == "latest" else {}
+    return {"status": "ok", "mode": MODE, "release": RELEASE,
+            "data_status": "degraded" if any(r["status"] in ("missing", "stale") for r in routes.values()) else "ok",
+            "routes": routes}
 
 
 @app.get("/api/predict")
@@ -67,10 +80,12 @@ def predict(n: int):
         raise HTTPException(400, str(e))
     try:
         results = _predict(n)
+    except serve.NoSnapshotError:
+        results = []  # 수집 실패를 운행 종료나 웹 서버 장애로 안내하지 않는다.
     except Exception as e:  # 스냅샷 없음·버스 API 오류 등 — 프론트는 503 을 '서버 연결 안 됨'으로 보여줌
         log.exception("예측 실패")
         raise HTTPException(503, f"예측 실패: {e}")
-    return {"n_ahead": n, "results": results}
+    return {"n_ahead": n, "results": results, "service": health()}
 
 
 # /api 라우트 뒤에 붙여야 /api 가 가려지지 않음. 운영 서버에선 nginx 가 이 역할을 함

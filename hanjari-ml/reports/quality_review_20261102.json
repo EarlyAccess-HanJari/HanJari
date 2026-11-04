@@ -1,0 +1,212 @@
+{
+  "source_archive_sha256": "e199ba0153476e8bbee7777d616f5e96a8a7c0ab4afdac7d9b32d3402f30c7d1",
+  "source_cutoff": "2026-11-02T18:28:48+09:00",
+  "days": [
+    {
+      "day": "20261030",
+      "created_at": "2026-11-02T23:19:52.121488+09:00",
+      "mode": "internal_only",
+      "applied_to_display": false,
+      "applied_to_training": false,
+      "field_accuracy_verified": false,
+      "routes": {
+        "sb02": {
+          "snapshots": 1960,
+          "first": "2026-10-30T00:00:00",
+          "last": "2026-10-30T23:57:30",
+          "target_statuses": {
+            "ok": 5816,
+            "passenger_unavailable": 64
+          },
+          "first_vehicle_switches": 447,
+          "same_vehicle_changes_ge20": 13,
+          "max_valid_api_count": 40,
+          "terminal": {
+            "status": "terminal_not_configured"
+          }
+        },
+        "jr03": {
+          "snapshots": 1965,
+          "first": "2026-10-30T00:00:00",
+          "last": "2026-10-30T23:57:30",
+          "target_statuses": {
+            "ok": 5833,
+            "passenger_unavailable": 62
+          },
+          "first_vehicle_switches": 462,
+          "same_vehicle_changes_ge20": 10,
+          "max_valid_api_count": 53,
+          "terminal": {
+            "status": "shadow_only",
+            "qualified_windows": 26,
+            "positive_windows": 2,
+            "candidate_max": 3,
+            "checks": {
+              "departure_candidates": 19,
+              "same_trip_observations": 1576,
+              "expired_after_gap_or_day": 15,
+              "positive_offset_observations": 173,
+              "invalidated_by_lower_api_count": 1,
+              "cleared_at_next_trip": 3
+            },
+            "errors": {}
+          }
+        }
+      },
+      "limitation": "API 내부 일관성과 종점 차감 가정 검사. 실인원·미태그 인원 확정 및 탑승 확률 검증이 아님."
+    },
+    {
+      "day": "20261031",
+      "created_at": "2026-11-02T23:19:55.511281+09:00",
+      "mode": "internal_only",
+      "applied_to_display": false,
+      "applied_to_training": false,
+      "field_accuracy_verified": false,
+      "routes": {
+        "sb02": {
+          "snapshots": 1959,
+          "first": "2026-10-31T00:00:00",
+          "last": "2026-10-31T23:57:30",
+          "target_statuses": {
+            "ok": 5813,
+            "passenger_unavailable": 64
+          },
+          "first_vehicle_switches": 359,
+          "same_vehicle_changes_ge20": 36,
+          "max_valid_api_count": 58,
+          "terminal": {
+            "status": "terminal_not_configured"
+          }
+        },
+        "jr03": {
+          "snapshots": 1965,
+          "first": "2026-10-31T00:00:00",
+          "last": "2026-10-31T23:57:30",
+          "target_statuses": {
+            "ok": 5832,
+            "passenger_unavailable": 63
+          },
+          "first_vehicle_switches": 374,
+          "same_vehicle_changes_ge20": 7,
+          "max_valid_api_count": 52,
+          "terminal": {
+            "status": "shadow_only",
+            "qualified_windows": 26,
+            "positive_windows": 1,
+            "candidate_max": 1,
+            "checks": {
+              "departure_candidates": 12,
+              "same_trip_observations": 831,
+              "cleared_at_next_trip": 6,
+              "expired_after_gap_or_day": 6
+            },
+            "errors": {}
+          }
+        }
+      },
+      "limitation": "API 내부 일관성과 종점 차감 가정 검사. 실인원·미태그 인원 확정 및 탑승 확률 검증이 아님."
+    },
+    {
+      "day": "20261101",
+      "created_at": "2026-11-02T23:19:58.871914+09:00",
+      "mode": "internal_only",
+      "applied_to_display": false,
+      "applied_to_training": false,
+      "field_accuracy_verified": false,
+      "routes": {
+        "sb02": {
+          "snapshots": 1956,
+          "first": "2026-11-01T00:00:00",
+          "last": "2026-11-01T23:57:30",
+          "target_statuses": {
+            "ok": 5770,
+            "passenger_unavailable": 98
+          },
+          "first_vehicle_switches": 392,
+          "same_vehicle_changes_ge20": 8,
+          "max_valid_api_count": 33,
+          "terminal": {
+            "status": "terminal_not_configured"
+          }
+        },
+        "jr03": {
+          "snapshots": 1967,
+          "first": "2026-11-01T00:00:00",
+          "last": "2026-11-01T23:57:30",
+          "target_statuses": {
+            "passenger_unavailable": 72,
+            "ok": 5829
+          },
+          "first_vehicle_switches": 362,
+          "same_vehicle_changes_ge20": 1,
+          "max_valid_api_count": 38,
+          "terminal": {
+            "status": "shadow_only",
+            "qualified_windows": 10,
+            "positive_windows": 0,
+            "candidate_max": 0,
+            "checks": {
+              "departure_candidates": 6,
+              "same_trip_observations": 423,
+              "expired_after_gap_or_day": 4,
+              "cleared_at_next_trip": 2
+            },
+            "errors": {}
+          }
+        }
+      },
+      "limitation": "API 내부 일관성과 종점 차감 가정 검사. 실인원·미태그 인원 확정 및 탑승 확률 검증이 아님."
+    },
+    {
+      "day": "20261102",
+      "created_at": "2026-11-02T23:20:01.748988+09:00",
+      "mode": "internal_only",
+      "applied_to_display": false,
+      "applied_to_training": false,
+      "field_accuracy_verified": false,
+      "routes": {
+        "sb02": {
+          "snapshots": 1567,
+          "first": "2026-11-02T00:00:00",
+          "last": "2026-11-02T18:28:48",
+          "target_statuses": {
+            "ok": 4636,
+            "passenger_unavailable": 65
+          },
+          "first_vehicle_switches": 344,
+          "same_vehicle_changes_ge20": 15,
+          "max_valid_api_count": 52,
+          "terminal": {
+            "status": "terminal_not_configured"
+          }
+        },
+        "jr03": {
+          "snapshots": 1574,
+          "first": "2026-11-02T00:00:00",
+          "last": "2026-11-02T18:28:48",
+          "target_statuses": {
+            "passenger_unavailable": 51,
+            "ok": 4671
+          },
+          "first_vehicle_switches": 314,
+          "same_vehicle_changes_ge20": 10,
+          "max_valid_api_count": 60,
+          "terminal": {
+            "status": "shadow_only",
+            "qualified_windows": 28,
+            "positive_windows": 2,
+            "candidate_max": 1,
+            "checks": {
+              "departure_candidates": 19,
+              "same_trip_observations": 1708,
+              "expired_after_gap_or_day": 12,
+              "cleared_at_next_trip": 6
+            },
+            "errors": {}
+          }
+        }
+      },
+      "limitation": "API 내부 일관성과 종점 차감 가정 검사. 실인원·미태그 인원 확정 및 탑승 확률 검증이 아님."
+    }
+  ]
+}

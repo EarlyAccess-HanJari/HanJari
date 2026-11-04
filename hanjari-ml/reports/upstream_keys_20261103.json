@@ -1,0 +1,312 @@
+{
+  "checked_at": "2026-11-03T08:53:26.979126+09:00",
+  "status": "all_four_keys_http_503",
+  "comparison_route": "jr03",
+  "authenticated_calls": [
+    {
+      "key_label": "SEOUL_BUS_API_KEY",
+      "route": "jr03",
+      "service": "arr",
+      "started_at": "2026-11-03T08:48:59.901506+09:00",
+      "quota_reserved": true,
+      "http_status": 503,
+      "headers": {
+        "Date": "Mon, 02 Nov 2026 23:48:59 GMT",
+        "Content-Type": "text/html",
+        "Content-Length": "192"
+      },
+      "response_bytes": 192,
+      "response_sha256": "494756fba1426c9041353308d8511aa01eb8bc959e553332b119f9131fb5d2d4",
+      "response_format": "html",
+      "elapsed_sec": 0.075,
+      "finished_at": "2026-11-03T08:48:59.978125+09:00"
+    },
+    {
+      "key_label": "SEOUL_BUS_API_KEY",
+      "route": "jr03",
+      "service": "pos",
+      "started_at": "2026-11-03T08:49:00.485910+09:00",
+      "quota_reserved": true,
+      "http_status": 503,
+      "headers": {
+        "Date": "Mon, 02 Nov 2026 23:49:00 GMT",
+        "Content-Type": "text/html",
+        "Content-Length": "192"
+      },
+      "response_bytes": 192,
+      "response_sha256": "494756fba1426c9041353308d8511aa01eb8bc959e553332b119f9131fb5d2d4",
+      "response_format": "html",
+      "elapsed_sec": 0.076,
+      "finished_at": "2026-11-03T08:49:00.562360+09:00"
+    },
+    {
+      "key_label": "SEOUL_BUS_API_KEY_JR03",
+      "route": "jr03",
+      "service": "arr",
+      "started_at": "2026-11-03T08:49:01.068989+09:00",
+      "quota_reserved": true,
+      "http_status": 503,
+      "headers": {
+        "Date": "Mon, 02 Nov 2026 23:49:01 GMT",
+        "Content-Type": "text/html",
+        "Content-Length": "192"
+      },
+      "response_bytes": 192,
+      "response_sha256": "494756fba1426c9041353308d8511aa01eb8bc959e553332b119f9131fb5d2d4",
+      "response_format": "html",
+      "elapsed_sec": 0.066,
+      "finished_at": "2026-11-03T08:49:01.135020+09:00"
+    },
+    {
+      "key_label": "SEOUL_BUS_API_KEY_JR03",
+      "route": "jr03",
+      "service": "pos",
+      "started_at": "2026-11-03T08:49:01.641926+09:00",
+      "quota_reserved": true,
+      "http_status": 503,
+      "headers": {
+        "Date": "Mon, 02 Nov 2026 23:49:01 GMT",
+        "Content-Type": "text/html",
+        "Content-Length": "192"
+      },
+      "response_bytes": 192,
+      "response_sha256": "494756fba1426c9041353308d8511aa01eb8bc959e553332b119f9131fb5d2d4",
+      "response_format": "html",
+      "elapsed_sec": 0.068,
+      "finished_at": "2026-11-03T08:49:01.709954+09:00"
+    },
+    {
+      "key_label": "SEOUL_BUS_API_KEY_3",
+      "route": "jr03",
+      "service": "arr",
+      "started_at": "2026-11-03T08:49:02.217163+09:00",
+      "quota_reserved": true,
+      "http_status": 503,
+      "headers": {
+        "Date": "Mon, 02 Nov 2026 23:49:02 GMT",
+        "Content-Type": "text/html",
+        "Content-Length": "192"
+      },
+      "response_bytes": 192,
+      "response_sha256": "494756fba1426c9041353308d8511aa01eb8bc959e553332b119f9131fb5d2d4",
+      "response_format": "html",
+      "elapsed_sec": 0.067,
+      "finished_at": "2026-11-03T08:49:02.284608+09:00"
+    },
+    {
+      "key_label": "SEOUL_BUS_API_KEY_3",
+      "route": "jr03",
+      "service": "pos",
+      "started_at": "2026-11-03T08:49:02.791811+09:00",
+      "quota_reserved": true,
+      "http_status": 503,
+      "headers": {
+        "Date": "Mon, 02 Nov 2026 23:49:02 GMT",
+        "Content-Type": "text/html",
+        "Content-Length": "192"
+      },
+      "response_bytes": 192,
+      "response_sha256": "494756fba1426c9041353308d8511aa01eb8bc959e553332b119f9131fb5d2d4",
+      "response_format": "html",
+      "elapsed_sec": 0.073,
+      "finished_at": "2026-11-03T08:49:02.865268+09:00"
+    },
+    {
+      "key_label": "SEOUL_BUS_API_KEY_4",
+      "route": "jr03",
+      "service": "arr",
+      "started_at": "2026-11-03T08:49:03.370538+09:00",
+      "quota_reserved": true,
+      "http_status": 503,
+      "headers": {
+        "Date": "Mon, 02 Nov 2026 23:49:03 GMT",
+        "Content-Type": "text/html",
+        "Content-Length": "192"
+      },
+      "response_bytes": 192,
+      "response_sha256": "494756fba1426c9041353308d8511aa01eb8bc959e553332b119f9131fb5d2d4",
+      "response_format": "html",
+      "elapsed_sec": 0.068,
+      "finished_at": "2026-11-03T08:49:03.438256+09:00"
+    },
+    {
+      "key_label": "SEOUL_BUS_API_KEY_4",
+      "route": "jr03",
+      "service": "pos",
+      "started_at": "2026-11-03T08:49:03.945646+09:00",
+      "quota_reserved": true,
+      "http_status": 503,
+      "headers": {
+        "Date": "Mon, 02 Nov 2026 23:49:03 GMT",
+        "Content-Type": "text/html",
+        "Content-Length": "192"
+      },
+      "response_bytes": 192,
+      "response_sha256": "494756fba1426c9041353308d8511aa01eb8bc959e553332b119f9131fb5d2d4",
+      "response_format": "html",
+      "elapsed_sec": 0.068,
+      "finished_at": "2026-11-03T08:49:04.014086+09:00"
+    }
+  ],
+  "key_values_or_fingerprints_published": false,
+  "additional_authenticated_calls": 8,
+  "credentialless_controls": {
+    "local": {
+      "checked_at": "2026-11-02T23:49:34.505033+00:00",
+      "addresses": [
+        "175.193.202.140"
+      ],
+      "observations": [
+        {
+          "path": "/",
+          "credential_included": false,
+          "http_status": 200,
+          "headers": {
+            "Date": "Mon, 02 Nov 2026 23:36:53 GMT",
+            "Content-Length": "508",
+            "Content-Type": "text/html"
+          },
+          "sample_sha256": "71cea54fbe9bcb9e3ee0fdec550d31f0afc4efb0ae06a0b7b97fb0d25de7e993"
+        },
+        {
+          "path": "/api/rest/arrive/getArrInfoByRouteAll",
+          "credential_included": false,
+          "http_status": 503,
+          "headers": {
+            "Date": "Mon, 02 Nov 2026 23:49:34 GMT",
+            "Content-Type": "text/html",
+            "Content-Length": "192"
+          },
+          "sample_sha256": "494756fba1426c9041353308d8511aa01eb8bc959e553332b119f9131fb5d2d4",
+          "body": "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\n<HTML><HEAD>\n<TITLE> 503 Service Temporarily Unavailable </TITLE>\n</HEAD><BODY>\n<H1>Service Temporarily Unavailable</H1>\n<HR>\n</BODY></HTML>\n"
+        }
+      ]
+    },
+    "remote": {
+      "checked_at": "2026-11-02T23:49:36.544986+00:00",
+      "addresses": [
+        "175.193.202.140"
+      ],
+      "observations": [
+        {
+          "path": "/",
+          "credential_included": false,
+          "http_status": 200,
+          "headers": {
+            "Date": "Mon, 02 Nov 2026 23:19:54 GMT",
+            "Content-Length": "508",
+            "Content-Type": "text/html"
+          },
+          "sample_sha256": "71cea54fbe9bcb9e3ee0fdec550d31f0afc4efb0ae06a0b7b97fb0d25de7e993"
+        },
+        {
+          "path": "/api/rest/arrive/getArrInfoByRouteAll",
+          "credential_included": false,
+          "http_status": 503,
+          "headers": {
+            "Date": "Mon, 02 Nov 2026 23:49:36 GMT",
+            "Content-Type": "text/html",
+            "Content-Length": "192"
+          },
+          "sample_sha256": "494756fba1426c9041353308d8511aa01eb8bc959e553332b119f9131fb5d2d4",
+          "body": "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\">\n<HTML><HEAD>\n<TITLE> 503 Service Temporarily Unavailable </TITLE>\n</HEAD><BODY>\n<H1>Service Temporarily Unavailable</H1>\n<HR>\n</BODY></HTML>\n"
+        }
+      ]
+    }
+  },
+  "root_control_correction": "The root response followed a 302 redirect to /err/NotFound.html and then returned HTTP 200. It does not demonstrate API health. A direct no-redirect request confirmed this.",
+  "official_error_reference": {
+    "url": "http://api.bus.go.kr/contents/sub02/errGuide.html",
+    "read_at": "2026-11-03T08:52:30+09:00",
+    "api_codes": {
+      "5": "인증키 누락",
+      "6": "미등록 키",
+      "7": "사용 중지된 키",
+      "8": "요청 제한 초과"
+    },
+    "these_codes_observed_in_probe": false
+  },
+  "interpretation": {
+    "direct_observations": [
+      "동일 종로03 도착/위치 요청을 키 네 개로 각각 수행해 8개 모두 같은 503 HTML 응답을 받았다.",
+      "인증키 없는 요청도 운영 서버와 별도 작업 서버에서 같은 API 경로의 같은 503을 받았다.",
+      "응답에 API 인증/제한 오류 코드와 Retry-After 또는 요청 추적 ID가 없었다.",
+      "08:34:21 종로03 위치 원본은 헤더 0과 차량 7개를 포함하지만 이후 요청은 다시 503이다. 기존 기록에는 성공한 요청의 키 식별자가 없어 그 키는 확정하지 않는다."
+    ],
+    "inference": "A shared API processing path is failing; a single bad key does not explain the complete observation. The provider-side mechanism remains unknown.",
+    "provider_internal_root_cause_confirmed": false,
+    "provider_quota_exhaustion_confirmed": false,
+    "all_keys_invalid_confirmed": false,
+    "field_accuracy_verified": false
+  },
+  "operational_check": {
+    "checked_at": "2026-11-03T08:53:26.979126+09:00",
+    "diagnostic_reserved_delta": {
+      "arr": 4,
+      "pos": 4
+    },
+    "ledger_preserved_after_restart": true,
+    "collect_sha256": "6f4327b183a933936d38ce1102666774405bc4fdb32b7cb77d9a2d8d7bf63848",
+    "units": {
+      "hanjari-collect": "MainPID=273690\nActiveState=active\n",
+      "hanjari-web": "MainPID=264494\nActiveState=active\n"
+    },
+    "earlier_position_success": {
+      "file": "jr03_pos_083421.json",
+      "header_code": "0",
+      "item_count": 7
+    },
+    "endpoints": {
+      "sb02:arr": {
+        "last_attempt": "2026-11-03T08:50:33.027089+09:00",
+        "last_success": null,
+        "status": "upstream_error",
+        "http_status": 503
+      },
+      "sb02:pos": {
+        "last_attempt": "2026-11-03T08:50:33.027089+09:00",
+        "last_success": null,
+        "status": "upstream_error",
+        "http_status": 503
+      },
+      "jr03:arr": {
+        "last_attempt": "2026-11-03T08:50:33.027089+09:00",
+        "last_success": null,
+        "status": "upstream_error",
+        "http_status": 503
+      },
+      "jr03:pos": {
+        "last_attempt": "2026-11-03T08:53:15.021583+09:00",
+        "last_success": "2026-11-03T08:34:21.027089+09:00",
+        "status": "upstream_error",
+        "http_status": 503
+      }
+    }
+  },
+  "collector_source_changed": false,
+  "frontend_changed": false,
+  "ten_hour_verification_status": "paused_after_8h28m",
+  "provider_contact_sent": false,
+  "evidence": {
+    "key-probe-round1.jsonl": {
+      "sha256": "debeba80a159547a8a8da4e0c6d28deda7f971bddc880d04a96d41036b50e123",
+      "bytes": 4772
+    },
+    "transport-controls.json": {
+      "sha256": "ad0c9a6231d6c9cca18ed624aebd00adf505f091f8bce919f6c9242c5c432be1",
+      "bytes": 2224
+    },
+    "post-probe-check.json": {
+      "sha256": "f59e62fc5133e973406f916d79a073376b172ee5817f89933c631f03eef485f1",
+      "bytes": 1237
+    },
+    "official-api-errors.html": {
+      "sha256": "8d3145e6af3f7e059853e640560411975b2379d16173ccfd2db672d6b7ecfee9",
+      "bytes": 31613
+    },
+    "official-faq-review.json": {
+      "sha256": "2bd6fc2dd9f89c78f32d1030603cd3176c4a173e40c273b4a63761c5e36cbf0f",
+      "bytes": 1981
+    }
+  }
+}

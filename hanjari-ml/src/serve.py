@@ -9,8 +9,8 @@
 피처는 학습과 **같은 코드**(build_dataset.build(open_=True) → train.features)로 만든다 → 학습/서비스 어긋남 방지.
 단계(기능흐름도 F-04 순서):
   1. 확률 보류     — 정보가 오래됨 / 수업 없는 날(일요일·공휴일) / 그 칸(시간대×거리)에 기준을 정할 데이터 부족
-  2. 판단하기 일러요 — 도착재차 10~90% 구간이 WIDE 명보다 넓음
-  3. 여유 있음     — P ≥ 칸별 '여유' 기준(실제 탑승 97%, 수업 직전 98% 를 지킨 가장 낮은 P)
+  (11-04: '판단하기 일러요'는 내지 않음 — 범위가 넓어도 확률이 그 불확실성을 담는다. 만차 버스도 보류 대신 낮은 확률로 안내)
+  3. 여유 있음     — P ≥ 칸별 '여유' 기준(API 기준 계산 탑승 97%, 수업 직전 98% 를 지킨 가장 낮은 P)
   4. 어려울 수 있음 — P ≤ 0.3
   5. 빠듯함        — 그 사이
 실행: python src/serve.py latest 5     라이트, 수집기가 방금 받은 스냅샷으로(운영 서버, API 호출 없음) = predict_latest — 백엔드는 이것
@@ -19,18 +19,19 @@
       python src/serve.py check        라이트 자체 점검 (호출 없음)
       python src/serve.py export-lite  라이트 모델 다시 학습 (수집 로그·원본 CSV 필요)
 """
-import datetime as dt, json, sys, tempfile
+import datetime as dt, json, math, sys, tempfile
+from numbers import Integral
 from pathlib import Path
-import numpy as np, pandas as pd, xgboost as xgb
 import build_dataset as B
 import collect as C
-import train as T
+import data_quality as DQ
+from feature_schema import GROUPS
 
 MODELS = B.ROOT / "models"
 SAMPLE = B.ROOT / "data/sample/20260930"  # 실제 스냅샷 1장(도착·위치 × 2노선) — 키 없이 돌려보기용
 # 수집 이력(최근 60~90분 다른 버스들)이 있어야 계산되는 피처 — 라이트 모델은 뺀다
 HISTORY = ["since_prev", "hw_ratio", "q_bias3", "q_prev", "q_today", "q_eb", "q_live2", "q_today2", "q_rate", "gap_sum"]
-FULL = sum(T.GROUPS.values(), [])
+FULL = sum(GROUPS.values(), [])
 LITE = [f for f in FULL if f not in HISTORY]
 
 
@@ -40,7 +41,6 @@ def lite_rule(d):
 KST = dt.timezone(dt.timedelta(hours=9))
 # ponytail: 기능흐름도는 60초지만 수집 간격이 한산한 시간 150초라 180초. 백엔드가 API 를 직접 부르게 되면 60초로.
 MAX_AGE = 180
-WIDE = 20      # ponytail: 10~90% 구간 폭(명) 잠정값. 데이터 쌓이면 '판단 이르다' 비율·정확도로 다시 정할 것
 HARD = 0.3
 NAMES = {("sb02", "30"): "한성대입구역5번출구", ("sb02", "31"): "한성대입구역2번출구", ("sb02", "32"): "녹십자약국",
          ("jr03", "19"): "동대문역.흥인지문", ("jr03", "20"): "동묘앞역", ("jr03", "23"): "창신역4번출구"}
@@ -48,11 +48,22 @@ LEVELS = ["확률 보류", "판단하기 일러요", "여유 있음", "어려울
 
 
 def seg_name(k):
+    import train as T
     return next(n for n, (a, b) in T.SEGS.items() if a <= k <= b)
+
+
+def calibration_mask(d, Q, qs):
+    """서비스에서 안내할 수 있는 확인 차량·요일·구간 폭으로만 '여유' 기준을 정한다."""
+    import numpy as np
+    import train as T
+    caps = T.verified_capacities(d)
+    return np.isfinite(caps) & ~d.holiday.values & d.weekday.notna().values & (d.weekday.values != "일")
 
 
 def export(lite=False, until=None, out_dir=None):
     """until: 이 날짜(YYYYMMDD)까지만 학습(매일 작업·과거 재현용). 반환: meta (oof = 날짜 분할 예측 성적)."""
+    import numpy as np
+    import train as T
     d = T.features()
     if until:
         d = d[d.date <= until]
@@ -63,30 +74,29 @@ def export(lite=False, until=None, out_dir=None):
         d = d[~d.holiday & (d.weekday != "일")].assign(rule=lambda x: lite_rule(x))
     keep, oof = [], []
     for tr, te in T.folds(d):  # 날짜 블록 전진 검증 — '여유' 기준은 처음 보는 날 예측으로 정한다
-        T.CAP_OBS.clear()
-        T.CAP_OBS.update(pd.concat([tr.y, tr.r_now]).groupby(pd.concat([tr.route + "|" + tr.bus_type] * 2)).max()
-                         .rename(lambda k: tuple(k.split("|"))).to_dict())
-        point, Pm = T.predict(T.fit(tr, feats), te)
+        point, Pm, Q = T.predict(T.fit(tr, feats), te, quantiles=True)
         oof.append(T.metrics(point, Pm, te))
-        keep.append((Pm, (te.y.values[:, None] <= T.thresholds(te)).astype(float),
-                     np.repeat(te.stops_away.values[:, None], len(T.NS), 1), np.repeat(te.is_peak.values[:, None] == 1, len(T.NS), 1)))
+        valid = calibration_mask(te, Q, T.QS)
+        keep.append((Pm[valid], (te.y.values[:, None] <= T.thresholds(te)).astype(float)[valid],
+                     np.repeat(te.stops_away.values[:, None], len(T.NS), 1)[valid], np.repeat(te.is_peak.values[:, None] == 1, len(T.NS), 1)[valid]))
+    if not keep:
+        raise ValueError("날짜 분할 검증에 필요한 데이터가 부족함")
     Pm, Bd, K, PK = (np.concatenate(x) for x in zip(*keep))
     th = T.pick_thresholds(Pm, Bd, K, PK)
-    T.CAP_OBS.clear()
-    T.CAP_OBS.update(pd.concat([d.y, d.r_now]).groupby(pd.concat([d.route + "|" + d.bus_type] * 2)).max()
-                     .rename(lambda k: tuple(k.split("|"))).to_dict())
     m = T.fit(d, feats)
-    log_days = sorted(p.name for p in B.LOG.glob("2026*") if p.is_dir() and (not until or p.name <= until))
-    for route in B.STOPS:  # q_hist 용 과거 순증감 표 (로그 한 번 읽음)
-        B.build(route, log_days)
+    if m["m0"] is None:
+        raise ValueError("바로 앞 버스 학습 데이터가 50행 미만: 모델 저장 보류")
+    for route in B.STOPS:  # q_hist 용 과거 순증감 표 — 날짜별 캐시 합산(학습 q_hist 와 같은 정의, 원본 재읽기 없음)
+        if B.hist_from_cache(route, until) is None:  # 캐시가 없는 설치: 예전처럼 원본에서
+            B.build(route, sorted(p.name for p in B.LOG.glob("2026*") if p.is_dir() and (not until or p.name <= until)))
     out_dir.mkdir(parents=True, exist_ok=True)
     m["pt"].save_model(out_dir / "point.json")
     m["qm"].save_model(out_dir / "quantile.json")
     m["m0"].save_model(out_dir / "k0.json")
     meta = dict(
         feats=feats, f0=T.F0, qs=T.QS.tolist(), cats=d.attrs["cats"],
-        cap_obs=[[r, b, int(v)] for (r, b), v in T.CAP_OBS.items()],
-        res0={str(k): v.tolist() for k, v in m["res0"].items()},
+        capacity_policy=T.capacity_policy(), calibration_rows=len(Pm),
+        res0={str(k): v.tolist() for k, v in m["res0"].items()}, gain_q=m["gain_q"],
         thresholds=[[p, s, None if t in (None, "부족") else float(t), t == "부족"] for (p, s), (t, _, _) in th.items()],
         hist_all={r: [[j, h, v] for (j, h), v in tab.items()] for r, tab in B.HIST_ALL.items()},
         lite=lite, tab={r: [[j, h, *v] for (j, h), v in B.csv_tables(r).items()] for r in B.STOPS},  # 원본 CSV 없이 쓰는 과거 평균 표
@@ -104,6 +114,8 @@ _M = {}
 
 
 def load(lite, src=None):
+    import numpy as np
+    import xgboost as xgb
     src = Path(src or (MODELS / "lite" if lite else MODELS))
     if src not in _M:
         meta = json.loads((src / "meta.json").read_text())
@@ -112,13 +124,11 @@ def load(lite, src=None):
             m[k].load_model(src / f"{f}.json")
         m["res0"] = {k == "True": np.array(v) for k, v in meta["res0"].items()}
         m["qs"] = np.array(meta["qs"])
+        m["gain_q"] = meta.get("gain_q", {})
         meta["hist_d"] = {r: {(j, h): v for j, h, v in tab} for r, tab in meta["hist_all"].items()}
         meta["tab_d"] = {r: {(j, h): tuple(v) for j, h, *v in tab} for r, tab in meta["tab"].items()} if "tab" in meta else {}
         _M[src] = (m, meta)
     m, meta = _M[src]
-    cap = {(r, b): v for r, b, v in meta["cap_obs"]}
-    if T.CAP_OBS != cap:  # 통째로 바꿔 끼움(한 번에) — clear()+update() 사이에 다른 요청이 빈 정원표를 보던 틈 제거(10-05)
-        T.CAP_OBS = cap
     return m, meta
 
 
@@ -131,20 +141,152 @@ def level(p, q10, q90, k, peak, weekday_ok, th, age):
     t, short = th[cell]
     if short:
         return "확률 보류", "이 시간대·거리는 검증 데이터 부족"
-    if q90 - q10 > WIDE:
-        return "판단하기 일러요", f"도착 인원 예상 폭이 {q10:.0f}~{q90:.0f}명으로 넓음"
     if t is not None and p >= t:
         return "여유 있음", f"P {p:.2f} ≥ 기준 {t:.2f}"
     if p <= HARD:
         return "어려울 수 있음", f"P {p:.2f} ≤ {HARD}"
     if t is None:
-        return "빠듯함", f"P {p:.2f}, {cell[0]}·{cell[1]}은 '여유'를 표시하지 않는 칸(실제 탑승 목표를 못 지킴)"
+        return "빠듯함", f"P {p:.2f}, {cell[0]}·{cell[1]}은 '여유' 안내 기준을 충족하지 못한 구간"
     return "빠듯함", f"P {p:.2f} < 기준 {t:.2f}"
 
 
 def check_n(n_ahead):
-    if not isinstance(n_ahead, (int, np.integer)) or not 0 <= n_ahead <= T.NS[-1]:
-        raise ValueError(f"n_ahead 는 0~{T.NS[-1]} 정수")
+    if isinstance(n_ahead, bool) or not isinstance(n_ahead, Integral) or not 0 <= n_ahead <= 40:
+        raise ValueError("n_ahead 는 0~40 정수")
+
+
+def probability_issue(route, bus_type, r_now, meta, plate="", vehicle_id=""):
+    issue = DQ.field_validation_issue(route, plate, str(vehicle_id))
+    if issue:
+        return issue
+    import train as T
+    if meta.get("capacity_policy") != T.capacity_policy():
+        return "model_unverified"
+    if r_now is None or not math.isfinite(r_now) or r_now < 0:
+        return "passenger_unavailable"
+    return None  # 정원을 넘은 만차 버스도 보류하지 않고 확률(거의 0)로 '어려울 수 있음'을 안내
+
+
+def probability_hold(route, bus_type, r_now, meta, plate="", vehicle_id=""):
+    issue = probability_issue(route, bus_type, r_now, meta, plate, vehicle_id)
+    return DQ.REASONS.get(issue) if issue else None
+
+
+class NoSnapshotError(RuntimeError):
+    pass
+
+
+def _snapshot_files(sources, pattern):
+    """날짜 폴더가 바뀌어도 수집 시각으로 정렬한다. 잘못된 파일명은 선택하지 않는다."""
+    folders = sources if isinstance(sources, (list, tuple)) else [sources]
+    files = {}
+    for folder in folders:
+        for path in Path(folder).glob(pattern):
+            stamp = path.stem.rsplit("_", 1)[-1]
+            if len(path.parent.name) != 8 or len(stamp) != 6:
+                continue
+            try:
+                when = dt.datetime.strptime(path.parent.name + stamp, "%Y%m%d%H%M%S")
+            except ValueError:
+                continue
+            files[path] = when
+    return sorted(((when, path) for path, when in files.items()), reverse=True)
+
+
+def latest_snapshot(src, route=None, now=None):
+    """최신 정상 도착 응답을 우선한다. 위치 파일 지연 때문에 지난 버스로 되돌아가지 않는다."""
+    if route is None:
+        snapshots = [latest_snapshot(src, r, now) for r in B.STOPS]
+        newest = max(snapshots, key=lambda pair: pair[1][0].parent.name + pair[0])
+        return newest[0], [f for _, files in snapshots for f in files]
+    for collected, arr in _snapshot_files(src, f"{route}_arr_*.json"):
+        try:
+            B.read_items(arr)
+        except (OSError, ValueError, KeyError, TypeError):
+            continue
+        stamp = arr.stem.rsplit("_", 1)[-1]
+        files = [arr]
+        # 차량이 최신 위치 응답에서 빠져도 최근 통과 근거를 잃지 않는다.
+        # 도착 파일보다 먼저 수집한 위치도 제공 시각(dataTm)이 mkTm보다 새로울 수 있다.
+        # 같은 시각 위치만 모델 피처에 쓰고, 나머지는 통과 확인에만 쓴다.
+        reference = now
+        for at, pos in _snapshot_files(src, f"{route}_pos_*.json"):
+            paired = at == collected
+            if reference is not None and not paired and not -5 <= (reference - at).total_seconds() <= MAX_AGE + 5:
+                continue
+            try:
+                B.read_items(pos)
+            except (OSError, ValueError, KeyError, TypeError):
+                continue
+            reference = reference or max(collected, at)
+            if paired or -5 <= (reference - at).total_seconds() <= MAX_AGE + 5:
+                files.append(pos)
+        return stamp, files
+    raise NoSnapshotError("정상 도착 스냅샷이 없음(수집 또는 API 응답 확인 필요)")
+
+
+def exclude_departed(snap, now):
+    """날짜 경계를 포함한 복사본에서 같은 차량의 최신 제공 시각으로 통과를 확인한다."""
+    passed = set()
+    for route in B.STOPS:
+        positions = {}
+        for _, f in _snapshot_files(snap, f"{route}_pos_*.json"):
+            for v in B.read_items(f):
+                made = DQ.source_time(v.get("dataTm"))
+                plate, vehicle_id = DQ.vehicle_key(v, "")
+                if not plate or vehicle_id is None or vehicle_id <= 0:
+                    continue
+                key = (vehicle_id, plate)
+                if made is not None and made.tzinfo is None and -5 <= (now - made).total_seconds() <= MAX_AGE:
+                    if key not in positions or made > positions[key][0]:
+                        positions[key] = made, v
+        for _, f in _snapshot_files(snap, f"{route}_arr_*.json"):
+            body = json.loads(f.read_text())
+            for it in B.response_items(body):
+                stop = B.num(it.get("staOrd"))
+                if stop not in B.STOPS[route]:
+                    continue
+                source = DQ.source_time(it.get("mkTm"))
+
+                def departed(slot):
+                    plate, vehicle_id = DQ.vehicle_key(it, slot)
+                    key = (vehicle_id, plate)
+                    pos = positions.get(key)
+                    if source is None or source.tzinfo is not None or pos is None or pos[0] < source:
+                        return False
+                    section = B.num(pos[1].get("sectOrd"))
+                    # 목표 정류장에 정차 중인 차를 통과 차량으로 처리하지 않는다.
+                    return section is not None and (section > stop or section == stop and B.num(pos[1].get("stopFlag")) == 0)
+
+                if not departed("1"):
+                    continue
+                next_section = B.num(it.get("sectOrd2"))
+                next_eta = B.num(it.get("traTime2"))
+                if (str(it.get("plainNo2") or "").strip() and (DQ.integer(it.get("vehId2")) or 0) > 0
+                        and next_section is not None and 0 < next_section <= stop
+                        and next_eta is not None and next_eta >= 0 and not departed("2")):
+                    second = {key[:-1] + "1": value for key, value in it.items() if key.endswith("2")}
+                    # 둘째 차량의 필드가 빠졌을 때 첫째 차량 값을 상속하면 차량과 인원이 섞인다.
+                    for key in list(it):
+                        if key.endswith(("1", "2")):
+                            del it[key]
+                    it.update(second)
+                    it.update(plainNo2="", vehId2="0", traTime2="0", reride_Num2="", rerdie_Div2="0")
+                else:
+                    passed.add((route, str(stop)))
+            f.write_text(json.dumps(body, ensure_ascii=False))
+    return passed
+
+
+def check_arrival(result, now, passed=False):
+    """ETA 만료는 통과 확정이 아니다. 새 안내를 기다리는 동안 옛 인원·확률을 현재 값으로 내주지 않는다."""
+    if result["arrival_stale"]:
+        return
+    target = dt.datetime.fromisoformat(result["arrival_at"]).replace(tzinfo=None)
+    if passed or now >= target:
+        result["arrival_status"] = "passed" if passed else "checking"
+        result["r_now"] = None
+        hold_result(result, "arrival_passed" if passed else "arrival_checking")
 
 
 def predict_now(n_ahead, now=None, max_age=MAX_AGE):
@@ -158,11 +300,15 @@ def predict_now(n_ahead, now=None, max_age=MAX_AGE):
     return results(rows, m, meta, n_ahead, now, max_age, lite=False)
 
 
-def predict_live(n_ahead, key=None, log_dir=None, model_dir=None):
+def predict_live(n_ahead, key=None, log_dir=None, model_dir=None, reference_now=None):
     """[라이트] 버스 API 를 지금 1번 불러 예측. key 없으면 .env 의 SEOUL_BUS_API_KEY.
     log_dir 를 주면 API 대신 그 폴더(수집 로그 날짜 폴더)의 **가장 최근 스냅샷**으로 — 점검용, 호출 없음."""
     check_n(n_ahead)
-    m, meta = load(True, model_dir)
+    if DQ.boarding_policy()["enabled"]:
+        m, meta = load(True, model_dir)
+    else:
+        # 인원·도착 안내에는 모델이 필요 없다. 보류 중 모델 파일/학습 라이브러리 장애도 전파하지 않는다.
+        m, meta = None, {"hist_d": {}, "tab_d": {route: {} for route in B.STOPS}}
     now = dt.datetime.now(KST).replace(tzinfo=None)
     with tempfile.TemporaryDirectory() as tmp:
         if log_dir is None:
@@ -182,69 +328,176 @@ def predict_live(n_ahead, key=None, log_dir=None, model_dir=None):
                         raise RuntimeError(f"버스 API 오류({route} {kind}): {head.get('headerMsg')}")
                     (snap / f"{route}_{kind}_{now:%H%M%S}.json").write_bytes(body)
         else:  # 가장 최근 스냅샷 1장만 복사 — 실시간 호출 결과와 같은 입력
-            src = Path(log_dir)
-            last = max(f.name.split("_")[-1] for f in src.glob("*_arr_*.json"))
-            snap = Path(tmp) / src.name
-            snap.mkdir()
-            for f in src.glob(f"*_{last}"):
-                (snap / f.name).write_bytes(f.read_bytes())
-            days = [str(snap)]
-            now = dt.datetime.strptime(src.name + last[:6], "%Y%m%d%H%M%S")
+            sources = list(log_dir) if isinstance(log_dir, (list, tuple)) else [Path(log_dir)]
+            snapshots = []
+            for route in B.STOPS:
+                try:
+                    snapshots.append(latest_snapshot(sources, route, reference_now))
+                except NoSnapshotError:
+                    continue  # 한 노선의 실패가 다른 노선의 새 응답을 가리지 않게
+            snapshot_files = [f for _, files in snapshots for f in files]
+            if not snapshot_files:
+                raise NoSnapshotError("정상 도착 스냅샷이 없음(수집 또는 API 응답 확인 필요)")
+            for f in snapshot_files:
+                dest = Path(tmp) / f.parent.name
+                dest.mkdir(exist_ok=True)
+                (dest / f.name).write_bytes(f.read_bytes())
+            days = sorted(str(p) for p in Path(tmp).iterdir())
+            now = max(dt.datetime.strptime(f.parent.name + f.stem[-6:], "%Y%m%d%H%M%S") for f in snapshot_files)
+        # 위치 API가 먼저 갱신되고 도착 API가 옛 차량을 유지하는 경우도 처리한다.
+        now = reference_now or now
+        passed = exclude_departed(days, now)
         # 임시 폴더를 절대 경로로 넘김 — 예전엔 B.LOG 전역을 바꿨다 되돌려서 동시 요청이 꼬이고 B.LOG 가 지워진 폴더로 남았다(10-05 정원 발견)
         rows = [r for route in B.STOPS
                 for r in B.build(route, days, open_=True, hist_all=meta["hist_d"].get(route, {}), tab=meta["tab_d"][route])]
-    return results(rows, m, meta, n_ahead, now, None, lite=True)
+    out = results(rows, m, meta, n_ahead, now, MAX_AGE, lite=True)
+    for result in out:
+        check_arrival(result, now, (result["route"], result["stop"]) in passed)
+    return out
 
 
 def predict_latest(n_ahead):
     """[운영 서버의 백엔드용] 수집기가 방금 저장한 스냅샷으로 예측 — 버스 API 를 따로 부르지 않음(한도 안 씀).
-    스냅샷이 MAX_AGE 초보다 오래되면(수집 중단·새벽) 전부 '확률 보류'."""
-    today = max((p for p in B.LOG.glob("20*") if p.is_dir()), default=None)
-    res = predict_live(n_ahead, log_dir=today) if today else []
-    if res:
-        snap = dt.datetime.strptime(today.name + res[0]["updated"], "%Y%m%d%H:%M:%S")
-        age = (dt.datetime.now(KST).replace(tzinfo=None) - snap).total_seconds()
-        if age > MAX_AGE:
-            for r in res:
-                r.update(level="확률 보류", reason=f"버스 정보가 {age / 60:.0f}분 전 것(수집 확인 필요)")
-    return res
+    운행시간 밖 노선은 제외한다. 운행 중 스냅샷이 MAX_AGE 초보다 오래되면 전부 '확률 보류'."""
+    check_n(n_ahead)
+    now = dt.datetime.now(KST).replace(tzinfo=None)
+    sched = C.load_sched()
+    active = {route for route in B.STOPS if C.allowed(now, route, sched)}
+    if not active:
+        return []
+    folders = sorted((p for p in B.LOG.glob("20*") if p.is_dir() and p.name <= now.strftime("%Y%m%d")), reverse=True)[:2]
+    if not folders:
+        raise NoSnapshotError("버스 수집 로그가 없음")
+    return [row for row in predict_live(n_ahead, log_dir=folders, reference_now=now) if row["route"] in active]
+
+
+def hold_result(result, issue, reason=None):
+    result.update(level="확률 보류", reason=reason or DQ.REASONS[issue], prediction_status=issue,
+                  load_pred=None, load_10=None, load_90=None, p_board=None)
+
+
+def source_health(now=None):
+    """프로세스 생존과 실제 데이터 갱신 상태를 분리한다. 추가 API 호출 없음."""
+    now = now or dt.datetime.now(KST).replace(tzinfo=None)
+    folders = sorted((p for p in B.LOG.glob("20*") if p.is_dir() and p.name <= now.strftime("%Y%m%d")), reverse=True)[:2]
+    routes = {}
+    sched = C.load_sched()
+    for route in B.STOPS:
+        entry = {"status": "missing", "collected_at": None, "age_sec": None}
+        for folder in folders:
+            try:
+                _, files = latest_snapshot(folder, route, now)
+            except RuntimeError:
+                continue
+            arr = files[0]
+            made = dt.datetime.strptime(arr.parent.name + arr.stem[-6:], "%Y%m%d%H%M%S")
+            age = (now - made).total_seconds()
+            entry.update(status="fresh" if -5 <= age <= MAX_AGE else "stale",
+                         collected_at=made.replace(tzinfo=KST).isoformat(), age_sec=round(age))
+            items = B.read_items(arr)
+            if entry["status"] == "fresh":
+                times = [DQ.source_time(it.get("mkTm")) for it in items]
+                if items and not any(t is not None and t.tzinfo is None and -5 <= (now - t).total_seconds() <= MAX_AGE for t in times):
+                    entry["status"] = "stale"
+            break
+        if not C.allowed(now, route, sched):
+            entry["status"] = "outside_service"
+        routes[route] = entry
+    return routes
+
+
+def next_bus_sec(eta2):
+    """다음 버스 도착까지 초. 원본의 0·결측은 다음 버스 없음."""
+    try:
+        sec = float(eta2)
+    except (TypeError, ValueError):
+        return None
+    return int(sec) if math.isfinite(sec) and sec > 0 else None
 
 
 def results(rows, m, meta, n_ahead, now, max_age, lite):
-    if not rows:
-        return []
-    d = T.features(pd.DataFrame(rows).assign(arrive_time=""), cats=meta["cats"])
+    out, eligible, indices = [], [], []
+    for row in rows:
+        r = dict(row)
+        t_snap = dt.datetime.strptime(str(r["date"]) + r["time"], "%Y%m%d%H:%M:%S")
+        age = (now - t_snap).total_seconds() if max_age is not None else 0
+        status = r.get("data_status", "source_time_unknown")
+        made = DQ.source_time(r.get("source_updated"))
+        source_now = now if max_age is not None else t_snap
+        source_stale = made is None or made.tzinfo is not None or not -5 <= (source_now - made).total_seconds() <= MAX_AGE
+        if source_stale and status == "ok":
+            status = "source_time_unknown" if made is None or made.tzinfo is not None else "source_stale"
+        stale = source_stale or age > MAX_AGE or age < -5
+        arrival_base = made if made is not None and made.tzinfo is None else t_snap
+        result = dict(route=r["route"], stop=str(r["stop"]), stop_name=NAMES[(r["route"], str(r["stop"]))],
+                      plate=r["plate"], vehicle_id=str(r.get("vehicle_id", "")),
+                      stops_away=int(r["stops_away"]), eta_sec=int(r["eta"]), r_now=DQ.integer(r["r_now"]),
+                      eta2_sec=next_bus_sec(r.get("eta2")),
+                      updated=t_snap.strftime("%H:%M:%S"), updated_at=t_snap.replace(tzinfo=KST).isoformat(),
+                      source_updated=r.get("source_updated"), data_status=status, arrival_stale=stale,
+                      arrival_at=(arrival_base + dt.timedelta(seconds=int(r["eta"]))).replace(tzinfo=KST).isoformat(),
+                      arrival_status="upcoming")
+        if stale or status != "ok":
+            result["r_now"] = None
+        check_arrival(result, source_now)
+        issue = result.get("prediction_status") or ("collection_stale" if age > MAX_AGE or age < -5 else status if status != "ok" else None)
+        if not issue:
+            issue = probability_issue(r["route"], r["bus_type"], r["r_now"], meta, r["plate"], r.get("vehicle_id", ""))
+        if issue:
+            hold_result(result, issue)
+            if stale:
+                # 배포 전에 열어 둔 화면도 '전 것'으로 지연을 알아본다. 새 화면은 구조화 상태를 쓴다.
+                source_age = (source_now - made).total_seconds() if made is not None and made.tzinfo is None else age
+                seconds = max(age, source_age, 0)
+                result["reason"] = f"정보가 {seconds:.0f}초 전 것이어서 갱신을 기다리고 있어요"
+        else:
+            indices.append(len(out))
+            eligible.append(r)
+        out.append(result)
+    if not eligible:
+        return out  # 결측을 0으로 채우거나 미검증 입력에 모델을 실행하지 않는다.
+    import numpy as np
+    import pandas as pd
+    import train as T
+    d = T.features(pd.DataFrame(eligible).assign(arrive_time=""), cats=meta["cats"])
     if lite:
         d = d.assign(rule=lite_rule(d))
     point, Pm, Q = T.predict(m, d, quantiles=True)
     qs = np.array(meta["qs"])
     th = {(p, s): (t, short) for p, s, t, short in meta["thresholds"]}
-    out = []
     for i, r in enumerate(d.itertuples()):
-        t_snap = dt.datetime.strptime(r.date + r.time, "%Y%m%d%H:%M:%S")
-        age = (now - t_snap).total_seconds() if max_age is not None else 0
+        result = out[indices[i]]
         q10, q90 = np.interp([0.1, 0.9], qs, Q[i])
         p = float(Pm[i, n_ahead])
-        lv, why = level(p, q10, q90, r.stops_away, r.is_peak == 1, not r.holiday and r.weekday != "일", th, age)
-        out.append(dict(route=r.route, stop=r.stop, stop_name=NAMES[(r.route, r.stop)], plate=r.plate,
-                        stops_away=int(r.stops_away), eta_sec=int(r.eta), r_now=int(r.r_now),
-                        eta2_sec=int(r.eta2) if pd.notna(r.eta2) and r.eta2 > 0 else None,  # 다음 버스. 원본 0·결측은 없음(전부 결측이면 None 이 그대로 옴)
-                        load_pred=round(float(point[i]), 1), load_10=round(float(q10), 1), load_90=round(float(q90), 1),
-                        p_board=round(p, 3), level=lv, reason=why, updated=t_snap.strftime("%H:%M:%S")))
+        if not np.isfinite([point[i], q10, q90, p]).all() or not 0 <= p <= 1:
+            hold_result(result, "prediction_invalid")
+            continue
+        lv, why = level(p, q10, q90, r.stops_away, r.is_peak == 1,
+                        not r.holiday and pd.notna(r.weekday) and r.weekday != "일", th, 0)
+        if lv == "확률 보류":
+            hold_result(result, "calibration_hold", why)
+        else:
+            result.update(load_pred=round(float(point[i]), 1), load_10=round(float(q10), 1),
+                          load_90=round(float(q90), 1), p_board=round(p, 3), level=lv, reason=why,
+                          prediction_status="ok")
     return out
 
 
 def demo(model_dir=None):
     """라이트 점검 — data/sample 스냅샷으로(API 호출 없음). 매일 작업의 합격 판정에도 씀."""
+    import numpy as np
+    import train as T
     run = lambda n: predict_live(n, log_dir=SAMPLE, model_dir=model_dir)
     res = run(0)
     assert res and all(r["level"] in LEVELS for r in res)
-    assert all(np.isfinite([r["p_board"], r["load_pred"]]).all() for r in res), "NaN 예측"
-    assert all(0 <= r["load_10"] <= r["load_pred"] + 1e-6 or r["stops_away"] == 0 for r in res)
+    assert T.cap("jr03", "0") == T.CAPACITY[("jr03", "0")], "정원은 관측 최대로 올라가지 않음"
+    assert all(r["p_board"] is None and r["load_pred"] is None if r["level"] == "확률 보류"
+               else np.isfinite([r["p_board"], r["load_pred"]]).all() for r in res), "보류/null 또는 유한 예측 계약"
+    assert all(0 <= r["load_10"] <= r["load_pred"] + 1e-6 or r["stops_away"] == 0 for r in res if r["level"] != "확률 보류")
     for n in (0, 10, 30):  # 앞사람이 많을수록 확률은 줄기만 해야 함
         ps = [r["p_board"] for r in run(n)]
         if n:
-            assert all(a <= b + 1e-9 for a, b in zip(ps, prev)), "앞사람이 늘었는데 확률이 올라감"
+            assert all(a is None and b is None or a is not None and b is not None and a <= b + 1e-9 for a, b in zip(ps, prev)), "앞사람이 늘었는데 확률이 올라감"
         prev = ps
     # 동시 요청: 스레드 4개가 같은 결과를 내고 B.LOG 전역이 그대로여야 함(백엔드가 여러 요청을 한꺼번에 받을 때)
     import threading
@@ -276,5 +529,4 @@ if __name__ == "__main__":
         if not res:
             print("표시할 버스 없음 (새벽이거나 운행 전)")
         for r in res:
-            print(f"{r['stop_name']:12} {r['plate']:13} {r['stops_away']:2}정류장 전 {r['eta_sec']:4}초 | 지금 {r['r_now']:2}명 → 도착 {r['load_pred']:4.1f}명"
-                  f" ({r['load_10']:.0f}~{r['load_90']:.0f}) | 앞 {n}명: P {r['p_board']:.2f} {r['level']} — {r['reason']} [{r['updated']}]")
+            print(json.dumps(r, ensure_ascii=False, allow_nan=False))

@@ -1,0 +1,147 @@
+{
+  "vehicle_switches": {
+    "source": "saved API response replay, not field passenger accuracy",
+    "cases": 6,
+    "failures": 0,
+    "results": [
+      {
+        "route": "jr03",
+        "stop": 19,
+        "before": "2026-11-02T07:57:27",
+        "after": "2026-11-02T07:57:54",
+        "old_vehicle": "100000070",
+        "selected_vehicle": "100000014",
+        "old_count": 2,
+        "selected_count": 25,
+        "arrival_at": "2026-11-02T08:06:57+09:00",
+        "missing_new_position": true,
+        "input_sha256": {
+          "jr03_arr_075727.json": "babc9752d1ae39917cffc4c62628e73d9ce73a64ab9a896f12d99b94d29454d9",
+          "jr03_pos_075727.json": "4f1bea55215aa7bd5edae6275554945120efd43b3a4a9f74613b6232afac4434",
+          "jr03_arr_075754.json": "c0651d6905f56725e78ba59bd9ad8cac5d2786151724807319092d06fe83fb77"
+        }
+      },
+      {
+        "route": "jr03",
+        "stop": 20,
+        "before": "2026-11-02T18:13:03",
+        "after": "2026-11-02T18:13:30",
+        "old_vehicle": "100000073",
+        "selected_vehicle": "100000070",
+        "old_count": 48,
+        "selected_count": 17,
+        "arrival_at": "2026-11-02T18:15:26+09:00",
+        "missing_new_position": true,
+        "input_sha256": {
+          "jr03_arr_181303.json": "e7b148878cea43186da3f8097d36028c050f630d38b1138d0645ff8a448a440d",
+          "jr03_pos_181303.json": "46dede17f51177aa5cdb4bdc4fa958763d335021bd34f2578d2fb44c9c369f7b",
+          "jr03_arr_181330.json": "57b99b649cc6059bcb02ccae98b9266b0eabc148afe1c6d7eec73b396fa1be73"
+        }
+      },
+      {
+        "route": "jr03",
+        "stop": 23,
+        "before": "2026-11-02T11:46:30",
+        "after": "2026-11-02T11:46:57",
+        "old_vehicle": "100000071",
+        "selected_vehicle": "100000067",
+        "old_count": 44,
+        "selected_count": 4,
+        "arrival_at": "2026-11-02T11:52:15+09:00",
+        "missing_new_position": true,
+        "input_sha256": {
+          "jr03_arr_114630.json": "c8c92b90115d3f93d39f0e3f0186a10b35994e0eb7aa15513979cdd5354a8cd0",
+          "jr03_pos_114630.json": "084f571ac6712191ab7e743c3f260878e95c74f11605f0f8bb52ea84135bfe39",
+          "jr03_arr_114657.json": "9e83d09fee420c6b262c0ef3bfca646eafa15509f71e58d372f9aa37be23e9f3"
+        }
+      },
+      {
+        "route": "sb02",
+        "stop": 30,
+        "before": "2026-11-02T15:21:36",
+        "after": "2026-11-02T15:22:03",
+        "old_vehicle": "107063771",
+        "selected_vehicle": "107063707",
+        "old_count": 27,
+        "selected_count": 0,
+        "arrival_at": "2026-11-02T15:28:33+09:00",
+        "missing_new_position": true,
+        "input_sha256": {
+          "sb02_arr_152136.json": "37f6bf76d684d15997be979c72e70a43a0d7c9153ed2b40eec63ba9c1dea0d43",
+          "sb02_pos_152136.json": "b5899553942430c14c6fbf4b2eebb9dd5a3ea795cfb5beebf8ae6dee1ca327f9",
+          "sb02_arr_152203.json": "36cc663f470403418e248dca3e5d8b072eb21cf889d2c0412e2a9e144fc41a7f"
+        }
+      },
+      {
+        "route": "sb02",
+        "stop": 31,
+        "before": "2026-11-02T10:10:12",
+        "after": "2026-11-02T10:10:39",
+        "old_vehicle": "107063707",
+        "selected_vehicle": "107063679",
+        "old_count": 32,
+        "selected_count": 1,
+        "arrival_at": "2026-11-02T10:17:08+09:00",
+        "missing_new_position": true,
+        "input_sha256": {
+          "sb02_arr_101012.json": "ce72c77caeee4cf6283103bd5a1fb84c2d440e303a454a6d7bf11ece17786f91",
+          "sb02_pos_101012.json": "aa393569e41bb6f509fa8e9fd03d4bbee01284fb576dd61d879599486e68af78",
+          "sb02_arr_101039.json": "9b69381621638ae7a6f7f12744e025f1d130ed03f73eb1aae0db01cd80fe5346"
+        }
+      },
+      {
+        "route": "sb02",
+        "stop": 32,
+        "before": "2026-11-02T13:15:36",
+        "after": "2026-11-02T13:16:03",
+        "old_vehicle": "107063708",
+        "selected_vehicle": "107063771",
+        "old_count": 52,
+        "selected_count": 5,
+        "arrival_at": "2026-11-02T13:22:22+09:00",
+        "missing_new_position": true,
+        "input_sha256": {
+          "sb02_arr_131536.json": "df3edb3f330cb1522761f44fcddf9017ab2b3e04a47ad72f80a1222af4b73a6a",
+          "sb02_pos_131536.json": "1ed3b53d2065e106daaa110dfab6dad3a6cb6451e88a1872e711cb53a6dcde3d",
+          "sb02_arr_131603.json": "8817421fbc590618daaae322fa9f2383fa10cd94186ce8899473749e17d4fd87"
+        }
+      }
+    ]
+  },
+  "field_faults": {
+    "cases": 150,
+    "failures": 0,
+    "issues": []
+  },
+  "daily_coverage": {
+    "source_cutoff": "2026-11-02T18:28:48+09:00",
+    "before": "OK",
+    "after": "FAIL",
+    "details": "sb02 스냅샷 1567개 · 운행 중 점검창 07:00~22:00 최대 공백 211.2분 · 오류 응답 0개 / jr03 스냅샷 1574개 · 운행 중 점검창 07:00~22:00 최대 공백 211.2분 · 오류 응답 0개",
+    "night_hours_excluded": true
+  },
+  "source_time_order": {
+    "sb02": {
+      "counts": {
+        "compared": 22311
+      },
+      "examples": []
+    },
+    "jr03": {
+      "counts": {
+        "compared": 22398
+      },
+      "examples": []
+    }
+  },
+  "limitation": "원본 API 선택/오류 처리 검사. 실제 차내 인원과 탑승 가능성의 현장 검증은 아님.",
+  "code_sha256": {
+    "hanjari-ml/src/api_response.py": "ce99dc74cc2e96df99880e019c9026e6be1e09ca621e8eb1ce2bd5a5481b5d08",
+    "hanjari-ml/src/build_dataset.py": "07d0531b009c41cb2cb58a70812e221065d0e228e9cba7a654ac9f66f26488f8",
+    "hanjari-ml/src/collect.py": "95c82b2fd992aec207315c19cdeb5f7042739b605fe702346715aca5d74b295b",
+    "hanjari-ml/src/daily.py": "959d69713d24539683cfb3a4bde4d4b91305dffc96a97f1363a6b0f442f62466",
+    "hanjari-ml/src/data_quality.py": "7122646afa547933edcb0d103fd3feb25442ab755f28f850556273fb1fdce655",
+    "hanjari-ml/src/serve.py": "1adb701787f3dea45910a8fc5be168e38a57e2aaee735afc7368cdc7493cab44",
+    "hanjari-ml/src/watchdog.py": "e0b4821facc502b687a79735c82fb5271cdf3807b9ea213de75e299241d98d42"
+  }
+}

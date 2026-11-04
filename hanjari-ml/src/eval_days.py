@@ -10,14 +10,7 @@ import pandas as pd
 import train as T
 
 
-def setcap(tr):
-    T.CAP_OBS.clear()
-    T.CAP_OBS.update(pd.concat([tr.y, tr.r_now]).groupby(pd.concat([tr.route + "|" + tr.bus_type] * 2)).max()
-                     .rename(lambda k: tuple(k.split("|"))).to_dict())
-
-
 def evaluate(tr, te, title):
-    setcap(tr)
     thr = T.thresholds(te)
     rows, preds = [], {}
     rows.append(("persistence", T.metrics(te.r_now.values, (te.r_now.values[:, None] <= thr).astype(float), te)))

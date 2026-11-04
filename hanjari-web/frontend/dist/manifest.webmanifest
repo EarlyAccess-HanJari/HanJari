@@ -1,0 +1,17 @@
+{
+  "id": "/",
+  "name": "한자리",
+  "short_name": "한자리",
+  "description": "지금 오는 마을버스의 도착 시간과 탑승 가능성을 확인하세요.",
+  "lang": "ko",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F1F4F8",
+  "theme_color": "#F1F4F8",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

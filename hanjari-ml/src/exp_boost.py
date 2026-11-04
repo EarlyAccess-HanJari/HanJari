@@ -52,7 +52,6 @@ for day, tr_wd, te in FOLDS:
     tr_all = d[d.date != day]
     for arm, (feats, weekday_only) in ARMS.items():
         tr = tr_wd if weekday_only else tr_all
-        E.setcap(tr)
         p, Pm = T.run(tr, te, feats)
         m = T.metrics(p, Pm, te)
         err, w = np.abs(p - te.y.values), te.w.values

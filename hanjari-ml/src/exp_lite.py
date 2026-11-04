@@ -20,7 +20,6 @@ for name, trm, tem in FOLDS:
     for arm, feats, rule in [("전체(오라클 이력)", FULL, d.rule), ("라이트(API 1회)", LITE, d.r_now + d.q_csv + d.q_pending.fillna(0))]:
         dd = d.assign(rule=rule)
         tr, te = dd[trm], dd[tem]
-        E.setcap(tr)
         p, Pm = T.run(tr, te, feats)
         m = T.metrics(p, Pm, te)
         err = np.abs(p - te.y.values)
