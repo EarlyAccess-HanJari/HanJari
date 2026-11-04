@@ -1,6 +1,6 @@
 import { ROUTES } from "../types";
 import type { PredictItem, RouteCode } from "../types";
-import { etaText, isStale } from "../utils/format";
+import { arrivalChecking, etaText, isStale } from "../utils/format";
 import LevelBadge from "./LevelBadge";
 import s from "./OtherStops.module.css";
 
@@ -23,7 +23,7 @@ export default function OtherStops({ route, stop, items = [], onPick }: Props) {
             <button key={x.stop} type="button" className={s.row} onClick={() => onPick(route, x.stop)} data-testid={`other-${route}-${x.stop}`}>
               <span className={s.text}>
                 <span className={s.name}>{x.name}</span>
-                <span className={s.eta}>{!i || isStale(i) ? "정보 없음" : etaText(i.eta_sec)}</span>
+                <span className={s.eta}>{!i || isStale(i) ? "정보 없음" : arrivalChecking(i) ? "도착 확인 중" : etaText(i.eta_sec)}</span>
               </span>
               {i ? <LevelBadge item={i} /> : <span className={s.dash}>—</span>}
             </button>

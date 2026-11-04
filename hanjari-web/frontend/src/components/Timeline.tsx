@@ -1,5 +1,5 @@
 import type { PredictItem } from "../types";
-import { etaText } from "../utils/format";
+import { arrivalChecking, etaText } from "../utils/format";
 import LevelBadge from "./LevelBadge";
 import s from "./Timeline.module.css";
 
@@ -26,7 +26,7 @@ export default function Timeline({ items, mine, onPick }: { items: PredictItem[]
       <ol className={s.list}>
         {ordered.map((i, idx) => {
           const isMine = i === mine;
-          const eta = etaText(i.eta_sec);
+          const eta = arrivalChecking(i) ? "도착 확인 중" : etaText(i.eta_sec);
           const tag = isMine ? "내 정류장" : idx < at ? "직전" : "다음";
           const other = !isMine && i.plate !== mine.plate;
           const hasBus = busAtRow && idx === lead.idx;
@@ -45,7 +45,7 @@ export default function Timeline({ items, mine, onPick }: { items: PredictItem[]
                   <span className={s.tag}>{tag}</span>
                   <span className={s.name}>{i.stop_name}</span>
                   <span className={s.eta}>
-                    {eta === "곧 도착" ? eta : <><b>{eta.replace(" 후", "")}</b> 후 도착</>}
+                    {eta === "곧 도착" || eta === "도착 확인 중" ? eta : <><b>{eta.replace(" 후", "")}</b> 후 도착</>}
                     {other && <span className={s.other}> · 다른 버스</span>}
                   </span>
                 </span>

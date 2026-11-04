@@ -54,3 +54,8 @@ test("15초를 넘는 예정 시각 변동은 점프 없이 천천히 따라간�
   await page.clock.runFor(10_000);
   await expect(page.getByTestId("arrival")).toContainText(/1분1\d초/);  // 10초 동안 5초만 줄어듦(느리게 보정 중), 점프·역주행 없음
 });
+
+test("서버가 arrival_at 을 주면 그 시각을 그대로 쓴다", () => {
+  const at = "2026-09-30T13:13:00+09:00";
+  expect(arrivalAt({ ...item, arrival_at: at }, timestamp("13:11:43"))).toBe(Date.parse(at));
+});

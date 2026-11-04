@@ -17,7 +17,7 @@ export interface PredictItem {
   stops_away: number;    // 몇 정류장 전
   eta_sec: number;       // 이번 버스 도착까지 초
   eta2_sec?: number | null;  // 다음 버스 도착까지 초. 없으면 null
-  r_now: number;         // 지금 재차
+  r_now: number | null;  // 지금 재차(API 인원, 실측 아님). 결측은 null
   load_pred: number;     // 도착 때 예상 재차
   load_10: number;
   load_90: number;
@@ -25,6 +25,9 @@ export interface PredictItem {
   level: Level;
   reason: string;
   updated: string;       // "HH:MM:SS" KST
+  data_status?: string;  // 아래 셋은 운영 서버(validation 릴리스)만 보내는 값
+  arrival_at?: string;   // 도착 예정 시각: API 제공 시각 + ETA, 날짜·시간대 포함
+  arrival_status?: "upcoming" | "checking" | "passed";
 }
 
 /** GET /api/predict 응답. results 가 빈 배열이면 운행 시간 아님(새벽). */

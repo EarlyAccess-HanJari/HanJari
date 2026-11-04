@@ -122,12 +122,13 @@ test("도착 시간이 1초씩 줄어든다", async ({ page }) => {
   await expect(page.getByTestId("arrival")).toContainText(/1분3[3-5]초/);
 });
 
-test("30초마다 자동으로 다시 불러온다 (카운트다운이 새 값으로 바뀜)", async ({ page }) => {
+test("버스가 멀면 30초마다 자동으로 다시 불러온다 (카운트다운이 새 값으로 바뀜)", async ({ page }) => {
   await page.clock.install(FAR_FROM_SNAPSHOT);
-  await start(page);
+  await page.goto("/");
+  await page.getByTestId("stop-sb02-30").click();  // 목업 eta_sec = 451 (7분 31초), 9정류장 전
   await page.clock.runFor(36_000);
-  // 새로고침이 없었다면 1분 0x초까지 내려갔어야 함
-  await expect(page.getByTestId("arrival")).toContainText(/1분3\d초/);
+  // 새로고침이 없었다면 6분 5x초까지 내려갔어야 함
+  await expect(page.getByTestId("arrival")).toContainText(/7분2\d초/);
 });
 
 test("남은 시간이 1분 미만이면 '곧 도착'", async ({ page }) => {

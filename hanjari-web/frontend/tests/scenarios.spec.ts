@@ -122,3 +122,23 @@ test("확률이 바뀌면 카드 위쪽 색(그라데이션)이 초록에서 빨
   const red = await tint();
   expect(red).not.toBe(green);
 });
+
+test("nocount: 차내 인원을 모르면 null명 대신 —", async ({ page }) => {
+  await page.goto("/?scenario=nocount");
+  await page.evaluate(() => localStorage.setItem("hanjari.sel", JSON.stringify({ route: "sb02", stop: "30" })));
+  await page.reload();
+  const loads = page.getByTestId("loads");
+  await expect(loads).toContainText("현재 차내 인원 · 추정");
+  await expect(loads).toContainText("—");
+  await expect(page.locator("body")).not.toContainText("null");
+});
+
+test("checking: 도착 예정 시간이 지나면 어디에도 '곧 도착'을 띄우지 않는다", async ({ page }) => {
+  await page.goto("/?scenario=checking");
+  await page.evaluate(() => localStorage.setItem("hanjari.sel", JSON.stringify({ route: "sb02", stop: "30" })));
+  await page.reload();
+  await expect(page.getByTestId("arrival-checking")).toHaveText("새 도착 정보를 확인하고 있어요.");
+  await expect(page.getByTestId("other-sb02-31")).toContainText("도착 확인 중");
+  await expect(page.getByTestId("card-sb02-31")).toContainText("도착 확인 중");
+  await expect(page.locator("body")).not.toContainText("곧 도착");
+});

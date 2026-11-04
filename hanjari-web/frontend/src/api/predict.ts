@@ -23,11 +23,11 @@ export const TIMEOUT_MS = 8000;
 export const USE_MOCK = import.meta.env.VITE_MOCK === "1";
 
 /** 개발·QA 용 시나리오 (URL ?scenario=...). 목업 모드에서만 동작. */
-export type Scenario = "stale" | "wide" | "night" | "error" | "down" | "slow";
+export type Scenario = "stale" | "wide" | "night" | "error" | "down" | "slow" | "nocount" | "checking";
 export function currentScenario(): Scenario | null {
   if (typeof window === "undefined") return null;
   const s = new URLSearchParams(window.location.search).get("scenario");
-  return (["stale", "wide", "night", "error", "down", "slow"] as const).includes(s as Scenario)
+  return (["stale", "wide", "night", "error", "down", "slow", "nocount", "checking"] as const).includes(s as Scenario)
     ? (s as Scenario)
     : null;
 }
@@ -133,6 +133,10 @@ async function fetchMock(n: number): Promise<ApiResult> {
       return { ok: true, data: withN(mockWide, n) };
     case "night":
       return { ok: true, data: withN(mockNight, n) };
+    case "checking":
+      return { ok: true, data: { ...withN(mockN3, n), results: mockN3.results.map((r) => ({ ...r, eta_sec: 5, arrival_status: "checking" })) } as PredictResponse };
+    case "nocount":
+      return { ok: true, data: { ...withN(mockN3, n), results: mockN3.results.map((r) => ({ ...r, r_now: null })) } as PredictResponse };
   }
 
   const base = n <= 0 ? mockN0 : n <= 3 ? mockN3 : n <= 15 ? mockN15 : mockN30;

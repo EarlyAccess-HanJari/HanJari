@@ -1,6 +1,6 @@
 import { useEffect, useReducer, useRef } from "react";
 import type { PredictItem } from "../types";
-import { arrivalAt, etaText, mmss, pct, stopsAwayText, verdict } from "../utils/format";
+import { arrivalAt, arrivalChecking, etaText, mmss, pct, stopsAwayText, verdict } from "../utils/format";
 import s from "./ArrivalCard.module.css";
 
 interface Props {
@@ -77,16 +77,20 @@ export default function ArrivalCard({ item, stale, fetchedAt, invalid }: Props) 
         </div>
       ) : (
         <div className={s.timeRow}>
-          <span className={s.eta}>
-            {left < SOON_SEC ? (
-              <span className={s.soon}>곧 도착</span>
-            ) : (
-              <>
-                <span className={s.num}>{t.m}</span><span className={s.unit}>분</span>
-                <span className={s.num}>{t.s}</span><span className={s.unit}>초</span>
-              </>
-            )}
-          </span>
+          {arrivalChecking(item) || left === 0 ? (
+            <span className={s.sub} role="status" data-testid="arrival-checking">새 도착 정보를 확인하고 있어요.</span>
+          ) : (
+            <span className={s.eta}>
+              {left < SOON_SEC ? (
+                <span className={s.soon}>곧 도착</span>
+              ) : (
+                <>
+                  <span className={s.num}>{t.m}</span><span className={s.unit}>분</span>
+                  <span className={s.num}>{t.s}</span><span className={s.unit}>초</span>
+                </>
+              )}
+            </span>
+          )}
           {!invalid && (
             <span className={s.verdict} data-testid="verdict">{v.badge}{showP ? ` · ${pct(item.p_board)}%` : ""}</span>
           )}

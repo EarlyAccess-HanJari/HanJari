@@ -22,10 +22,11 @@ const DAY_SEC = 86_400;
 const KST_OFFSET_SEC = 9 * 3600;
 const MAX_SNAP_AGE_SEC = 180;  // 이보다 오래됐거나 미래로 보이면(폰 시계 어긋남·목업) 받은 시각 기준으로 셈
 
-/** 버스가 도착할 시각(ms).
+/** 버스가 도착할 시각(ms). 서버가 arrival_at 을 주면 그대로 쓴다(수집 지연이 더해지지 않음).
  *  eta_sec 는 스냅샷 시각(updated, KST "HH:MM:SS")의 남은 시간이라, 받은 시각이 아니라 스냅샷 시각에 더한다.
  *  받은 시각에 더하면 스냅샷 나이(최대 약 27초)만큼 새로고침마다 숫자가 출렁인다. */
 export function arrivalAt(i: PredictItem, fetchedAt: number): number {
+  if (i.arrival_at) return Date.parse(i.arrival_at);
   const [h, m, sec] = i.updated.split(":").map(Number);
   const snapSod = h * 3600 + m * 60 + sec;
   const nowSod = Math.floor(fetchedAt / 1000 + KST_OFFSET_SEC) % DAY_SEC;
@@ -95,4 +96,9 @@ export function crowdLabel(load: number): string {
 /** serve.py 가 스냅샷이 오래됐을 때 붙이는 reason("…N분 전 것…", "정보가 N초 전 것")으로 판별 */
 export function isStale(i: PredictItem): boolean {
   return i.level === "확률 보류" && i.reason.includes("전 것");
+}
+
+/** 도착 예정 시간이 지나 서버가 새 도착 정보를 확인하는 중 — 이미 지나간 버스일 수 있어 '곧 도착'으로 보이면 안 된다 */
+export function arrivalChecking(i: PredictItem): boolean {
+  return i.arrival_status === "checking" || i.arrival_status === "passed";
 }
