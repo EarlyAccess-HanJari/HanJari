@@ -1,6 +1,6 @@
 import type { PredictItem } from "../types";
 import type { Tone } from "../utils/format";
-import { verdict } from "../utils/format";
+import { pct, verdict } from "../utils/format";
 import lv from "./levels.module.css";
 import s from "./LevelBadge.module.css";
 
@@ -11,7 +11,7 @@ export default function LevelBadge({ item }: { item: PredictItem }) {
   const v = verdict(item);
   return (
     <span className={`${s.badge} ${TONE_CLASS[v.tone]}`} data-level={item.level}>
-      {v.badge}
+      {v.badge}{item.level !== "확률 보류" && item.level !== "판단하기 일러요" ? ` ${pct(item.p_board)}%` : ""}
     </span>
   );
 }

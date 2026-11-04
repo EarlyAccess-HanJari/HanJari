@@ -20,10 +20,10 @@ test("정류장을 고르면 한 화면에 도착 정보·인원 입력·결과�
   await expect(page.getByTestId("stop-name")).toHaveText("녹십자약국");
   await expect(page.getByTestId("arrival")).toContainText("이번 버스");
   await expect(page.getByTestId("arrival")).not.toContainText("서울70사6419");
-  await expect(page.getByTestId("loads")).toContainText("도착 시 예상");
+  await expect(page.getByTestId("loads")).toContainText("도착 시 차내 인원");
   await expect(page.getByTestId("n-input")).toHaveValue("3");
   await expect(page.getByTestId("hero")).toHaveAttribute("data-level", "여유 있음");
-  await expect(page.getByTestId("verdict")).toContainText(/탑승 유력 · \d+%/);   // 퍼센트가 보인다
+  await expect(page.getByTestId("verdict")).toContainText(/탑승 확률 · \d+%/);   // 퍼센트가 보인다
   await expect(page.getByText("버스 정보 13:11:33 기준")).toBeVisible();
 });
 
@@ -172,11 +172,27 @@ test("입력이 잘못되면 이전 인원으로 계산한 판정을 보이지 �
 
 test("혼잡도는 확률이 아니라 도착 시 탑승 인원으로 정한다", async ({ page }) => {
   await start(page);                                             // 확률이 높아도 45명이면 혼잡
-  await expect(page.getByTestId("verdict")).toContainText("탑승 유력");
+  await expect(page.getByTestId("verdict")).toContainText("탑승 확률");
   await expect(page.getByTestId("loads")).toContainText("약 45명 (혼잡)");
   for (const [stop, text] of [["jr03-19", "약 15명 (여유)"], ["jr03-20", "약 20명 (보통)"]]) {
     await page.getByTestId("stop-switch").click();
     await page.getByTestId(`stop-${stop}`).click();
     await expect(page.getByTestId("loads")).toContainText(text);
   }
+});
+
+test("첫 화면 아래 같은 노선 다른 정류장 2곳이 보이고, 누르면 그 정류장으로 바뀐다", async ({ page }) => {
+  await start(page);
+  await expect(page.getByTestId("other-sb02-30")).toBeVisible();
+  await expect(page.getByTestId("other-sb02-31")).toBeVisible();
+  await expect(page.getByTestId("other-sb02-32")).toHaveCount(0);                 // 내 정류장은 빠짐
+  await expect(page.getByTestId("other-sb02-30")).toContainText(/탑승 확률 \d+%|확률 보류|판단하기 일러요/);
+  await page.getByTestId("other-sb02-30").click();
+  await expect(page.getByTestId("stop-name")).toHaveText("한성대입구역5번출구");
+  await expect(page.getByTestId("other-sb02-32")).toBeVisible();
+});
+
+test("정류장 고르기에는 ARS 번호를 표시하지 않는다", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByTestId("stop-sb02-30")).toHaveText("한성대입구역5번출구");
 });

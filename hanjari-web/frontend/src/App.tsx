@@ -12,6 +12,7 @@ import LoadCompare from "./components/LoadCompare";
 import Tabs from "./components/Tabs";
 import Pager from "./components/Pager";
 import Timeline from "./components/Timeline";
+import OtherStops from "./components/OtherStops";
 import StopSheet from "./components/StopSheet";
 import Notice from "./components/Notice";
 import { HeroError, HeroSkeleton, TimelinePlaceholder } from "./components/Offline";
@@ -125,6 +126,7 @@ export default function App() {
       <>
         <Tabs index={0} onChange={() => {}} disabled />
         <HeroSkeleton />
+        <OtherStops route={sel.route} stop={sel.stop} onPick={pick} />
       </>
     );
   } else if (!res.ok) {
@@ -134,8 +136,11 @@ export default function App() {
         <>
           <Tabs index={view} onChange={setView} />
           <Pager index={view} onChange={setView}>
-            <HeroError kind={res.error.kind} detail={res.error.kind === "unknown" ? res.error.message : undefined}
-              onRetry={retry} retrying={loading} input={input} />
+            <>
+              <HeroError kind={res.error.kind} detail={res.error.kind === "unknown" ? res.error.message : undefined}
+                onRetry={retry} retrying={loading} input={input} />
+              <OtherStops route={sel.route} stop={sel.stop} onPick={pick} />
+            </>
             <TimelinePlaceholder route={sel.route} stop={sel.stop} onPick={pick} />
           </Pager>
         </>
@@ -145,7 +150,7 @@ export default function App() {
   } else if (!mine) {
     body = <Notice kind="no_stop" onRetry={retry} retrying={loading} />;
   } else {
-    // 위→아래: [히어로 카드: 도착 시간·판정 → 게이지·결론 → 대기 인원 → 차내 인원] / 두 번째 화면: 앞·뒤 정류장
+    // 위→아래: [히어로 카드: 도착 시간·판정 → 게이지·결론 → 차내 인원 → 대기 인원] → 다른 정류장 / 두 번째 화면: 앞·뒤 정류장
     const vd = verdict(mine);
     const hold = n === null || stale;
     const tone = hold ? lv.hold : TONE_CLASS[vd.tone];
@@ -153,13 +158,16 @@ export default function App() {
       <>
         <Tabs index={view} onChange={setView} />
         <Pager index={view} onChange={setView}>
-          <section className={`${s.hero} ${tone}`} data-level={mine.level} data-tone={hold ? "hold" : vd.tone} data-testid="hero" aria-busy={loading}>
-            <ArrivalCard item={mine} stale={stale} fetchedAt={fetchedAt} invalid={n === null} />
-            <ResultCard item={mine} invalid={n === null} />
-            {input}
-            <LoadCompare item={mine} stale={stale} />
-            {loading && <div className={s.loadbar} aria-hidden="true" />}
-          </section>
+          <>
+            <section className={`${s.hero} ${tone}`} data-level={mine.level} data-tone={hold ? "hold" : vd.tone} data-testid="hero" aria-busy={loading}>
+              <ArrivalCard item={mine} stale={stale} fetchedAt={fetchedAt} invalid={n === null} />
+              <ResultCard item={mine} invalid={n === null} />
+              <LoadCompare item={mine} stale={stale} />
+              {input}
+              {loading && <div className={s.loadbar} aria-hidden="true" />}
+            </section>
+            <OtherStops route={mine.route} stop={mine.stop} items={items} onPick={pick} />
+          </>
           <Timeline items={items.filter((i) => i.route === mine.route)} mine={mine} onPick={(i) => pick(i.route, i.stop)} />
         </Pager>
       </>

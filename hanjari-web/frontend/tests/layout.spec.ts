@@ -12,8 +12,8 @@ for (const [width, height] of PHONES) {
     await expect(page.getByTestId("loads")).toBeVisible();
     const top = async (id: string) => (await page.getByTestId(id).boundingBox())!.y;
     expect(await top("arrival")).toBeLessThan(await top("result"));
-    expect(await top("result")).toBeLessThan(await top("n-input"));
-    expect(await top("n-input")).toBeLessThan(await top("loads"));
+    expect(await top("result")).toBeLessThan(await top("loads"));
+    expect(await top("loads")).toBeLessThan(await top("n-input"));
     // 첫 화면은 세로 스크롤 없이 한 화면 안에 — 페이지 자체는 스크롤하지 않음
     expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(height);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
@@ -62,5 +62,22 @@ for (const [width, height] of [[375, 812], [360, 780], [412, 915]] as [number, n
     await expect(page.getByTestId("hero")).toHaveAttribute("aria-busy", "false");
     ys.low = (await page.getByTestId("n-minus").boundingBox())!.y;
     expect(Math.max(...Object.values(ys)) - Math.min(...Object.values(ys))).toBeLessThanOrEqual(1);
+  });
+}
+
+// 탑승 확률은 남은 시간 오른쪽 같은 줄에 있다
+for (const width of [320, 360, 412]) {
+  test(`${width}px: 탑승 확률이 남은 시간 오른쪽에 있다`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 780 });
+    await page.goto("/");
+    await page.evaluate(() => localStorage.setItem("hanjari.sel", JSON.stringify({ route: "sb02", stop: "30" })));
+    await page.reload();
+    const { gap, sameRow } = await page.getByTestId("verdict").evaluate((v) => {
+      const a = v.getBoundingClientRect();
+      const b = v.previousElementSibling!.getBoundingClientRect();
+      return { gap: a.left - b.right, sameRow: a.top < b.bottom && a.bottom > b.top };
+    });
+    expect(gap).toBeGreaterThanOrEqual(0);
+    expect(sameRow).toBe(true);
   });
 }

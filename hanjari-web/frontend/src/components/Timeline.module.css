@@ -19,7 +19,10 @@
 .text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .tag { font-size: 11px; font-weight: 700; color: var(--c-text-3); }
 .mine .tag { align-self: flex-start; color: #1D4ED8; background: #DBEAFE; padding: 1px 8px; border-radius: 999px; }
-.name { font-size: 16px; font-weight: 700; letter-spacing: -0.02em; color: var(--c-text-1); }
+.name { font-size: 15px; font-weight: 700; letter-spacing: -0.02em; color: var(--c-text-1); }
+/* '탑승 확률 95%' 뱃지가 정류장 이름을 밀어 줄바꿈시키지 않게 작게 */
+.card [data-level] { flex: none; padding: 2px 8px; font-size: 12px; }
+@media (max-width: 370px) { .card { flex-direction: column; align-items: flex-start; gap: 6px; padding-block: 8px; } }
 .eta { font-size: 13px; color: var(--c-text-3); }
 .other { color: var(--c-text-3); font-size: 12px; }
 .eta b { font-size: 15px; font-weight: 700; color: var(--c-text-1); }

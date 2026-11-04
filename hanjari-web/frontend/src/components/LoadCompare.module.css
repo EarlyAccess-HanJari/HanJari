@@ -1,12 +1,8 @@
-/* 카드 바닥 서브 정보 — 구분선 아래 좌우 정렬 */
-.wrap { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--c-line-1); }
-.col { display: flex; align-items: center; gap: 4px; min-width: 0; font-size: 12px; }
-.left { color: var(--c-text-3); }
-.right { color: #374151; font-weight: 500; }
-.k { font-size: 12px; }
-.v { font-size: 12px; font-variant-numeric: tabular-nums; }
-.left .v { font-weight: 500; }
-.right .v { font-weight: 700; color: var(--c-text-1); }
-.sep { display: none; }
-/* 좁은 화면: 줄이 꺾이면 위쪽 입력칸이 밀리므로 아이콘을 빼서 한 줄 유지 */
-@media (max-width: 340px) { .wrap { flex-wrap: nowrap; } .col svg { display: none; } }
+/* 대기 인원 바로 위. 이 묶음(차내 인원 + 대기 인원)을 카드 아래쪽에 붙여 상태가 바뀌어도 같은 자리에 둔다 */
+.wrap { margin-top: auto; display: flex; justify-content: center; align-items: stretch; padding-bottom: 12px; border-bottom: 1px solid var(--c-line-2); }
+.col { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 0 20px; white-space: nowrap; }
+.sep { width: 1px; background: var(--c-line-2); margin: 2px 0; }
+.k { font-size: 12px; line-height: 17px; color: var(--c-text-3); }
+.v { font-size: 15px; line-height: 22px; font-weight: 600; color: var(--c-text-2); font-variant-numeric: tabular-nums; }
+.em { font-weight: 700; color: var(--c-text-1); }
+@media (max-width: 340px) { .col { padding: 0 10px; } }

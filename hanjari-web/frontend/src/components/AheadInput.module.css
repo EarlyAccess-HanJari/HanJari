@@ -1,5 +1,5 @@
-/* 히어로 카드 안에 이어지는 연한 박스. 카드 아래쪽에 붙여 상태가 바뀌어도 같은 자리에 둔다 */
-.wrap { margin-top: auto; display: flex; flex-direction: column; gap: clamp(8px, 1.6dvh, 16px); background: var(--c-surface); border-radius: 16px; padding: clamp(12px, 2dvh, 20px) 12px; }
+/* 히어로 카드 안에 이어지는 연한 박스 */
+.wrap { display: flex; flex-direction: column; gap: clamp(8px, 1.6dvh, 16px); background: var(--c-surface); border-radius: 16px; padding: clamp(12px, 2dvh, 20px) 12px; }
 .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .labelCol { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
 .label { font-size: 14px; color: var(--c-text-3); white-space: nowrap; }
