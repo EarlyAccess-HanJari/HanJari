@@ -10,6 +10,7 @@ data/api_logs/YYYYMMDD/{노선}_{arr,pos}_HHMMSS.json  (시각은 KST)
 """
 import datetime as dt, hashlib, itertools, json, os, tempfile, time, urllib.error, urllib.parse, urllib.request
 from pathlib import Path
+from api_response import response_items
 
 ROOT = Path(__file__).resolve().parents[1]
 LOG = ROOT / "data/api_logs"
@@ -64,14 +65,27 @@ def load_sched():
 def learn(sched, items, route):
     """도착정보 응답의 firstTm/lastTm → (가장 이른 첫차, 가장 늦은 막차) 분, 그 시간표가 속한 날(첫차 날짜) 기준.
     자정 이후엔 API 가 **다음 날** 시간표를 주므로 조회 시각이 아니라 firstTm 의 날짜로 요일유형을 정한다(09-28 버그 수정)."""
-    fts = sorted(i["firstTm"][:12] for i in items if i.get("firstTm", "").strip())
-    lts = [i["lastTm"][:12] for i in items if i.get("lastTm", "").strip()]
+    def timestamp(value):
+        if not isinstance(value, str):
+            return None
+        value = value.strip()
+        if len(value) not in (12, 14) or not value.isascii() or not value.isdecimal():
+            return None
+        try:
+            return dt.datetime.strptime(value, "%Y%m%d%H%M%S" if len(value) == 14 else "%Y%m%d%H%M")
+        except ValueError:
+            return None
+    # 시간표는 부가 정보다. 결측/깨진 시각 때문에 정상 도착 응답을 실패로 바꾸지 않는다.
+    fts = sorted(t for i in items if (t := timestamp(i.get("firstTm"))) is not None)
+    lts = [t for i in items if (t := timestamp(i.get("lastTm"))) is not None]
     if not fts or not lts:
         return
-    day = dt.datetime.strptime(fts[0][:8], "%Y%m%d").date()
+    day = fts[0].date()
     def minutes(ts):
-        d = dt.datetime.strptime(ts, "%Y%m%d%H%M")
-        return (d.date() - day).days * 24 * 60 + d.hour * 60 + d.minute
+        return (ts.date() - day).days * 24 * 60 + ts.hour * 60 + ts.minute
+    lts = [t for t in lts if dt.timedelta(0) <= t - fts[0] < dt.timedelta(days=1)]
+    if not lts:
+        return  # 다른 운행일의 잘못된 막차 시각으로 수집창을 늘리지 않는다.
     new = [minutes(fts[0]), max(minutes(t) for t in lts)]
     old = sched.setdefault(route, {}).get(day_type(day), new)
     # 넓히기만 한다: 막차가 지난 뒤(자정 직후) 응답은 막차를 더 이르게 보고함(09-28 종로03 00:32→00:08) → 덮어쓰면 막차를 놓침
@@ -252,6 +266,8 @@ def attempt(route, kind, key, now, budget, state, sched):
         code = str(data["msgHeader"]["headerCd"])
         if code not in ("0", "4"):
             raise ValueError("API header error")
+        stage = "api_body"
+        items = response_items(data)
         stage = "snapshot_store"
         directory = LOG / now.strftime("%Y%m%d")
         directory.mkdir(parents=True, exist_ok=True)
@@ -259,7 +275,7 @@ def attempt(route, kind, key, now, budget, state, sched):
         entry.update(status="ok", last_success=now.isoformat(), failures=0, retry_after=0, http_status=200)
         if kind == "arr" and code == "0":
             stage = "schedule"
-            learn(sched, data["msgBody"]["itemList"] or [], route)
+            learn(sched, items, route)
             write_snapshot(SCHED, json.dumps(sched, ensure_ascii=False, indent=1).encode())
     except Exception as e:
         failures = entry.get("failures", 0) + 1

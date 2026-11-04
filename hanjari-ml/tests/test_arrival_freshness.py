@@ -180,6 +180,40 @@ class ArrivalFreshness(unittest.TestCase):
             self.assertEqual(got["arrival_status"], "checking")
             self.assertTrue(all(got[k] is None for k in ("r_now", "load_pred", "p_board")))
 
+    def test_bus_waiting_just_before_stop_keeps_probability_while_eta_is_frozen(self):
+        # 11-04 동대문: 앞 구간에서 4~5분 서 있는 동안 API 남은 시간이 5초에 멈춤 → 새 위치가 '바로 앞 구간'이면 '곧 도착' 유지
+        now = dt.datetime(2026, 11, 2, 17, 41, 55)
+        cases = (("17:41:30", "20261102174150", "upcoming"),   # 위치가 도착 정보보다 새 것
+                 ("17:41:30", "20261102174120", "upcoming"),   # 위치가 조금 먼저 찍혀도 둘 다 60초 안
+                 ("17:41:30", "20261102174040", "checking"),   # 위치 75초 전
+                 ("17:40:50", "20261102174150", "checking"))   # 도착 정보 65초 전
+        for made, pos_time, expected in cases:
+            with self.subTest(made=made, pos_time=pos_time):
+                first = dict(self.first, mkTm=f"2026-11-02 {made}.0", traTime1="5")
+                for f in self.folder.glob("*.json"):
+                    f.unlink()
+                self.write("arr", "174135", [first])
+                self.write("pos", "174152", [dict(self.pos, sectOrd="22", dataTm=pos_time)])
+                got = S.predict_live(0, log_dir=self.folder, reference_now=now)[0]
+                self.assertEqual((got["plate"], got["arrival_status"]), ("서울70사5508", expected))
+                if expected == "upcoming":
+                    self.assertEqual(got["r_now"], 53)
+                    self.assertIsNotNone(got["p_board"])
+                    self.assertEqual(got["arrival_at"], "2026-11-02T17:42:25+09:00")
+                else:
+                    self.assertIsNone(got["p_board"])
+
+    def test_wrapped_or_far_position_does_not_extend_expired_estimate(self):
+        first = dict(self.first, mkTm="2026-11-02 17:41:30.0", traTime1="5")
+        for section in ("1", "20"):
+            with self.subTest(section=section):
+                for f in self.folder.glob("*.json"):
+                    f.unlink()
+                self.write("arr", "174135", [first])
+                self.write("pos", "174152", [dict(self.pos, sectOrd=section, dataTm="20261102174150")])
+                got = S.predict_live(0, log_dir=self.folder, reference_now=dt.datetime(2026, 11, 2, 17, 41, 55))[0]
+                self.assertEqual(got["arrival_status"], "checking")
+
     def test_atomic_snapshot_does_not_publish_partial_file(self):
         path = self.folder / "jr03_arr_174039.json"
         C.write_snapshot(path, b"previous")

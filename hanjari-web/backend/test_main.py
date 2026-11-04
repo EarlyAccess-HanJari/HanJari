@@ -29,7 +29,8 @@ def forbidden(*args, **kwargs):
 module.serve.C.fetch = forbidden
 rows = module._predict(0)
 assert len(rows) == 6
-assert all(row['p_board'] is None for row in rows)
+assert any(row['p_board'] is not None for row in rows)  # 11-04 확률 안내 재개: 백엔드에서 모델이 실제로 로드·실행된다
+assert all((row['p_board'] is None) == (row['prediction_status'] != 'ok') for row in rows)
 print(json.dumps({'ml': str(module.ML), 'rows': len(rows)}))
 '''
         result = subprocess.run([sys.executable, "-c", code, str(MAIN)], cwd=cwd, env=env,
