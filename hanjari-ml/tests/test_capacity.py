@@ -86,7 +86,7 @@ class CapacityRegression(unittest.TestCase):
         self.assertEqual(got["eta_sec"], 60)
         self.assertIsNone(got["p_board"])
         self.assertIsNone(got["load_pred"])
-        self.assertEqual(T.cap("jr03", "1"), 55)
+        self.assertEqual(T.cap("jr03", "1"), 54)
 
     def test_compatible_calibration_can_show_probability(self):
         row, m, meta = fixture()
@@ -94,14 +94,22 @@ class CapacityRegression(unittest.TestCase):
 
     def test_changed_capacity_requires_revalidation(self):
         row, m, meta = fixture()
-        with patch.dict(T.CAPACITY, {("jr03", "1"): 54}):
+        with patch.dict(T.CAPACITY, {("jr03", "1"): 50}):
             self.assertEqual(result(row, m, meta)["level"], "확률 보류")
 
-    def test_excess_raw_count_holds_even_with_current_calibration(self):
+    def test_full_bus_shows_low_probability_instead_of_hold(self):
+        # 11-04: 정원을 넘은 만차 버스는 보류하지 않고 확률(거의 0)로 '어려울 수 있음'
         row, m, meta = fixture(60)
         got = result(row, m, meta)
-        self.assertEqual(got["level"], "확률 보류")
-        self.assertIn("차내 인원 정보", got["reason"])
+        self.assertEqual(got["level"], "어려울 수 있음")
+        self.assertIsNotNone(got["p_board"])
+        self.assertLess(got["p_board"], 0.3)
+
+    def test_wide_range_alone_never_hides_probability(self):
+        th = {(p, s): (0.8, False) for p in ("평소", "수업 직전") for s in T.SEGS}
+        self.assertEqual(S.level(0.97, 13, 36, 1, False, True, th, 0)[0], "여유 있음")
+        self.assertEqual(S.level(0.5, 13, 36, 1, False, True, th, 0)[0], "빠듯함")
+        self.assertEqual(S.level(0.1, 0, 60, 1, False, True, th, 0)[0], "어려울 수 있음")
 
     def test_stale_reason_still_hides_countdown(self):
         row, m, meta = fixture(60)
@@ -144,7 +152,7 @@ class CapacityRegression(unittest.TestCase):
         rows = [row, dict(row, vehicle_id="unknown"), dict(row, r_now=60), dict(row, holiday=True), dict(row)]
         quantiles = np.full((5, len(T.QS)), 20.)
         quantiles[-1] = np.linspace(0, 80, len(T.QS))
-        self.assertEqual(S.calibration_mask(pd.DataFrame(rows), quantiles, T.QS).tolist(), [True, False, False, False, False])
+        self.assertEqual(S.calibration_mask(pd.DataFrame(rows), quantiles, T.QS).tolist(), [True, False, True, False, True])
 
     def test_model_metadata_does_not_mutate_when_checked(self):
         row, m, meta = fixture()
@@ -155,3 +163,44 @@ class CapacityRegression(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SurgeGain(unittest.TestCase):
+    def test_surge_history_lowers_overconfident_probability(self):
+        # 1정류장 전 20명, 모델은 그대로 20명 도착을 예상하지만 과거 같은 칸에선 +30~40명이 탔다(몰림)
+        row, m, _ = fixture(20, stops=1)
+        d = pd.DataFrame([row])
+        base = T.predict(m, d)[1][0, 3]
+        slot = int(T.gain_slot(d)[0])
+        m["gain_q"] = {f"jr03|23|1|{slot}": np.linspace(30, 40, len(T.GAIN_Q)).tolist()}
+        p = T.predict(m, d)[1]
+        self.assertGreater(base, 0.9)
+        self.assertAlmostEqual(p[0, 3], 0.2)               # 정원 54-3-1+2=52 → +32명까지만 탈 수 있음
+        self.assertTrue((np.diff(p, axis=1) <= 1e-12).all())  # 앞사람이 늘면 확률은 줄기만
+        self.assertLessEqual(p[0, 0], base + 1e-12)
+
+    def test_missing_position_uses_dwelling_spread_for_nearby_bus(self):
+        row, m, _ = fixture(50, stops=0)
+        m["res0"] = {True: np.linspace(-20, 20, 41), False: np.zeros(41)}
+        running, dwelling, unknown = (T.predict(m, pd.DataFrame([dict(row, pos_dwell=v)]))[1][0, 0] for v in (0, 1, np.nan))
+        self.assertEqual(running, 1)
+        self.assertLess(dwelling, 0.9)
+        self.assertEqual(unknown, dwelling)  # 위치를 모르면 '주행'으로 과신하지 않는다
+
+    def test_gain_table_needs_enough_history_and_skips_nearby_bus(self):
+        rows = [dict(route="sb02", stop="32", stops_away=1, minute=525, eta=60, y=30 + i % 5, r_now=10) for i in range(40)]
+        rows += [dict(route="sb02", stop="32", stops_away=0, minute=525, eta=60, y=30, r_now=10)] * 40
+        rows += [dict(route="sb02", stop="31", stops_away=1, minute=525, eta=60, y=30, r_now=10)] * 5
+        g = T.gain_table(pd.DataFrame(rows))
+        self.assertEqual(list(g), ["sb02|32|1|17"])
+        self.assertAlmostEqual(g["sb02|32|1|17"][0], 20)
+
+
+class RepoPolicy(unittest.TestCase):
+    def test_repo_policy_registers_practical_capacity_for_every_observed_vehicle(self):
+        p = DQ.boarding_policy()
+        self.assertTrue(p["enabled"] and p["validation_evidence"].strip())
+        self.assertEqual(len(p["vehicles"]), 14)
+        caps = {(v["route"], v["capacity"]) for v in p["vehicles"]}
+        self.assertEqual(caps, {("sb02", 38), ("sb02", 60), ("jr03", 52), ("jr03", 54)})
+        self.assertTrue(all(v["evidence"].startswith("docs/PRACTICAL_CAPACITY") for v in p["vehicles"]))

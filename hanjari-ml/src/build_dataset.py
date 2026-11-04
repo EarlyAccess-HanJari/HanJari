@@ -386,6 +386,24 @@ def build_day(route, folders, i, acc):
     return [r for r in rows if r["date"] == day], ev
 
 
+def hist_from_cache(route, until=None):
+    """날짜별 캐시(days/*.json 의 ev)를 합산해 HIST_ALL 을 만든다 — 원본 로그를 다시 읽지 않는다.
+    11-04: export 가 원본을 통째로 다시 읽어 41일에 30분+ 걸렸고, 서버는 압축 안 된 최근 3일만 읽혀
+    학습 행의 q_hist(전체 기간 누적)와 서비스 표(최근 3일)가 달랐다. 캐시가 없으면 None."""
+    acc, n = defaultdict(lambda: [0.0, 0]), 0
+    for f in sorted((OUT / "days").glob(f"2026*_{route}.json")):
+        if until and f.name[:8] > until:
+            continue
+        n += 1
+        for j, h, s_, c in json.loads(f.read_text()).get("ev", []):
+            acc[(j, h)][0] += s_
+            acc[(j, h)][1] += c
+    if not n:
+        return None
+    HIST_ALL[route] = {k: v[0] / v[1] for k, v in acc.items() if v[1]}
+    return HIST_ALL[route]
+
+
 def main(full=False, out=None):
     """기본은 증분: data/processed/days/ 에 날짜별 행·순증감을 저장해 두고, 파일 수가 바뀐 날(과 그 뒤)만 다시 계산.
     메모리는 한 번에 3일치만 → 로그가 몇 달 쌓여도 일정. full=True 면 예전처럼 전체를 한 번에."""

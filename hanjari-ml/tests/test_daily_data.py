@@ -60,3 +60,15 @@ class DailyCoverage(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HistFromCache(unittest.TestCase):
+    def test_sums_daily_cache_until_cutoff_without_raw_logs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            days = Path(tmp) / "days"
+            days.mkdir()
+            for day, ev in (("20261101", [[31, 8, 10.0, 2]]), ("20261102", [[31, 8, 2.0, 2]]), ("20261103", [[31, 8, 100.0, 1]])):
+                (days / f"{day}_sb02.json").write_text(json.dumps({"ev": ev}))
+            with patch.object(D.B, "OUT", Path(tmp)), patch.dict(D.B.HIST_ALL, clear=True):
+                self.assertEqual(D.B.hist_from_cache("sb02", "20261102"), {(31, 8): 3.0})  # (10+2)/(2+2), 11-03 제외
+                self.assertIsNone(D.B.hist_from_cache("jr03"))
