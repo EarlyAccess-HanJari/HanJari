@@ -2,6 +2,20 @@
 
 ## 현재 서버에서 확인한 구성
 
+확인 시각: 2026년 11월 4일 17:45(KST).
+
+- 웹: `/home/ubuntu/hanjari-releases/practical-20261104-v6/hanjari-web/backend`. 실행 환경은 `/home/ubuntu/hanjari-web/backend/.venv`를 사용합니다.
+- 웹의 AI 코드: `/home/ubuntu/hanjari-releases/practical-20261104-v6/hanjari-ml`. 경로는 `installed/hanjari-web.service.d/20261102-freshness.conf`가 지정합니다.
+- 릴리스의 `hanjari-ml/models`와 `hanjari-ml/data`는 `/home/ubuntu/hanjari-ml` 아래를 가리키는 심볼릭 링크입니다. 따라서 매일 작업이 모델을 교체하면 웹 재시작 후 웹에도 반영되며, 그 뒤에는 `models/lite`가 Git과 달라질 수 있습니다.
+- 매일 작업: `/home/ubuntu/hanjari-ml`
+- 수집기: `/home/ubuntu/hanjari`. 코드는 `hanjari/src/`와 같습니다.
+- 품질 점검: `/home/ubuntu/hanjari-quality`, `validation-20261103-v4` 릴리스를 가리키는 링크입니다.
+- HTTPS: `installed/nginx-hanjari.conf`가 443 포트를 받아 8000 포트로 전달합니다. 인증서 갱신은 `installed/hanjari-cert-renew.*`가 맡습니다.
+
+API 키가 든 `.env`, 인증서 개인키, SSH 키, 수집 로그, 가상환경, 과거 모델과 백업은 Git에 올리지 않습니다.
+
+## 2026년 10월 19일에 확인한 구성
+
 확인 시각: 2026년 10월 19일 09:25(KST).
 
 - 수집기: `/home/ubuntu/hanjari`, 시스템 Python 3.10.12
@@ -12,7 +26,7 @@
 
 수집기와 웹 서비스, 일일 작업·감시 타이머가 활성 상태였으며 `/api/health`는 `status=ok`, `mode=latest`로 응답했습니다.
 
-`installed/`에는 실제 설치된 systemd 설정을 보관했습니다. 경로가 운영 서버 기준이므로 다른 PC에 그대로 적용하지 않습니다. 이 사본에는 매일 작업 후 웹 서비스를 재시작하는 설정이 포함됩니다.
+`installed/`에는 실제 설치된 systemd와 nginx 설정을 보관했습니다. 경로가 운영 서버 기준이므로 다른 PC에 그대로 적용하지 않습니다. 이 사본에는 매일 작업 후 웹 서비스를 재시작하는 설정이 포함됩니다.
 
 ## 실시간 조회와 재학습
 

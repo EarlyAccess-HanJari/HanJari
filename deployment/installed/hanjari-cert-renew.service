@@ -1,0 +1,7 @@
+[Unit]
+Description=Renew HanJari HTTPS certificate
+After=network-online.target
+Wants=network-online.target
+[Service]
+Type=oneshot
+ExecStart=/opt/hanjari-certbot/bin/certbot renew --quiet

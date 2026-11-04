@@ -407,8 +407,24 @@ def hist_from_cache(route, until=None):
 def main(full=False, out=None):
     """기본은 증분: data/processed/days/ 에 날짜별 행·순증감을 저장해 두고, 파일 수가 바뀐 날(과 그 뒤)만 다시 계산.
     메모리는 한 번에 3일치만 → 로그가 몇 달 쌓여도 일정. full=True 면 예전처럼 전체를 한 번에."""
+    target_path = Path(out or OUT / "dataset.csv")
+    tmp_path = target_path.with_suffix(".csv.tmp")
+    sink = dict(f=None, w=None, n=0, trips=set())
+
+    def emit(got):  # 11-04: 행을 다 모아 쓰면 42만 행에 1.2GB(서버 마감 상한 650MB) → 날짜별로 바로 쓴다
+        if not got:
+            return
+        if sink["w"] is None:
+            sink["f"] = open(tmp_path, "w", newline="")
+            sink["w"] = csv.DictWriter(sink["f"], fieldnames=list(got[0]))
+            sink["w"].writeheader()
+        sink["w"].writerows(got)
+        sink["n"] += len(got)
+        sink["trips"].update((r["date"], r["route"], r["stop"], r["plate"], r["arrive_time"]) for r in got)
+
     if full:
-        rows = [r for route in STOPS for r in build(route)]
+        for route in STOPS:
+            emit(build(route))
     else:
         cache = OUT / "days"
         cache.mkdir(exist_ok=True)
@@ -420,7 +436,7 @@ def main(full=False, out=None):
         missing = [d for d in folders if not (LOG / d).is_dir()]
         if outdated and missing:
             raise RuntimeError(f"데이터 검증 규칙 변경: 원본 archive 복구 후 재빌드 필요 ({', '.join(missing)}). 기존 캐시 보존.")
-        rows, redo = [], 0
+        redo = 0
         for route in STOPS:
             acc, dirty = defaultdict(lambda: [0.0, 0]), False
             def count(d):
@@ -454,18 +470,15 @@ def main(full=False, out=None):
                 for j, h, s_, c in meta["ev"]:
                     acc[(j, h)][0] += s_
                     acc[(j, h)][1] += c
-                rows += got
+                emit(got)
         print(f"다시 계산한 날·노선 {redo}개")
-    if not rows:
+    if sink["f"]:
+        sink["f"].close()
+    if not sink["n"]:
+        tmp_path.unlink(missing_ok=True)
         raise RuntimeError("유효한 학습 행이 없음. 기존 dataset.csv는 보존합니다.")
-    target_path = Path(out or OUT / "dataset.csv")
-    with open(target_path.with_suffix(".csv.tmp"), "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=list(rows[0]))
-        w.writeheader()
-        w.writerows(rows)
-    target_path.with_suffix(".csv.tmp").replace(target_path)
-    n_trip = len({(r["date"], r["route"], r["stop"], r["plate"], r["arrive_time"]) for r in rows})
-    print(f"rows {len(rows)}, 운행 {n_trip}")
+    tmp_path.replace(target_path)
+    print(f"rows {sink['n']}, 운행 {len(sink['trips'])}")
 
 
 if __name__ == "__main__":
