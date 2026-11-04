@@ -45,3 +45,12 @@
 - 몰림 시간 1~2정류장 전(앞 3명, 1,979건): 평균 확률 0.918 vs 실제 탑승 가능 0.916, '여유'인데 실제 초과 4.0%, Brier 0.055.
 - 10-26~11-04 3만 행 재생: 여유 82.4%·빠듯 1.6%·어려움 0.3%. 보류는 일요일·공휴일 9.8%와 도착 직전 확인 중 5.8%(바로 앞 버스, 남은 시간 5초 안팎)뿐.
 - 재현: `python src/exp_capacity_check.py <api_logs> <export until=20261025 모델> 20261025`.
+
+## 운영 반영 — 2026-11-04 16:35 KST
+
+- 웹 릴리스 `/home/ubuntu/hanjari-releases/practical-20261104-v5`(코드 82455ff). v4 폴더에서 hanjari-web·hanjari-ml 을 복사한 뒤 hanjari-ml 의 src·config·tests·models/lite 만 커밋 파일로 교체했다(47개 해시 일치, `source-manifest.txt`).
+- 운영 venv(xgboost 3.2.0, pandas 3.0.5)에서 ML 112개·백엔드 2개 테스트 통과. 백엔드 테스트는 '확률이 전부 비어 있어야 한다'는 보류 전제를 '정상 행은 확률이 있다'로 고쳤다.
+- 전환 전, 수집기의 최신 스냅샷으로 예측했다(API 추가 호출 없음). 확률이 나왔고 대기 40명이면 '어려울 수 있음'이었으며, 최대 메모리는 292MB였다.
+- drop-in 전환 후 8초 만에 `/api/health` 가 v5 를 보고했다. 공개 https 경로와 프론트(200) 확인. 웹 프로세스 RSS 312MB, 스왑 2GB.
+- 되돌리기: `previous-service.conf`(v4 drop-in)를 `/etc/systemd/system/hanjari-web.service.d/20261102-freshness.conf` 로 복원 → `daemon-reload` → `restart hanjari-web`.
+- 매일 재학습(`~/hanjari-ml`, 01:00 KST)은 아직 #7 이전 코드·스키마 없는 캐시다. 웹은 릴리스 안 모델 사본을 쓰므로 영향이 없고, 새 코드·캐시로 연결하는 작업은 남아 있다.
