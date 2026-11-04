@@ -18,7 +18,7 @@ test("첫 방문엔 정류장 시트가 열리고 6곳이 전부 보인다", asy
 test("정류장을 고르면 한 화면에 도착 정보·인원 입력·결과가 보인다", async ({ page }) => {
   await start(page);
   await expect(page.getByTestId("stop-name")).toHaveText("녹십자약국");
-  await expect(page.getByTestId("arrival")).toContainText("다음 버스");
+  await expect(page.getByTestId("arrival")).toContainText("이번 버스");
   await expect(page.getByTestId("arrival")).not.toContainText("서울70사6419");
   await expect(page.getByTestId("loads")).toContainText("도착 시 예상");
   await expect(page.getByTestId("n-input")).toHaveValue("3");
@@ -33,7 +33,7 @@ test("인원을 바꾸면 결과가 바로 다시 계산된다", async ({ page }
   await chip(page, 20).click();                                   // 목업 n30 → 녹십자약국 '어려울 수 있음'
   await expect(page.getByTestId("hero")).toHaveAttribute("data-level", "어려울 수 있음");
   await expect(page.getByTestId("verdict")).toContainText(/\d+%/);
-  await expect(page.getByTestId("result")).toContainText("만차 가능성이 높아요.");
+  await expect(page.getByTestId("result")).toContainText("이번 버스는 타기 힘들어요.");
 });
 
 test("+/-로 만든 인원이 칩에 있으면 그 칩이 바로 선택 표시된다", async ({ page }) => {
@@ -149,4 +149,34 @@ test("같은 스냅샷을 다시 받아도 카운트다운이 되감기지 않�
   await expect(page.getByTestId("arrival")).toContainText(/1분(2[89]|30)초/);  // 100 − 10 − 1
   await page.clock.runFor(32_000);                                           // 30초 자동 새로고침을 지나도
   await expect(page.getByTestId("arrival")).toContainText("곧 도착");         // 예전엔 1분3x초로 되감김
+});
+
+test("다음 버스: 있으면 몇 분 뒤인지 보여주고, 없으면 숨긴다", async ({ page }) => {
+  await start(page);                                             // 녹십자약국: 목업 eta2_sec 716
+  await expect(page.getByTestId("next-bus")).toHaveText("다음 버스 약 12분 후");
+  await page.getByTestId("stop-switch").click();
+  await page.getByTestId("stop-sb02-30").click();                // 필드가 없는 응답
+  await expect(page.getByTestId("stop-name")).toHaveText("한성대입구역5번출구");
+  await expect(page.getByTestId("next-bus")).toHaveCount(0);
+});
+
+test("입력이 잘못되면 이전 인원으로 계산한 판정을 보이지 않는다", async ({ page }) => {
+  await start(page);
+  await expect(page.getByTestId("verdict")).toBeVisible();
+  await page.getByTestId("n-input").fill("41");
+  await expect(page.getByTestId("n-hint")).toContainText("0~40");
+  await expect(page.getByTestId("verdict")).toHaveCount(0);
+  await page.getByTestId("n-input").fill("3");
+  await expect(page.getByTestId("verdict")).toBeVisible();
+});
+
+test("혼잡도는 확률이 아니라 도착 시 탑승 인원으로 정한다", async ({ page }) => {
+  await start(page);                                             // 확률이 높아도 45명이면 혼잡
+  await expect(page.getByTestId("verdict")).toContainText("탑승 유력");
+  await expect(page.getByTestId("loads")).toContainText("약 45명 (혼잡)");
+  for (const [stop, text] of [["jr03-19", "약 15명 (여유)"], ["jr03-20", "약 20명 (보통)"]]) {
+    await page.getByTestId("stop-switch").click();
+    await page.getByTestId(`stop-${stop}`).click();
+    await expect(page.getByTestId("loads")).toContainText(text);
+  }
 });

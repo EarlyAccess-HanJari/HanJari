@@ -7,6 +7,7 @@ AI 예측(레포 `src/serve.py`, 모델 `models/lite/`)을 HTTP로 내준다. AI
 |---|---|
 | `GET /api/health` | `{"status":"ok","mode":"sample"}` |
 | `GET /api/predict?n=3` | `{"n_ahead":3,"results":[정류장 6곳]}` · 새벽엔 `results: []` |
+| 다음 버스 | 결과의 `eta2_sec`(도착까지 초). 다음 버스가 없으면 `null` |
 | n 이 0~40 밖 | 400 `{"detail":"n_ahead 는 0~40 정수"}` |
 | n 이 숫자 아님 | 422 (FastAPI 기본) |
 | 예측 실패(스냅샷 없음 등) | 503 |

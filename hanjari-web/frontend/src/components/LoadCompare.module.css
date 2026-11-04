@@ -8,3 +8,5 @@
 .left .v { font-weight: 500; }
 .right .v { font-weight: 700; color: var(--c-text-1); }
 .sep { display: none; }
+/* 좁은 화면: 줄이 꺾이면 위쪽 입력칸이 밀리므로 아이콘을 빼서 한 줄 유지 */
+@media (max-width: 340px) { .wrap { flex-wrap: nowrap; } .col svg { display: none; } }

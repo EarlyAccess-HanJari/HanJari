@@ -1,5 +1,5 @@
 import type { PredictItem } from "../types";
-import { verdict } from "../utils/format";
+import { crowdLabel } from "../utils/format";
 import s from "./LoadCompare.module.css";
 
 const BusIcon = () => (
@@ -16,11 +16,10 @@ const PeopleIcon = () => (
 /** 지금 차 안 인원과 도착 때 예상 인원 — 정보 위계를 낮춘 2열 미니 그리드 */
 export default function LoadCompare({ item, stale }: { item: PredictItem; stale: boolean }) {
   const now = stale ? "—" : `${item.r_now}명`;
-  const crowd = verdict(item).crowd;
   const pred =
     stale || item.level === "확률 보류" ? "—"
     : item.level === "판단하기 일러요" ? `${Math.round(item.load_10)}~${Math.round(item.load_90)}명`
-    : `약 ${Math.round(item.load_pred)}명${crowd ? ` (${crowd})` : ""}`;
+    : `약 ${Math.round(item.load_pred)}명 (${crowdLabel(item.load_pred)})`;
   return (
     <div className={s.wrap} data-testid="loads">
       <div className={`${s.col} ${s.left}`}><BusIcon /><span className={s.k}>현재 차내</span><span className={s.v}>{now}</span></div>

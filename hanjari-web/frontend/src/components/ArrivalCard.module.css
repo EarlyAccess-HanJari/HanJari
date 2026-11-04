@@ -12,3 +12,5 @@
 .soon { font-size: clamp(36px, 6.5dvh, 56px); font-weight: 800; letter-spacing: -0.04em; line-height: 1.2; }
 .verdict { display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 999px; background: #fff; color: var(--lv-fg); border: 1px solid var(--lv-line); font-size: clamp(15px, 2.2dvh, 18px); font-weight: 700; letter-spacing: -0.02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .sub { font-size: 14px; color: var(--c-text-2); }
+.next { min-height: 18px; font-size: 13px; line-height: 18px; color: var(--c-text-3); }
+@media (max-height: 600px) { .arrival { gap: 4px; } .timeRow { min-height: 44px; gap: 4px 8px; } .verdict { padding: 3px 8px; font-size: 14px; } }

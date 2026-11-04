@@ -228,6 +228,7 @@ def results(rows, m, meta, n_ahead, now, max_age, lite):
         lv, why = level(p, q10, q90, r.stops_away, r.is_peak == 1, not r.holiday and r.weekday != "일", th, age)
         out.append(dict(route=r.route, stop=r.stop, stop_name=NAMES[(r.route, r.stop)], plate=r.plate,
                         stops_away=int(r.stops_away), eta_sec=int(r.eta), r_now=int(r.r_now),
+                        eta2_sec=int(r.eta2) if pd.notna(r.eta2) and r.eta2 > 0 else None,  # 다음 버스. 원본 0·결측은 없음(전부 결측이면 None 이 그대로 옴)
                         load_pred=round(float(point[i]), 1), load_10=round(float(q10), 1), load_90=round(float(q90), 1),
                         p_board=round(p, 3), level=lv, reason=why, updated=t_snap.strftime("%H:%M:%S")))
     return out

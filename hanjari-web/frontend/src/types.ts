@@ -15,7 +15,8 @@ export interface PredictItem {
   stop_name: string;
   plate: string;
   stops_away: number;    // 몇 정류장 전
-  eta_sec: number;       // 도착까지 초
+  eta_sec: number;       // 이번 버스 도착까지 초
+  eta2_sec?: number | null;  // 다음 버스 도착까지 초. 없으면 null
   r_now: number;         // 지금 재차
   load_pred: number;     // 도착 때 예상 재차
   load_10: number;

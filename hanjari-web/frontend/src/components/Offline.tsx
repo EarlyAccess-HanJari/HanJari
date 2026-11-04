@@ -22,8 +22,9 @@ export function HeroSkeleton() {
         <div className={app.sk} style={{ width: "100%", height: 8, borderRadius: 999 }} />
         <div className={app.sk} style={{ width: "74%", height: 16, marginTop: 14 }} />
       </div>
-      <div className={app.sk} style={{ width: "100%", height: 112, borderRadius: 16 }} />
-      <div className={app.sk} style={{ width: "100%", height: 16 }} />
+      <div className={app.sk} style={{ width: "100%", marginTop: "auto", borderRadius: 16,
+        height: "calc(2 * clamp(12px, 2dvh, 20px) + 40px + clamp(8px, 1.6dvh, 16px) + clamp(36px, 5dvh, 46px))" }} />
+      <div className={app.sk} style={{ width: "100%", height: 31 }} />
     </section>
   );
 }
@@ -41,7 +42,7 @@ export function HeroError({ kind, detail, onRetry, retrying, input }:
   return (
     <section className={`${app.hero} ${lv.hold}`} data-tone="hold" data-testid="hero-error" aria-busy={retrying}>
       <div className={s.block}>
-        <div className={a.top}><span className={a.label}>다음 버스</span></div>
+        <div className={a.top}><span className={a.label}>이번 버스</span></div>
         <p className={s.noinfo}>정보 없음</p>
       </div>
       <div className={s.box} role="status" data-testid={`notice-${kind}`}>

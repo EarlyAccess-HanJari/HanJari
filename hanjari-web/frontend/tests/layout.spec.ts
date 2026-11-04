@@ -42,3 +42,25 @@ test("재계산 중 카드는 그대로 두고 흐리게만 하며 입력 위치
   await expect(hero).toHaveAttribute("aria-busy", "false");
   expect((await input.boundingBox())!.y).toBe(before);
 });
+
+// 상태·문구 길이가 달라져도 대기 인원 버튼은 같은 자리 (누르던 버튼이 손 밑에서 밀리지 않게)
+for (const [width, height] of [[375, 812], [360, 780], [412, 915]] as [number, number][]) {
+  test(`${width}x${height}: 상태가 바뀌어도 대기 인원 버튼 위치가 같다`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    const ys: Record<string, number> = {};
+    for (const scenario of ["", "stale", "wide", "down"]) {
+      await page.goto(`/?scenario=${scenario}`);
+      await page.evaluate(() => localStorage.setItem("hanjari.sel", JSON.stringify({ route: "sb02", stop: "32" })));
+      await page.reload();
+      await expect(page.getByTestId("n-minus")).toBeVisible();
+      await expect(page.getByTestId("hero-skeleton")).toHaveCount(0);
+      ys[scenario || "normal"] = (await page.getByTestId("n-minus").boundingBox())!.y;
+    }
+    await page.goto("/");
+    await page.getByTestId("n-input").fill("20");                // 목업 n30: 확률이 낮아 안내 문구가 길어짐
+    await expect(page.getByTestId("hero")).toHaveAttribute("data-level", "어려울 수 있음");
+    await expect(page.getByTestId("hero")).toHaveAttribute("aria-busy", "false");
+    ys.low = (await page.getByTestId("n-minus").boundingBox())!.y;
+    expect(Math.max(...Object.values(ys)) - Math.min(...Object.values(ys))).toBeLessThanOrEqual(1);
+  });
+}

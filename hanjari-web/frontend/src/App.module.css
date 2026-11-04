@@ -6,8 +6,9 @@
 .fill { overflow: hidden; }
 .card { background: #fff; border: 1px solid var(--c-line-1); border-radius: 24px; padding: 16px 18px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 12px; }
 /* 한 장의 통합 카드: 도착 시간·탑승 상태 → 게이지·가이드 → 대기 인원 → 차내 인원.
-   최소 높이를 고정해 상태가 바뀌어도(보류·로딩) 카드가 출렁이지 않게 함 */
-.hero { flex: 1 0 auto; justify-content: space-between; position: relative; overflow: hidden; --tint: color-mix(in srgb, var(--lv-bar) 18%, #fff); background: linear-gradient(180deg, var(--tint) 0%, #fff 58%), #fff; transition: --tint .5s ease; border: 1px solid var(--c-line-1); border-radius: 24px; padding: 24px 20px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 14px; min-height: 372px; }
+   위쪽 내용은 위에서부터 쌓고 대기 인원은 아래에 고정(AheadInput 의 margin-top:auto) —
+   안내 문구 길이가 달라져도 누르던 버튼이 움직이지 않게 함 */
+.hero { flex: 1 0 auto; position: relative; overflow: hidden; --tint: color-mix(in srgb, var(--lv-bar) 18%, #fff); background: linear-gradient(180deg, var(--tint) 0%, #fff 58%), #fff; transition: --tint .5s ease; border: 1px solid var(--c-line-1); border-radius: 24px; padding: 24px 20px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 14px; min-height: 372px; }
 .hero > * { transition: opacity .2s; }
 /* 다시 불러오는 중: 카드는 그대로, 살짝 흐리게 + 맨 위 얇은 진행 막대 */
 .hero[aria-busy="true"] > :not(.loadbar) { opacity: .6; }
@@ -21,3 +22,5 @@
 .sk { border-radius: 10px; background: linear-gradient(90deg, rgba(0,0,0,.06) 25%, rgba(0,0,0,.1) 37%, rgba(0,0,0,.06) 63%); background-size: 400% 100%; animation: shimmer 1.4s ease infinite; }
 @keyframes shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
 @media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
+/* 아주 작은 화면(세로 600px 미만): 여백을 줄여 스크롤 없이 카드 안에 들어오게 */
+@media (max-height: 600px) { .main { gap: 8px; } .hero { padding: 12px 14px; gap: 8px; min-height: 0; } }

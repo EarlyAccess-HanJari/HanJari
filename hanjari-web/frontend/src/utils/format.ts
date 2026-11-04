@@ -58,28 +58,39 @@ export function whyText(i: PredictItem): string {
 }
 
 export type Tone = "ok" | "warn" | "bad" | "hold";
-export interface Verdict { badge: string; guide: string; tone: Tone; crowd: string }
+export interface Verdict { badge: string; guide: string; tone: Tone }
 
 /** 한눈에 보는 판정. 색·뱃지·문구를 확률(p_board) 기준 한 곳에서 정해 서로 어긋나지 않게 한다.
  *  80% 이상 초록 / 50~79% 주황 / 50% 미만 빨강(뱃지 문구는 80·60·40% 경계). 보류·판단 이른 단계는 회색.
- *  '빠듯함'은 확률이 높아도 백엔드가 수업 시간·거리 때문에 내리는 단계라 '탑승 가능'으로 낮추고 시간 빠듯함을 안내 */
+ *  '빠듯함'은 확률이 높아도 백엔드가 수업 시간·거리 때문에 내리는 단계라 '탑승 가능'으로 낮추고 시간 빠듯함을 안내.
+ *  확률이 낮은 이유는 대기 줄일 수도 있어 차내 혼잡을 말하지 않는다 — 혼잡도는 crowdLabel */
 export function verdict(i: PredictItem): Verdict {
   if (i.level === "확률 보류")
-    return { badge: "확률 보류", tone: "hold", crowd: "", guide: "확률은 잠시 보류했어요. 위의 도착 정보만 참고해 주세요." };
+    return { badge: "확률 보류", tone: "hold", guide: "확률은 잠시 보류했어요. 위의 도착 정보만 참고해 주세요." };
   if (i.level === "판단하기 일러요")
-    return { badge: "판단하기 일러요", tone: "hold", crowd: "", guide: "버스가 가까워지면 다시 확인해 주세요." };
+    return { badge: "판단하기 일러요", tone: "hold", guide: "버스가 가까워지면 다시 확인해 주세요." };
   const p = i.p_board;
+  const hasNext = i.eta2_sec != null;
   if (p >= 0.8)
     return i.level === "빠듯함"
-      ? { badge: "탑승 유력", tone: "ok", crowd: "여유", guide: "탈 수 있지만 수업 시간엔 빠듯할 수 있어요." }
-      : { badge: "탑승 유력", tone: "ok", crowd: "여유", guide: "줄을 서면 안정적으로 탑승할 수 있어요." };
+      ? { badge: "탑승 유력", tone: "ok", guide: "탈 수 있지만 수업 시간엔 빠듯할 수 있어요." }
+      : { badge: "탑승 유력", tone: "ok", guide: "줄을 서면 안정적으로 탑승할 수 있어요." };
   if (p >= 0.6)
-    return { badge: "혼잡 주의", tone: "warn", crowd: "혼잡", guide: "앞줄에 서면 탈 수 있지만, 차내가 다소 혼잡해요." };
-  if (p >= 0.5)
-    return { badge: "탑승 아슬아슬", tone: "warn", crowd: "혼잡", guide: "탑승이 불확실해요. 다음 버스 도착 시간도 확인해보세요." };
-  if (p >= 0.4)
-    return { badge: "탑승 아슬아슬", tone: "bad", crowd: "매우 혼잡", guide: "탑승이 불확실해요. 다음 버스 도착 시간도 확인해보세요." };
-  return { badge: "다음 차 권장", tone: "bad", crowd: "매우 혼잡", guide: "만차 가능성이 높아요. 다음 차 탑승을 권장해요." };
+    return { badge: "탑승 주의", tone: "warn", guide: "앞줄에 서면 탈 수 있지만, 못 탈 수도 있어요." };
+  const unsure = `탑승이 불확실해요.${hasNext ? " 다음 버스 도착 시간도 확인해보세요." : ""}`;
+  if (p >= 0.5) return { badge: "탑승 아슬아슬", tone: "warn", guide: unsure };
+  if (p >= 0.4) return { badge: "탑승 아슬아슬", tone: "bad", guide: unsure };
+  return hasNext
+    ? { badge: "다음 버스 권장", tone: "bad", guide: "이번 버스는 타기 힘들어요. 다음 버스를 권장해요." }
+    : { badge: "탑승 어려움", tone: "bad", guide: "이번 버스는 타기 힘들어요." };
+}
+
+/** 도착 시 탑승 인원 기준 혼잡도. 응답에 차종별 정원이 없어 모든 버스에 같은 구간을 쓴다 */
+export function crowdLabel(load: number): string {
+  if (load <= 15) return "여유";
+  if (load <= 30) return "보통";
+  if (load <= 45) return "혼잡";
+  return "매우 혼잡";
 }
 
 /** serve.py 가 스냅샷이 오래됐을 때 붙이는 reason("…N분 전 것…", "정보가 N초 전 것")으로 판별 */

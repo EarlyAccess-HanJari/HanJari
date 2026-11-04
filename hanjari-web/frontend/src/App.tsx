@@ -154,7 +154,7 @@ export default function App() {
         <Tabs index={view} onChange={setView} />
         <Pager index={view} onChange={setView}>
           <section className={`${s.hero} ${tone}`} data-level={mine.level} data-tone={hold ? "hold" : vd.tone} data-testid="hero" aria-busy={loading}>
-            <ArrivalCard item={mine} stale={stale} fetchedAt={fetchedAt} />
+            <ArrivalCard item={mine} stale={stale} fetchedAt={fetchedAt} invalid={n === null} />
             <ResultCard item={mine} invalid={n === null} />
             {input}
             <LoadCompare item={mine} stale={stale} />

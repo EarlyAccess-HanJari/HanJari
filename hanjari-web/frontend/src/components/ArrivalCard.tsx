@@ -1,12 +1,13 @@
 import { useEffect, useReducer, useRef } from "react";
 import type { PredictItem } from "../types";
-import { arrivalAt, mmss, pct, stopsAwayText, verdict } from "../utils/format";
+import { arrivalAt, etaText, mmss, pct, stopsAwayText, verdict } from "../utils/format";
 import s from "./ArrivalCard.module.css";
 
 interface Props {
   item: PredictItem;
   stale: boolean;
   fetchedAt: number;  // 응답을 받은 시각(ms)
+  invalid: boolean;   // 입력이 잘못됐으면 이전 인원으로 계산한 판정을 보이지 않는다
 }
 
 /** 도착 시간 1초 카운트다운.
@@ -51,7 +52,7 @@ function useCountdown(key: string, target: number): number {
   return Math.max(0, Math.ceil(c.shown));
 }
 
-export default function ArrivalCard({ item, stale, fetchedAt }: Props) {
+export default function ArrivalCard({ item, stale, fetchedAt, invalid }: Props) {
   const key = `${item.route}-${item.stop}-${item.plate}`;
   const ticking = useCountdown(key, arrivalAt(item, fetchedAt));
   const left = COUNTDOWN ? ticking : item.eta_sec;
@@ -66,7 +67,7 @@ export default function ArrivalCard({ item, stale, fetchedAt }: Props) {
         </div>
       )}
       <div className={s.top}>
-        <span className={s.label}>다음 버스</span>
+        <span className={s.label}>이번 버스</span>
         {!stale && <span className={s.away}>{stopsAwayText(item.stops_away)}</span>}
       </div>
       {/* 오래된 정보(수집 중단·새벽)면 몇 시간 전 버스를 카운트다운하게 되므로 도착 시간 대신 안내만 */}
@@ -86,8 +87,16 @@ export default function ArrivalCard({ item, stale, fetchedAt }: Props) {
               </>
             )}
           </span>
-          <span className={s.verdict} data-testid="verdict">{v.badge}{showP ? ` · ${pct(item.p_board)}%` : ""}</span>
+          {!invalid && (
+            <span className={s.verdict} data-testid="verdict">{v.badge}{showP ? ` · ${pct(item.p_board)}%` : ""}</span>
+          )}
         </div>
+      )}
+      {/* 자리를 항상 잡아 둔다 — 다음 버스가 생기고 없어져도 아래 내용이 밀리지 않게 */}
+      {!stale && (
+        <span className={s.next}>
+          {item.eta2_sec != null && <span data-testid="next-bus">다음 버스 {etaText(item.eta2_sec)}</span>}
+        </span>
       )}
     </section>
   );

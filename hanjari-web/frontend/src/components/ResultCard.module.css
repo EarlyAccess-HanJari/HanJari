@@ -3,3 +3,4 @@
 .fill { height: clamp(6px, 1dvh, 10px); border-radius: 999px; background: var(--lv-bar); transition: width .4s ease; }
 .guide { margin: 6px 0 0; font-size: clamp(14px, 2dvh, 17px); line-height: 1.5; font-weight: 500; color: #1F2937; }
 .why { margin: 0; font-size: 13px; line-height: 1.55; color: var(--c-text-2); }
+@media (max-height: 600px) { .card { gap: 4px; } .guide { margin-top: 2px; line-height: 1.4; } }
