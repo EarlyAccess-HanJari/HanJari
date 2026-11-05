@@ -218,6 +218,36 @@ def gain_table(tr):
     return out
 
 
+TYPICAL_TH = 0.98  # 장애 대체 안내('평소 이 시간')의 '여유' 기준. 11-05 시험(10/26~11/04): 0.80 이면 앞 3명 '여유'인데 못 탐 0.7%(혼잡 1.4%), 0.98 이면 0.2%(0.3%)
+TYPICAL_MIN = 20   # 칸에 운행이 이보다 적으면 더 넓은 칸(시 → 요일유형)으로
+
+
+def typical_table(d):
+    """API 장애로 실시간 정보가 없을 때 쓰는 '평소 이 시간' 표 (11-05).
+    키 '노선|정류장|wkd·sat|30분칸' · '…|h시' · '노선|정류장|wkd·sat' → p[N] = 과거 도착 중 앞 N명이어도 탈 수 있었던 비율(N=0..40),
+    gap = 같은 날 연속 도착 간격 중앙값(분), n = 운행 수. 운행(버스 1대가 정류장에 도착)마다 한 번만 센다."""
+    x = d.groupby("trip", sort=False).head(1)
+    a = pd.to_timedelta(x["arrive_time"], errors="coerce").dt.total_seconds().values
+    ok = np.isfinite(a)
+    x, a = x[ok], a[ok]
+    b = x["y"].values[:, None] <= thresholds(x)
+    t = pd.DataFrame({"route": x["route"].values, "stop": x["stop"].astype(str).values,
+                      "day": np.where(x["weekday"].values == "토", "sat", "wkd"),
+                      "slot": (a // 1800).astype(int).astype(str), "hour": "h" + (a // 3600).astype(int).astype(str),
+                      "date": x["date"].values, "a": a})
+    t["gap"] = t.sort_values("a").groupby(["date", "route", "stop"])["a"].diff() / 60  # 인덱스로 제자리에 붙음
+    t.loc[t["gap"] >= 60, "gap"] = np.nan
+    out = {}
+    for keys in (["route", "stop", "day", "slot"], ["route", "stop", "day", "hour"], ["route", "stop", "day"]):
+        for k, idx in t.groupby(keys).groups.items():
+            if len(idx) >= TYPICAL_MIN:
+                pos = t.index.get_indexer(idx)
+                gap = t["gap"].values[pos]
+                out["|".join(map(str, k))] = {"p": np.round(b[pos].mean(0), 4).tolist(), "n": int(len(pos)),
+                                              "gap": round(float(np.nanmedian(gap)), 1) if np.isfinite(gap).any() else None}
+    return out
+
+
 def predict(m, te, quantiles=False):
     """(점 예측, P(탑승) 행렬 [행 × N=0..40]). quantiles=True 면 도착재차 분위수(QS)도."""
     Xte = te[m["feats"]].astype(float)
