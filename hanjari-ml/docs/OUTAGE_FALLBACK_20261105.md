@@ -59,6 +59,8 @@
 | `full_share` | | ✓ | 이 칸에서 앞 0명이어도 못 탔던 비율 |
 | `trips` · `basis` | | ✓ | 근거 운행 수와 칸 이름(점검용) |
 
+예시(11-04 08:40 수집 중단을 재생한 값, 일부 반올림):
+
 ```json
 {"level": "확률 보류", "p_board": null, "arrival_stale": true, "prediction_status": "collection_stale",
  "fallback": {"mode": "last_known", "age_sec": 346, "r_now": 16, "load_pred": 21.3,
