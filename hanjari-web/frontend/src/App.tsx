@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { fetchPredict } from "./api/predict";
 import { N_MAX, N_MIN, ROUTES } from "./types";
 import type { ApiError, ApiResult, RouteCode } from "./types";
-import { arrivalAt, arrivalState, isOlderSnapshot, parseN, verdict } from "./utils/format";
+import { arrivalAt, arrivalState, isOlderSnapshot, parseN, queueOf, queueSummary, verdict, withQueue } from "./utils/format";
 import type { ProbState } from "./utils/format";
 import Header from "./components/Header";
 import ArrivalCard from "./components/ArrivalCard";
@@ -15,6 +15,7 @@ import Pager from "./components/Pager";
 import Timeline from "./components/Timeline";
 import OtherStops from "./components/OtherStops";
 import StopSheet from "./components/StopSheet";
+import AboutSheet from "./components/AboutSheet";
 import Notice from "./components/Notice";
 import { HeroError, HeroSkeleton, TimelinePlaceholder } from "./components/Offline";
 import { TONE_CLASS } from "./components/LevelBadge";
@@ -54,6 +55,7 @@ export default function App() {
   const [remembered] = useState(loadSel);
   const [sel, setSel] = useState<Sel>(remembered ?? FIRST);
   const [sheetOpen, setSheetOpen] = useState(!remembered);  // 첫 방문엔 정류장부터 고르게
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [raw, setRaw] = useState("3");
   // 조회에 쓰는 인원 = 마지막으로 올바르게 입력한 값. 입력이 잠깐 틀려도 도착 정보는 계속 보이게
   const [queryN, setQueryN] = useState(3);
@@ -70,6 +72,9 @@ export default function App() {
   const activeN = useRef<number | null>(null);
   const lastGood = useRef<ApiResult | null>(null);
   const answered = useRef(false);
+  const touched = useRef(false);  // 사용자가 인원을 직접 건드렸는지
+  const hadCurve = useRef(false);
+  const wantN = useRef(3);  // 마지막으로 올바르게 입력한 인원
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
@@ -78,12 +83,18 @@ export default function App() {
 
   const parsed = parseN(raw, N_MIN, N_MAX);
   const n = "n" in parsed ? parsed.n : null;
-  const inputError = "error" in parsed ? parsed.error : null;
+  // 서버가 0~40명 확률을 함께 주면 인원을 바꿔도 다시 부르지 않고, 입력은 선택 사항이 된다
+  const hasCurve = res?.ok === true && res.data.results.some((i) => i.p_by_n);
+  const empty = hasCurve && raw.trim() === "";
+  const inputError = !empty && "error" in parsed ? parsed.error : null;
 
   const onInput = (v: string) => {
+    touched.current = true;
     setRaw(v);
     const p = parseN(v, N_MIN, N_MAX);
-    if ("n" in p) setQueryN(p.n);
+    if (!("n" in p)) return;
+    wantN.current = p.n;
+    if (!hasCurve) setQueryN(p.n);
   };
 
   // silent: 자동 새로고침 — 화면을 흐리게 하거나 '불러오는 중'을 띄우지 않음
@@ -114,6 +125,16 @@ export default function App() {
           p_board: null, prediction_status: "source_regressed", reason: "최신 버스 정보로 다시 계산하고 있어요" };
       }) } } : r;
     if (next.ok) lastGood.current = next;
+    // 인원을 건드리기 전이면 막대가 있을 땐 비워 두고, 없을 땐 조회한 인원을 보여 준다. 고른 적 없는 3명을 가정하지 않게
+    if (next.ok) {
+      const curve = next.data.results.some((i) => i.p_by_n);
+      if (!touched.current) setRaw(curve ? "" : String(nn));
+      else if (hadCurve.current && !curve) {  // 확률 목록을 주던 서버가 그만 주면 입력한 인원으로 다시 조회한다
+        setRaw((cur) => (cur.trim() === "" ? String(wantN.current) : cur));
+        setQueryN(wantN.current);
+      }
+      hadCurve.current = curve;
+    }
     setRes(next);
     setFetchedAt(Date.now());
     setNow(Date.now());
@@ -137,7 +158,8 @@ export default function App() {
   const items = res?.ok ? res.data.results : [];
   // 응답의 n_ahead 가 입력과 다르면 화면의 확률은 이전 인원의 것이다. 응답 전·실패 때 그 확률을 보이지 않는다
   const resultN = res?.ok ? res.data.n_ahead : null;
-  const prob: ProbState = n === null ? "invalid"
+  const prob: ProbState = hasCurve ? (n === null && !empty ? "invalid" : "current")
+    : n === null ? "invalid"
     : resultN === null || resultN === n ? "current"
     : !online || (failedN === n && !loading) ? "unavailable"
     : "calculating";
@@ -182,7 +204,7 @@ export default function App() {
     : mine ? { text: `버스 정보 ${updated} 기준`, tone: state !== "upcoming" ? "warn" as const : "normal" as const }
     : { text: "", tone: "normal" as const };
 
-  const input = <AheadInput raw={raw} n={n} error={inputError} onChange={onInput} />;
+  const input = <AheadInput raw={raw} n={n} error={inputError} optional={hasCurve} onChange={onInput} />;
 
   let body: ReactNode;
   if (!online && !mine) {  // 받아 둔 정보가 있으면 지우지 않는다. 낡으면 arrivalState 가 오래된 정보로 바꾼다
@@ -218,7 +240,9 @@ export default function App() {
     body = <Notice kind="no_stop" onRetry={retry} retrying={loading} />;
   } else {
     // 위→아래: [히어로 카드: 도착 시간·판정 → 게이지·결론 → 차내 인원 → 대기 인원] → 다른 정류장 / 두 번째 화면: 앞·뒤 정류장
-    const vd = verdict(mine);
+    const shown = n !== null ? withQueue(mine, n) : mine;  // 막대가 있으면 고른 인원의 확률을 바로 적용
+    const queue = queueOf(mine);
+    const vd = queue && n === null ? queueSummary(queue) : verdict(shown);
     const hold = prob !== "current" || state !== "upcoming";
     const tone = hold ? lv.hold : TONE_CLASS[vd.tone];
     body = (
@@ -226,16 +250,16 @@ export default function App() {
         <Tabs index={view} onChange={setView} />
         <Pager index={view} onChange={setView}>
           <>
-            <section className={`${s.hero} ${tone}`} data-level={prob === "current" ? mine.level : "확률 보류"} data-tone={hold ? "hold" : vd.tone} data-testid="hero" aria-busy={loading}>
-              <ArrivalCard item={mine} state={state} fetchedAt={fetchedAt} now={now} prob={prob} />
-              <ResultCard item={mine} prob={prob} n={n} slow={slow} online={online} arrivalState={state} onRetry={retry} />
+            <section className={`${s.hero} ${tone}`} data-level={prob === "current" ? shown.level : "확률 보류"} data-tone={hold ? "hold" : vd.tone} data-testid="hero" aria-busy={loading}>
+              <ArrivalCard item={mine} state={state} fetchedAt={fetchedAt} now={now} />
+              <ResultCard item={shown} prob={prob} n={n} slow={slow} online={online} arrivalState={state} onRetry={retry} />
               <LoadCompare item={mine} stale={state !== "upcoming"} />
               {input}
               {loading && <div className={s.loadbar} aria-hidden="true" />}
             </section>
             <OtherStops route={mine.route} stop={mine.stop} items={items} onPick={pick} now={now} fetchedAt={fetchedAt} />
           </>
-          <Timeline items={items.filter((i) => i.route === mine.route)} mine={mine} onPick={(i) => pick(i.route, i.stop)} now={now} fetchedAt={fetchedAt} prob={prob} />
+          <Timeline items={items.filter((i) => i.route === mine.route)} mine={mine} onPick={(i) => pick(i.route, i.stop)} now={now} fetchedAt={fetchedAt} prob={prob} mineBadge={queue && n === null ? null : shown} />
         </Pager>
       </>
     );
@@ -247,13 +271,14 @@ export default function App() {
   return (
     <div className={s.app}>
       <Header route={sel.route} stop={sel.stop} status={status} refreshing={loading}
-        onRefresh={retry} onOpenStops={() => setSheetOpen(true)} />
+        onRefresh={retry} onOpenStops={() => setSheetOpen(true)} onAbout={() => setAboutOpen(true)} />
       <main className={`${s.main} ${paged ? s.fill : ""}`}>
         {body}
       </main>
       {sheetOpen && (
         <StopSheet route={sel.route} stop={sel.stop} onPick={pick} onClose={() => setSheetOpen(false)} />
       )}
+      {aboutOpen && <AboutSheet reason={mine?.level === "확률 보류" ? mine.reason : undefined} onClose={() => setAboutOpen(false)} />}
     </div>
   );
 }

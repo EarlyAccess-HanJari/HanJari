@@ -10,6 +10,7 @@ import mockWide from "../mock/predict_wide.json";
 import mockStale from "../mock/predict_stale.json";
 import mockNight from "../mock/predict_empty_night.json";
 import mockBadInput from "../mock/error_bad_input.json";
+import mockCurve from "../mock/predict_curve.json";
 
 /** 요청 방식.
  *  - 명세(README·민준 WBS): GET /api/predict?n=3
@@ -24,11 +25,11 @@ export const TIMEOUT_MS = 8000;
 export const USE_MOCK = import.meta.env.VITE_MOCK === "1";
 
 /** 개발·QA 용 시나리오 (URL ?scenario=...). 목업 모드에서만 동작. */
-export type Scenario = "stale" | "wide" | "night" | "error" | "down" | "slow" | "nocount" | "checking";
+export type Scenario = "stale" | "wide" | "night" | "error" | "down" | "slow" | "nocount" | "checking" | "curve" | "passed" | "holiday" | "held";
 export function currentScenario(): Scenario | null {
   if (typeof window === "undefined") return null;
-  const s = new URLSearchParams(window.location.search).get("scenario");
-  return (["stale", "wide", "night", "error", "down", "slow", "nocount", "checking"] as const).includes(s as Scenario)
+  const s = new URLSearchParams(window.location.search).get("scenario") ?? window.location.hash.slice(1);
+  return (["stale", "wide", "night", "error", "down", "slow", "nocount", "checking", "curve", "passed", "holiday", "held"] as const).includes(s as Scenario)
     ? (s as Scenario)
     : null;
 }
@@ -115,6 +116,8 @@ function detailOf(body: unknown): string | null {
 // ---------- 목업 ----------
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+const HELD = { level: "확률 보류", p_board: null, load_pred: null, load_10: null, load_90: null };
+
 async function fetchMock(n: number): Promise<ApiResult> {
   const sc = currentScenario();
   await sleep(sc === "slow" ? TIMEOUT_MS + 500 : 300);
@@ -134,6 +137,14 @@ async function fetchMock(n: number): Promise<ApiResult> {
       return { ok: true, data: withN(mockNight, n) };
     case "checking":
       return { ok: true, data: { ...withN(mockN3, n), results: mockN3.results.map((r) => ({ ...r, eta_sec: 5, arrival_status: "checking" })) } as PredictResponse };
+    case "curve":
+      return { ok: true, data: withN(mockCurve, n) };
+    case "passed":
+      return { ok: true, data: { ...withN(mockN3, n), results: mockN3.results.map((r) => ({ ...r, eta_sec: 5, arrival_status: "passed" })) } as PredictResponse };
+    case "holiday":
+      return { ok: true, data: { ...withN(mockN3, n), results: mockN3.results.map((r) => ({ ...r, ...HELD, prediction_status: "calibration_hold", reason: "일요일·공휴일(수업 없는 날은 아직 검증 전)" })) } as PredictResponse };
+    case "held":
+      return { ok: true, data: { ...withN(mockN3, n), results: mockN3.results.map((r) => ({ ...r, ...HELD, prediction_status: "capacity_unverified", reason: "이 차량의 탑승 판단 기준을 확인하고 있어요" })) } as PredictResponse };
     case "nocount":
       return { ok: true, data: { ...withN(mockN3, n), results: mockN3.results.map((r) => ({ ...r, r_now: null })) } as PredictResponse };
   }

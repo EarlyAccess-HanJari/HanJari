@@ -65,19 +65,17 @@ for (const [width, height] of [[375, 812], [360, 780], [412, 915]] as [number, n
   });
 }
 
-// 탑승 확률은 남은 시간 오른쪽 같은 줄에 있다
+// 시간(사실) 바로 아래에 결론(예측)이 온다
 for (const width of [320, 360, 412]) {
-  test(`${width}px: 탑승 확률이 남은 시간 오른쪽에 있다`, async ({ page }) => {
+  test(`${width}px: 결론이 남은 시간 바로 아래에 있다`, async ({ page }) => {
     await page.setViewportSize({ width, height: 780 });
     await page.goto("/");
     await page.evaluate(() => localStorage.setItem("hanjari.sel", JSON.stringify({ route: "sb02", stop: "30" })));
     await page.reload();
-    const { gap, sameRow } = await page.getByTestId("verdict").evaluate((v) => {
-      const a = v.getBoundingClientRect();
-      const b = v.previousElementSibling!.getBoundingClientRect();
-      return { gap: a.left - b.right, sameRow: a.top < b.bottom && a.bottom > b.top };
-    });
-    expect(gap).toBeGreaterThanOrEqual(0);
-    expect(sameRow).toBe(true);
+    const arrival = (await page.getByTestId("arrival").boundingBox())!;
+    const verdict = (await page.getByTestId("verdict").boundingBox())!;
+    expect(verdict.y).toBeGreaterThanOrEqual(arrival.y + arrival.height);
+    expect(verdict.y - (arrival.y + arrival.height)).toBeLessThanOrEqual(24);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
   });
 }

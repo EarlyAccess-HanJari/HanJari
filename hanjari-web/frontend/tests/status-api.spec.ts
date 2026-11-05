@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import fixture from "../src/mock/predict_n3.json" with { type: "json" };
+import curve from "../src/mock/predict_curve.json" with { type: "json" };
 
 // 실제 fetch·응답 검증을 거치는 안내 검사. VITE_MOCK=0 npx playwright test tests/status-api 로 실행한다
 test.use({ serviceWorkers: "block" });
@@ -79,7 +80,7 @@ test("실제 응답에서도 인원을 바꾸면 응답 전까지 이전 확률�
   await page.getByTestId("stop-sb02-32").click();
   await expect(page.getByTestId("verdict")).toContainText(/\d+%/);
   await page.getByTestId("n-input").fill("9");
-  await expect(page.getByTestId("verdict")).toHaveText("계산 중");
+  await expect(page.getByTestId("verdict")).toContainText("다시 계산");
   await expect(page.getByTestId("result")).toContainText("9명 기준으로 다시 계산");
   await expect(page.locator("[data-testid^=other-]").first()).not.toContainText(/\d+%/);
   await expect.poll(() => typeof reply[9]).toBe("function");
@@ -97,7 +98,7 @@ test("실제 응답에서 인원을 바꾼 요청이 실패하면 이전 확률�
   await expect(page.getByTestId("verdict")).toContainText(/\d+%/);
   await page.getByTestId("n-input").fill("9");
   await expect(page.getByTestId("result")).toContainText("9명 기준 확률을 못 받았어요");
-  await expect(page.getByTestId("verdict")).toHaveText("확률 보류");
+  await expect(page.getByTestId("verdict")).toContainText("확률을 못 받았어요");
   await expect(page.locator("[data-testid^=other-]").first()).not.toContainText(/\d+%/);
   await expect(page.getByTestId("arrival")).toContainText("이번 버스");
   await expect(page.getByText("연결이 불안정해요")).toBeVisible();
@@ -115,4 +116,45 @@ test("응답에 fallback 필드가 더해져도 오류 없이 오래된 정보 �
   await expect(page.getByTestId("notice-stale")).toBeVisible();
   await expect(page.getByTestId("result")).not.toContainText(/\d+%/);
   await expect(page.getByTestId("notice-unknown")).toHaveCount(0);
+});
+
+test("서버가 0~40명 확률을 주면 인원을 바꿔도 서버를 다시 부르지 않고, 실패해도 확률이 남아 있다", async ({ page }) => {
+  const asked: number[] = [];
+  let healthy = true;
+  await page.route("**/api/predict?*", (r) => {
+    const n = Number(new URL(r.request().url()).searchParams.get("n"));
+    asked.push(n);
+    return healthy ? r.fulfill({ json: { ...curve, n_ahead: n } }) : r.fulfill({ status: 503, body: "" });
+  });
+  await page.goto("/");
+  await page.getByTestId("stop-sb02-32").click();
+  await expect(page.getByTestId("verdict")).toContainText("앞 약 8명까지");
+  await page.getByRole("button", { name: "10명", exact: true }).click();
+  await expect(page.getByTestId("verdict")).toContainText("앞 10명이라면 빠듯해요");
+  await page.getByRole("button", { name: "25명", exact: true }).click();
+  await expect(page.getByTestId("verdict")).toContainText("앞 25명이라면 타기 어려워요");
+  await page.waitForTimeout(400);
+  expect(asked.filter((n) => n !== 3)).toEqual([]);  // 처음 조회한 인원 말고는 부르지 않는다
+  healthy = false;
+  await page.getByRole("button", { name: "10명", exact: true }).click();
+  await expect(page.getByTestId("verdict")).toContainText("앞 10명이라면 빠듯해요");
+});
+
+test("0~40명 확률을 주던 서버가 그만 주면 입력한 인원으로 다시 조회한다", async ({ page }) => {
+  let withCurve = true;
+  const asked: number[] = [];
+  await page.route("**/api/predict?*", (r) => {
+    const n = Number(new URL(r.request().url()).searchParams.get("n"));
+    asked.push(n);
+    return r.fulfill({ json: withCurve ? { ...curve, n_ahead: n } : { ...fixture, n_ahead: n } });
+  });
+  await page.goto("/");
+  await page.getByTestId("stop-sb02-32").click();
+  await page.getByRole("button", { name: "10명", exact: true }).click();
+  await expect(page.getByTestId("verdict")).toContainText("앞 10명이라면");
+  withCurve = false;
+  await page.getByTestId("refresh").click();
+  await expect.poll(() => asked.includes(10)).toBe(true);
+  await expect(page.getByTestId("queue-bar")).toHaveCount(0);
+  await expect(page.getByTestId("verdict")).toContainText("앞 10명이라면");
 });

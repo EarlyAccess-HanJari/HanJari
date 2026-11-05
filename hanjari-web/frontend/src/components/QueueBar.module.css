@@ -1,0 +1,15 @@
+/* 신호등 색은 levels.module.css 의 --lv-bar 와 같은 값 */
+.wrap { display: flex; flex-direction: column; gap: 4px; }
+.track { position: relative; padding-top: 8px; }
+.bar { display: flex; gap: 2px; height: clamp(10px, 1.6dvh, 14px); }
+.seg { flex: 1 1 0; min-width: 2px; }
+.seg:first-child { border-radius: 4px 0 0 4px; }
+.seg:last-child { border-radius: 0 4px 4px 0; }
+.seg:only-child { border-radius: 4px; }
+.ok { background: #10B981; }
+.warn { background: #F59E0B; }
+.bad { background: #EF4444; }
+.marker { position: absolute; top: 0; width: 0; height: 0; margin-left: -6px; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 7px solid var(--c-text-1); transition: left .2s ease; }
+.legend { margin: 0; display: flex; flex-wrap: wrap; gap: 0 10px; font-size: 12px; line-height: 18px; color: var(--c-text-2); font-variant-numeric: tabular-nums; }
+.legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; }
+@media (prefers-reduced-motion: reduce) { .marker { transition: none; } }

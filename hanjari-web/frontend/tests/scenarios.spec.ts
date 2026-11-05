@@ -18,7 +18,7 @@ test("stale: '확률 보류' → 오래됨 안내 + 확률·도착 시간 숨김
   await expect(page.getByTestId("hero")).toHaveAttribute("data-level", "확률 보류");
   await expect(result).not.toContainText(/\d+%/);
   await expect(page.getByTestId("loads")).not.toContainText(/\d/);
-  await expect(result).toContainText("95분 전");                 // 보류 이유 노출
+  await expect(result).toContainText("버스 정보가 늦어지고 있어요");
   // 오래된 정보면 도착 시간·정류장 수 대신 안내만 (몇 시간 전 버스를 카운트다운하지 않게)
   await expect(page.getByTestId("arrival")).toContainText("버스 위치를 확인할 수 없어요");
   await expect(page.getByTestId("arrival")).not.toContainText("바로 앞 정류장");
@@ -72,7 +72,7 @@ test("상태 색(신호등)이 서로 다르고 뱃지·카드가 같은 색을 
   const hero = page.getByTestId("hero");
   const read = async () => {
     const tone = (await hero.getAttribute("data-tone"))!;
-    const bg = await page.getByTestId("verdict").evaluate((e) => getComputedStyle(e).color);   // 뱃지 글자색이 상태 색
+    const bg = await page.getByTestId("verdict-icon").evaluate((e) => getComputedStyle(e).color);   // 아이콘 색이 상태 색
     if (colors.has(tone)) expect(colors.get(tone)).toBe(bg);
     colors.set(tone, bg);
   };
@@ -128,7 +128,7 @@ test("nocount: 차내 인원을 모르면 null명 대신 —", async ({ page }) 
   await page.evaluate(() => localStorage.setItem("hanjari.sel", JSON.stringify({ route: "sb02", stop: "30" })));
   await page.reload();
   const loads = page.getByTestId("loads");
-  await expect(loads).toContainText("현재 차내 인원 · 추정");
+  await expect(loads).toContainText("지금 · 공공데이터");
   await expect(loads).toContainText("—");
   await expect(page.locator("body")).not.toContainText("null");
 });

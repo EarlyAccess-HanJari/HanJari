@@ -20,10 +20,10 @@ test("정류장을 고르면 한 화면에 도착 정보·인원 입력·결과�
   await expect(page.getByTestId("stop-name")).toHaveText("녹십자약국");
   await expect(page.getByTestId("arrival")).toContainText("이번 버스");
   await expect(page.getByTestId("arrival")).not.toContainText("서울70사6419");
-  await expect(page.getByTestId("loads")).toContainText("도착 시 차내 인원");
+  await expect(page.getByTestId("loads")).toContainText("도착 때 · 한자리 예측");
   await expect(page.getByTestId("n-input")).toHaveValue("3");
   await expect(page.getByTestId("hero")).toHaveAttribute("data-level", "여유 있음");
-  await expect(page.getByTestId("verdict")).toContainText(/탑승 확률 · \d+%/);   // 퍼센트가 보인다
+  await expect(page.getByTestId("verdict")).toContainText(/앞 3명이라면 여유 있어요.*예측 탑승 확률 \d+%/);   // 결론과 근거가 함께 보인다
   await expect(page.getByText("버스 정보 13:11:33 기준")).toBeVisible();
 });
 
@@ -33,7 +33,7 @@ test("인원을 바꾸면 결과가 바로 다시 계산된다", async ({ page }
   await chip(page, 20).click();                                   // 목업 n30 → 녹십자약국 '어려울 수 있음'
   await expect(page.getByTestId("hero")).toHaveAttribute("data-level", "어려울 수 있음");
   await expect(page.getByTestId("verdict")).toContainText(/\d+%/);
-  await expect(page.getByTestId("result")).toContainText("이번 버스는 타기 힘들어요.");
+  await expect(page.getByTestId("result")).toContainText("앞 20명이라면 타기 어려워요");
 });
 
 test("+/-로 만든 인원이 칩에 있으면 그 칩이 바로 선택 표시된다", async ({ page }) => {
@@ -154,7 +154,7 @@ test("같은 스냅샷을 다시 받아도 카운트다운이 되감기지 않�
 
 test("다음 버스: 있으면 몇 분 뒤인지 보여주고, 없으면 숨긴다", async ({ page }) => {
   await start(page);                                             // 녹십자약국: 목업 eta2_sec 716
-  await expect(page.getByTestId("next-bus")).toHaveText("다음 버스 약 12분 후");
+  await expect(page.getByTestId("next-bus")).toHaveText("못 타면 다음 버스 약 12분 후");
   await page.getByTestId("stop-switch").click();
   await page.getByTestId("stop-sb02-30").click();                // 필드가 없는 응답
   await expect(page.getByTestId("stop-name")).toHaveText("한성대입구역5번출구");

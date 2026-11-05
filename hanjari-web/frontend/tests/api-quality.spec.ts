@@ -39,7 +39,7 @@ test("null count holds prediction while keeping arrival", async ({ page }) => {
   await page.goto("/");
   await page.getByTestId("stop-jr03-23").click();
   await expect(page.getByTestId("result")).toHaveAttribute("data-level", "확률 보류");
-  await expect(page.getByTestId("result")).toContainText("차내 인원 정보를 확인할 수 없어요");
+  await expect(page.getByTestId("result")).toContainText("이 버스는 탑승 예측이 어려워요");
   await expect(page.getByTestId("result")).not.toContainText(/\d+%/);
   await expect(page.getByTestId("loads")).not.toContainText(/\d|null|NaN/);
   await expect(page.getByTestId("arrival")).not.toContainText("버스 위치를 확인할 수 없어요");
@@ -184,7 +184,7 @@ test("fresh estimated count remains visible while boarding prediction is held", 
   await page.goto("/");
   await page.getByTestId("stop-jr03-23").click();
   await expect(page.getByTestId("loads")).toContainText("약 22명");
-  await expect(page.getByTestId("loads")).toContainText("추정");
+  await expect(page.getByTestId("loads")).toContainText("공공데이터");
   await expect(page.getByTestId("result")).not.toContainText(/\d+%/);
 });
 

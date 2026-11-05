@@ -1,9 +1,11 @@
-.card { display: flex; flex-direction: column; gap: 8px; min-height: 52px; color: #1F2937; }
+.card { display: flex; flex-direction: column; gap: clamp(4px, 1dvh, 8px); min-height: 52px; color: #1F2937; }
 .track { height: clamp(6px, 1dvh, 10px); border-radius: 999px; background: var(--lv-track); overflow: hidden; }
 .fill { height: clamp(6px, 1dvh, 10px); border-radius: 999px; background: var(--lv-bar); transition: width .4s ease; }
-.guide { margin: 6px 0 0; font-size: clamp(14px, 2dvh, 17px); line-height: 1.5; font-weight: 500; color: #1F2937; }
-.why { margin: 0; font-size: 13px; line-height: 1.55; color: var(--c-text-2); }
+.guide { margin: 0; display: flex; gap: 6px; font-size: clamp(15px, 2.2dvh, 18px); line-height: 1.4; font-weight: 700; letter-spacing: -0.02em; color: var(--c-text-1); word-break: keep-all; }
+.guide svg { flex: none; margin-top: .1em; color: var(--lv-fg); }
+.why { margin: 2px 0 0 26px; font-size: 13px; line-height: 1.5; color: var(--c-text-2); word-break: keep-all; }
+.next { margin: 0; min-height: 18px; font-size: 13px; line-height: 18px; color: var(--c-text-3); }
+.nextStrong { color: var(--c-text-1); font-weight: 600; }
 .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.row .guide { margin: 0; }
 .retry { flex: none; height: 36px; padding: 0 14px; border-radius: 999px; border: 0; background: var(--c-text-1); color: #fff; font-size: 14px; font-weight: 600; }
-@media (max-height: 600px) { .card { gap: 4px; } .guide { margin-top: 2px; line-height: 1.4; } }
+@media (max-height: 600px) { .card { gap: 4px; } }

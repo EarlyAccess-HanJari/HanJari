@@ -5,4 +5,6 @@
 .k { font-size: 12px; line-height: 17px; color: var(--c-text-3); }
 .v { font-size: 15px; line-height: 22px; font-weight: 600; color: var(--c-text-2); font-variant-numeric: tabular-nums; }
 .em { font-weight: 700; color: var(--c-text-1); }
+.range { font-size: 11px; line-height: 14px; color: var(--c-text-3); font-variant-numeric: tabular-nums; }
+@media (max-height: 680px) { .range { display: none; } }
 @media (max-width: 340px) { .col { padding: 0 10px; } }

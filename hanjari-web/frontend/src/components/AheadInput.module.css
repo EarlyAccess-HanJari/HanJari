@@ -1,14 +1,14 @@
 /* 히어로 카드 안에 이어지는 연한 박스 */
 .wrap { display: flex; flex-direction: column; gap: clamp(8px, 1.6dvh, 16px); background: var(--c-surface); border-radius: 16px; padding: clamp(12px, 2dvh, 20px) 12px; }
 .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.labelCol { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
-.label { font-size: 14px; color: var(--c-text-3); white-space: nowrap; }
+.labelCol { display: flex; flex-direction: column; min-width: 0; }
+.label { font-size: 12px; line-height: 16px; color: var(--c-text-3); white-space: nowrap; }
 /* 밑줄 없이 숫자만 크게. 입력 중엔 옅은 배경으로 표시 */
-.field { display: flex; align-items: baseline; height: 36px; border-radius: 8px; padding: 0 4px; }
+.field { display: flex; align-items: baseline; height: 30px; border-radius: 8px; }
 .field:focus-within { background: var(--c-line-1); }
 .fieldError .input, .fieldError .unit { color: var(--bad-line); }
-.input { min-width: 1ch; height: 34px; line-height: 34px; border: 0; outline: none; background: transparent; text-align: left; font-size: 24px; font-weight: 800; color: var(--c-text-1); padding: 0; font-variant-numeric: tabular-nums; }
-.unit { font-size: 24px; font-weight: 800; color: var(--c-text-1); }
+.input { min-width: 1ch; height: 30px; line-height: 30px; border: 0; outline: none; background: transparent; text-align: left; font-size: 22px; font-weight: 800; color: var(--c-text-1); padding: 0; font-variant-numeric: tabular-nums; }
+.unit { font-size: 22px; font-weight: 800; color: var(--c-text-1); }
 .stepper { display: flex; align-items: center; gap: 6px; flex: none; }
 .step { width: 40px; height: 40px; flex: none; border-radius: 12px; border: 1px solid var(--c-line-2); background: #fff; color: var(--c-text-1); display: flex; align-items: center; justify-content: center; padding: 0; }
 .quick { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; }
@@ -20,4 +20,4 @@
 .error { margin: 0; font-size: 13px; color: var(--bad); font-weight: 600; }
 .step, .chip { transition: transform .1s, background-color .15s; }
 .step:active:not(:disabled), .chip:active { transform: scale(.95); }
-@media (max-width: 340px) { .chip { font-size: 12px; } .label { font-size: 13px; } }
+@media (max-width: 340px) { .chip { font-size: 12px; } .label { font-size: 11px; } }

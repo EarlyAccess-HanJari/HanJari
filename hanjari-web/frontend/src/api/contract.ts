@@ -48,6 +48,13 @@ export function isPredictResponse(d: unknown): d is PredictResponse {
     if (i.source_updated !== undefined && i.source_updated !== null && typeof i.source_updated !== "string") return false;
     if (i.vehicle_id !== undefined && typeof i.vehicle_id !== "string") return false;
     if (i.arrival_stale === true && i.level !== "확률 보류") return false;
+    if (i.p_by_n !== undefined && i.p_by_n !== null) {
+      if (!Array.isArray(i.p_by_n) || i.p_by_n.length !== N_MAX + 1 || !i.p_by_n.every(p => count(p) && p <= 1)) return false;
+      for (const k of ["n_ok", "n_hard"]) {
+        if (i[k] !== null && (!integer(i[k]) || (i[k] as number) > N_MAX)) return false;
+      }
+      if (typeof i.n_ok === "number" && typeof i.n_hard === "number" && i.n_ok > i.n_hard) return false;
+    }
     if (i.prediction_status !== undefined) {
       if (typeof i.prediction_status !== "string") return false;
       if (i.level === "확률 보류") {

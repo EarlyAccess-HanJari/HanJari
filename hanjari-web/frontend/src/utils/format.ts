@@ -1,4 +1,5 @@
-import type { PredictItem } from "../types";
+import { N_MAX } from "../types";
+import type { Level, PredictItem } from "../types";
 
 export function etaText(sec: number): string {
   if (sec <= 60) return "곧 도착";
@@ -49,45 +50,61 @@ export function parseN(raw: string, min: number, max: number): { n: number } | {
   return { n };
 }
 
-/** 백엔드 reason("P 0.97 ≥ 기준 0.80")은 개발자용이라, 화면에는 필드로 쉬운 문장을 만든다.
- *  확률 보류의 reason("평일 아님…", "N분 전 것…")은 그대로 읽혀서 그대로 쓴다. */
+/** '판단하기 일러요' 단계의 이유. 백엔드 reason("P 0.97 ≥ 기준 0.80")은 개발자용이라 필드로 쉬운 문장을 만든다 */
 export function whyText(i: PredictItem): string {
-  if (i.level === "확률 보류") return i.reason;
-  if (i.load_pred == null || i.load_10 == null || i.load_90 == null || i.r_now == null) return "인원 정보를 확인하고 있어요.";
-  if (i.level === "판단하기 일러요") {
-    return `버스가 ${stopsAwayText(i.stops_away)}이라 도착 때 인원이 ${Math.round(i.load_10)}~${Math.round(i.load_90)}명으로 아직 폭이 넓어요.`;
-  }
-  const load = Math.round(i.load_pred);
-  return i.stops_away === 0
-    ? `지금 ${i.r_now}명 탄 버스가 곧 도착해요. 내리고 타는 사람을 반영하면 약 ${load}명이에요.`
-    : `지금 ${i.r_now}명 탄 버스가 ${i.stops_away}정류장을 더 지나면 약 ${load}명이 될 것 같아요.`;
+  if (i.load_10 == null || i.load_90 == null) return "인원 정보를 확인하고 있어요.";
+  return `버스가 ${stopsAwayText(i.stops_away)}이라 도착 때 인원이 ${Math.round(i.load_10)}~${Math.round(i.load_90)}명으로 아직 폭이 넓어요.`;
 }
 
 export type Tone = "ok" | "warn" | "bad" | "hold";
-export interface Verdict { badge: string; guide: string; tone: Tone }
+export interface Verdict { badge: string; tone: Tone; word: string; guide: string }
 
-/** 한눈에 보는 판정. 뱃지 이름은 '탑승 확률'로 고정하고, 색·안내 문구만 확률(p_board) 기준으로 정한다.
- *  80% 이상 초록 / 50~79% 주황 / 50% 미만 빨강(문구는 80·60·40% 경계). 보류·판단 이른 단계는 회색.
- *  '빠듯함'은 확률이 높아도 백엔드가 수업 시간·거리 때문에 내리는 단계라 '탑승 가능'으로 낮추고 시간 빠듯함을 안내.
- *  확률이 낮은 이유는 대기 줄일 수도 있어 차내 혼잡을 말하지 않는다 — 혼잡도는 crowdLabel */
+/** 한눈에 보는 판정. 색과 문구는 백엔드 단계(level)를 따른다. 확률 숫자로 색을 정하면 '수업 직전이라 여유를 내지 않는 칸'처럼
+ *  서버가 내린 판단과 어긋난다. 확률은 근거로 함께 보여 준다. 혼잡도는 crowdLabel */
 export function verdict(i: PredictItem): Verdict {
-  if (i.level === "확률 보류" || i.p_board == null)
-    return { badge: "확률 보류", tone: "hold", guide: "확률은 잠시 보류했어요. 위의 도착 정보만 참고해 주세요." };
-  if (i.level === "판단하기 일러요")
-    return { badge: "판단하기 일러요", tone: "hold", guide: "버스가 가까워지면 다시 확인해 주세요." };
-  const p = i.p_board;
+  if (i.level === "확률 보류" || i.p_board == null) return { badge: "확률 보류", tone: "hold", word: "", guide: "" };
+  if (i.level === "판단하기 일러요") return { badge: "판단하기 일러요", tone: "hold", word: "아직 판단하기 일러요", guide: "" };
   const badge = "탑승 확률";
-  const hasNext = i.eta2_sec != null;
-  if (p >= 0.8)
-    return i.level === "빠듯함"
-      ? { badge, tone: "ok", guide: "탈 수 있지만 수업 시간엔 빠듯할 수 있어요." }
-      : { badge, tone: "ok", guide: "줄을 서면 안정적으로 탑승할 수 있어요." };
-  if (p >= 0.6)
-    return { badge, tone: "warn", guide: "앞줄에 서면 탈 수 있지만, 못 탈 수도 있어요." };
-  const unsure = `탑승이 불확실해요.${hasNext ? " 다음 버스 도착 시간도 확인해보세요." : ""}`;
-  if (p >= 0.5) return { badge, tone: "warn", guide: unsure };
-  if (p >= 0.4) return { badge, tone: "bad", guide: unsure };
-  return { badge, tone: "bad", guide: `이번 버스는 타기 힘들어요.${hasNext ? " 다음 버스를 권장해요." : ""}` };
+  if (i.level === "여유 있음") return { badge, tone: "ok", word: "여유 있어요", guide: "" };
+  if (i.level === "빠듯함") return { badge, tone: "warn", word: "빠듯해요", guide: i.p_board >= 0.8 ? "장담은 어려워요" : "못 탈 수도 있어요" };
+  return { badge, tone: "bad", word: "타기 어려워요", guide: "" };
+}
+
+export interface QueueInfo { ok: number | null; hard: number | null; p: number[] }
+
+/** 서버가 보낸 줄 길이 정보. 구버전 서버이거나 보류면 null */
+export function queueOf(i: PredictItem | null): QueueInfo | null {
+  if (!i?.p_by_n || i.level === "확률 보류") return null;
+  return { ok: i.n_ok ?? null, hard: i.n_hard ?? null, p: i.p_by_n };
+}
+
+/** 앞 인원 n 에 맞춘 값. 서버를 다시 부르지 않고 확률과 단계만 바꾼다 */
+export function withQueue(i: PredictItem, n: number): PredictItem {
+  const q = queueOf(i);
+  if (!q) return i;
+  const level: Level = q.ok !== null && n <= q.ok ? "여유 있음" : q.hard !== null && n <= q.hard ? "빠듯함" : "어려울 수 있음";
+  return { ...i, level, p_board: q.p[n] };
+}
+
+/** 인원을 고르기 전의 결론. 수치는 예측이라 '약'을 붙인다 */
+export function queueSummary(q: QueueInfo): { tone: Tone; headline: string; sub: string } {
+  const limit = q.hard !== null && q.hard < N_MAX ? `약 ${q.hard}명이 넘으면 타기 어려워요` : "";
+  if (q.ok !== null) return { tone: "ok", headline: `앞 약 ${q.ok}명까지는 여유 있어요`, sub: limit };
+  if (q.hard !== null) return { tone: "warn", headline: `앞 약 ${q.hard}명까지는 탈 수 있지만 빠듯해요`, sub: "" };
+  return { tone: "bad", headline: "이번 버스는 타기 어려워요", sub: "" };
+}
+
+/** 확률이 없는 이유를 사용자 상황으로 묶는다. 서버가 준 상태만 쓰고 화면이 추측하지 않는다.
+ *  일요일·공휴일은 아직 전용 코드가 없어 reason 문장으로 구분한다(isStale 과 같은 방식) */
+export function holdMessage(i: PredictItem, state: ArrivalState): { title: string; body: string } {
+  if (state === "stale") return { title: "버스 정보가 늦어지고 있어요", body: "새 정보가 들어오면 자동으로 보여 드릴게요. 급하면 정류장 안내판을 확인해 주세요." };
+  if (state === "checking") {
+    return i.arrival_status === "passed"
+      ? { title: "이번 버스가 막 지나간 것 같아요", body: "" }  // 위 칸에 새 도착 정보를 확인 중이라고 이미 나온다
+      : { title: "버스가 곧 오거나 막 지나갔어요", body: "" };
+  }
+  if (i.reason.includes("일요일")) return { title: "오늘은 탑승 예측을 쉬어요", body: "일요일·공휴일은 아직 검증 전이에요. 도착 시간은 그대로 볼 수 있어요." };
+  return { title: "이 버스는 탑승 예측이 어려워요", body: "도착 시간은 그대로 볼 수 있어요." };
 }
 
 /** 도착 시 탑승 인원 기준 혼잡도. 응답에 차종별 정원이 없어 모든 버스에 같은 구간을 쓴다 */

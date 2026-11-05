@@ -28,7 +28,7 @@ test.describe("지금 입력한 인원과 다른 확률을 보이지 않는다",
     await start(page);
     await chip(page, 20).click();
     const hero = page.getByTestId("hero");
-    await expect(page.getByTestId("verdict")).toHaveText("계산 중");
+    await expect(page.getByTestId("verdict")).toContainText("다시 계산");
     await expect(page.getByTestId("result")).toContainText("20명 기준으로 다시 계산하고 있어요");
     await expect(page.getByTestId("result")).not.toContainText(PERCENT);
     await expect(hero).toHaveAttribute("data-tone", "hold");
@@ -46,7 +46,7 @@ test.describe("지금 입력한 인원과 다른 확률을 보이지 않는다",
     await scenario(page, "down");
     await chip(page, 20).click();
     await page.clock.runFor(700);
-    await expect(page.getByTestId("verdict")).toHaveText("확률 보류");
+    await expect(page.getByTestId("verdict")).toContainText("확률을 못 받았어요");
     await expect(page.getByTestId("result")).toContainText("20명 기준 확률을 못 받았어요");
     await expect(page.getByTestId("result")).not.toContainText(PERCENT);
     await expect(page.getByTestId("hero")).toHaveAttribute("data-tone", "hold");
@@ -55,7 +55,7 @@ test.describe("지금 입력한 인원과 다른 확률을 보이지 않는다",
 
     await scenario(page, "");
     await page.getByTestId("result-retry").click();
-    await expect(page.getByTestId("verdict")).toHaveText("계산 중");
+    await expect(page.getByTestId("verdict")).toContainText("다시 계산");
     await page.clock.runFor(700);
     await expect(page.getByTestId("hero")).toHaveAttribute("data-level", "어려울 수 있음");
     await expect(page.getByTestId("verdict")).toContainText(PERCENT);
@@ -117,7 +117,7 @@ test.describe("지금 입력한 인원과 다른 확률을 보이지 않는다",
       const normal = await y();
       await scenario(page, "down");
       await chip(page, 20).click();
-      await expect(page.getByTestId("verdict")).toHaveText("계산 중");
+      await expect(page.getByTestId("verdict")).toContainText("다시 계산");
       expect(Math.abs(await y() - normal)).toBeLessThanOrEqual(1);
       await page.clock.runFor(700);
       await expect(page.getByTestId("result")).toContainText("확률을 못 받았어요");
@@ -197,7 +197,7 @@ test.describe("인터넷이 끊겼을 때", () => {
     await page.evaluate(() => window.dispatchEvent(new Event("offline")));
     await chip(page, 20).click();
     await page.clock.runFor(700);
-    await expect(page.getByTestId("verdict")).toHaveText("확률 보류");
+    await expect(page.getByTestId("verdict")).toContainText("확률을 못 받았어요");
     await expect(page.getByTestId("result")).toContainText("인터넷이 연결되면 다시 계산해요");
     await expect(page.getByTestId("result-retry")).toHaveCount(0);
     await scenario(page, "");

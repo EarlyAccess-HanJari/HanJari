@@ -7,6 +7,7 @@
 .sb02 { background: var(--navy); }
 .jr03 { background: var(--navy); }
 .name { font-size: 20px; font-weight: 700; letter-spacing: -0.03em; color: var(--ink); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.actions { flex: none; display: flex; align-items: center; }
 .refresh { width: 40px; height: 40px; flex: none; border-radius: 20px; border: 0; background: transparent; color: var(--muted); display: flex; align-items: center; justify-content: center; padding: 0; }
 .refresh:disabled { opacity: 1; }
 .refresh[disabled] svg { animation: spin .9s linear infinite; }

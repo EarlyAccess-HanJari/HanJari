@@ -33,6 +33,9 @@ export interface PredictItem {
   arrival_stale?: boolean;
   arrival_at?: string;   // 제공 시각 + ETA, 날짜·시간대 포함
   arrival_status?: "upcoming" | "checking" | "passed";
+  p_by_n?: number[] | null;  // 앞 인원 0~40명 각각의 탑승 확률. 있으면 인원을 바꿔도 서버를 다시 부르지 않는다
+  n_ok?: number | null;      // '여유 있음'이 유지되는 앞 인원 상한. 여유 구간이 없으면 null
+  n_hard?: number | null;    // 탈 수 있는(빠듯함까지) 앞 인원 상한. 없으면 null
 }
 
 /** GET /api/predict 응답. results 가 빈 배열이면 운행 시간 아님(새벽). */
