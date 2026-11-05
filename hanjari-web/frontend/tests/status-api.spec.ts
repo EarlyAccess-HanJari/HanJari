@@ -102,3 +102,17 @@ test("실제 응답에서 인원을 바꾼 요청이 실패하면 이전 확률�
   await expect(page.getByTestId("arrival")).toContainText("이번 버스");
   await expect(page.getByText("연결이 불안정해요")).toBeVisible();
 });
+
+// PR #20이 합쳐지면 오래된 결과에 fallback 필드가 더해진다. 대체 안내 카드를 만들기 전에도 화면은 그대로여야 한다
+test("응답에 fallback 필드가 더해져도 오류 없이 오래된 정보 화면을 유지한다", async ({ page }) => {
+  const results = fixture.results.map((i) => ({ ...i, r_now: null, load_pred: null, load_10: null, load_90: null, p_board: null,
+    level: "확률 보류", data_status: "source_stale", prediction_status: "collection_stale", arrival_stale: true,
+    reason: "버스 정보가 오래되어 갱신을 기다리고 있어요",
+    fallback: { mode: "typical", p_board: 0.838, level: "빠듯함", headway_min: 9.4, full_share: 0.068, trips: 74, basis: "sb02|32|wkd|17" } }));
+  await page.route("**/api/predict?*", (r) => r.fulfill({ json: { n_ahead: 3, results } }));
+  await page.goto("/");
+  await page.getByTestId("stop-sb02-32").click();
+  await expect(page.getByTestId("notice-stale")).toBeVisible();
+  await expect(page.getByTestId("result")).not.toContainText(/\d+%/);
+  await expect(page.getByTestId("notice-unknown")).toHaveCount(0);
+});
