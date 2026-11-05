@@ -147,6 +147,23 @@ class ArrivalFreshness(unittest.TestCase):
         S.exclude_departed(self.folder, dt.datetime(2026, 11, 2, 17, 41, 6))
         self.assertEqual(B.read_items(self.folder / "jr03_arr_174039.json")[0]["vehId1"], "100000069")
 
+    def test_stale_arrival_keeps_paired_position_and_skips_older_files(self):
+        self.write("arr", "170000", [self.first])
+        for stamp in ("165000", "170000", "174106"):
+            self.write("pos", stamp, [self.pos])
+        stamp, files = S.latest_snapshot(self.folder, "jr03", dt.datetime(2026, 11, 2, 17, 41, 10))
+        self.assertEqual(stamp, "170000")
+        self.assertEqual([f.name for f in files], ["jr03_arr_170000.json", "jr03_pos_174106.json", "jr03_pos_170000.json"])
+
+    def test_snapshot_files_sorts_across_days_and_skips_bad_names(self):
+        next_day = self.folder.parent / "20261103"
+        next_day.mkdir()
+        for path in (self.folder / "jr03_arr_235959.json", next_day / "jr03_arr_000001.json",
+                     next_day / "jr03_arr_250000.json", next_day / "jr03_arr_12345.json", next_day / "sb02_arr_000002.json"):
+            path.write_text("{}")
+        found = [(when.strftime("%m%d%H%M%S"), path.name) for when, path in S._snapshot_files([self.folder, next_day], "jr03_arr_*.json")]
+        self.assertEqual(found, [("1103000001", "jr03_arr_000001.json"), ("1102235959", "jr03_arr_235959.json")])
+
     def test_recorded_bus_switch_survives_missing_new_position_file(self):
         for route in B.STOPS:
             original = json.loads(next(S.SAMPLE.glob(f"{route}_arr_*.json")).read_text())
