@@ -233,7 +233,7 @@ export default function App() {
               {input}
               {loading && <div className={s.loadbar} aria-hidden="true" />}
             </section>
-            <OtherStops route={mine.route} stop={mine.stop} items={items} onPick={pick} now={now} fetchedAt={fetchedAt} prob={prob} />
+            <OtherStops route={mine.route} stop={mine.stop} items={items} onPick={pick} now={now} fetchedAt={fetchedAt} />
           </>
           <Timeline items={items.filter((i) => i.route === mine.route)} mine={mine} onPick={(i) => pick(i.route, i.stop)} now={now} fetchedAt={fetchedAt} prob={prob} />
         </Pager>

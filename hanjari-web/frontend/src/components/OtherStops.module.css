@@ -3,8 +3,5 @@
 .list { background: #fff; border: 1px solid var(--c-line-1); border-radius: 16px; box-shadow: var(--shadow); overflow: hidden; }
 .row { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; padding: 6px 12px 6px 14px; border: 0; border-top: 1px solid var(--c-line-1); background: transparent; text-align: left; }
 .row:first-child { border-top: 0; }
-.text { min-width: 0; display: flex; align-items: baseline; gap: 6px; }
 .name { min-width: 0; font-size: 14px; font-weight: 600; letter-spacing: -0.02em; color: var(--c-text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.eta { flex: none; font-size: 12px; color: var(--c-text-3); white-space: nowrap; }
-.dash { flex: none; font-size: 13px; font-weight: 700; color: var(--c-text-3); padding: 0 6px; }
-.row [data-level] { flex: none; padding: 2px 8px; font-size: 12px; }
+.eta { flex: none; font-size: 13px; font-weight: 500; color: var(--c-text-2); white-space: nowrap; }

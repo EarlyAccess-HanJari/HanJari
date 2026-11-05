@@ -32,8 +32,6 @@ test.describe("지금 입력한 인원과 다른 확률을 보이지 않는다",
     await expect(page.getByTestId("result")).toContainText("20명 기준으로 다시 계산하고 있어요");
     await expect(page.getByTestId("result")).not.toContainText(PERCENT);
     await expect(hero).toHaveAttribute("data-tone", "hold");
-    await expect(page.getByTestId("other-sb02-30")).toContainText("계산 중");
-    await expect(page.getByTestId("other-sb02-30")).not.toContainText(PERCENT);
     // 도착 시간과 차내 인원은 인원과 무관해서 그대로 보인다
     await expect(page.getByTestId("arrival")).toContainText(TIME);
     await expect(page.getByTestId("loads")).toContainText(/\d+명/);
@@ -41,7 +39,6 @@ test.describe("지금 입력한 인원과 다른 확률을 보이지 않는다",
     await page.clock.runFor(700);
     await expect(hero).toHaveAttribute("data-level", "어려울 수 있음");
     await expect(page.getByTestId("verdict")).toContainText(PERCENT);
-    await expect(page.getByTestId("other-sb02-30")).toContainText(/탑승 확률 \d+%|확률 보류|판단하기 일러요/);
   });
 
   test("인원을 바꾼 요청이 실패하면 확률을 못 받았다고 안내하고 다시 시도할 수 있다", async ({ page }) => {
@@ -53,7 +50,6 @@ test.describe("지금 입력한 인원과 다른 확률을 보이지 않는다",
     await expect(page.getByTestId("result")).toContainText("20명 기준 확률을 못 받았어요");
     await expect(page.getByTestId("result")).not.toContainText(PERCENT);
     await expect(page.getByTestId("hero")).toHaveAttribute("data-tone", "hold");
-    await expect(page.getByTestId("other-sb02-30")).not.toContainText(PERCENT);
     await expect(page.getByTestId("arrival")).toContainText(TIME);
     await expect(page.getByText("연결이 불안정해요")).toBeVisible();
 
@@ -86,18 +82,30 @@ test.describe("지금 입력한 인원과 다른 확률을 보이지 않는다",
     await expect(page.getByTestId("result-retry")).toHaveCount(0);
   });
 
-  test("입력이 잘못되면 다른 정류장 뱃지에도 이전 확률이 남지 않는다", async ({ page }) => {
+  test("같은 노선 다른 정류장에는 확률 없이 도착 시간만 보여 준다", async ({ page }) => {
     await page.goto("/");
     await page.getByTestId("stop-sb02-32").click();
-    await expect(page.getByTestId("other-sb02-30")).toContainText(PERCENT);
-    await page.getByTestId("n-input").fill("41");
-    await expect(page.getByTestId("other-sb02-30")).toContainText("확률 보류");
-    await expect(page.getByTestId("other-sb02-30")).not.toContainText(PERCENT);
+    await expect(page.getByTestId("verdict")).toContainText(PERCENT);
+    const other = page.getByTestId("other-sb02-30");
+    await expect(other).toContainText(/약 \d+분 후|곧 도착/);
+    await expect(other).not.toContainText(PERCENT);
+    await expect(other).not.toContainText("확률");
     await page.getByTestId("tab-1").click();
-    await expect(page.getByTestId("card-sb02-31")).not.toContainText(PERCENT);
-    await page.getByTestId("tab-0").click();
-    await page.getByTestId("n-input").fill("3");
-    await expect(page.getByTestId("other-sb02-30")).toContainText(PERCENT);
+    const card = page.getByTestId("card-sb02-31");
+    await expect(card).toContainText(/후 도착|곧 도착/);
+    await expect(card).not.toContainText(PERCENT);
+    await expect(card).not.toContainText("확률");
+    await expect(page.getByTestId("card-sb02-32")).toContainText(PERCENT);  // 내 정류장은 입력한 인원 기준으로 보인다
+  });
+
+  test("입력이 잘못되면 내 정류장 줄에도 이전 확률이 남지 않는다", async ({ page }) => {
+    await page.goto("/");
+    await page.getByTestId("stop-sb02-32").click();
+    await expect(page.getByTestId("verdict")).toContainText(PERCENT);
+    await page.getByTestId("n-input").fill("41");
+    await page.getByTestId("tab-1").click();
+    await expect(page.getByTestId("card-sb02-32")).toContainText("확률 보류");
+    await expect(page.getByTestId("card-sb02-32")).not.toContainText(PERCENT);
   });
 
   // 누르던 버튼이 손 밑에서 밀리지 않게

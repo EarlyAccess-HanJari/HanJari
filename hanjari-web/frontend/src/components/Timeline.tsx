@@ -12,7 +12,8 @@ const BusIcon = () => (
 
 /** 같은 노선 정류장을 노선 순서(정류장 번호 순 = 버스가 지나가는 순서)로 세로 타임라인에 그린다.
  *  - 정류장마다 보이는 버스는 '그 정류장에 가장 먼저 오는 버스'라서 내 정류장의 버스와 다른 차일 수 있다 → '다른 버스'로 밝힌다
- *  - 버스 아이콘은 내 정류장 버스(plate)의 실제 위치: 어느 정류장에 닿기 직전이면 그 줄, 그보다 앞이면 첫 줄 위쪽에 둔다 */
+ *  - 버스 아이콘은 내 정류장 버스(plate)의 실제 위치: 어느 정류장에 닿기 직전이면 그 줄, 그보다 앞이면 첫 줄 위쪽에 둔다
+ *  - 탑승 확률은 내 정류장 줄에만 보인다. 다른 정류장의 대기 인원은 모르기 때문이다(2026-11-04 팀 결정) */
 export default function Timeline({ items, mine, onPick, now, fetchedAt, prob }: { items: PredictItem[]; mine: PredictItem; onPick: (i: PredictItem) => void; now: number; fetchedAt: number; prob: ProbState }) {
   const ordered = [...items].sort((a, b) => Number(a.stop) - Number(b.stop));
   const at = ordered.findIndex((i) => i === mine);
@@ -51,7 +52,7 @@ export default function Timeline({ items, mine, onPick, now, fetchedAt, prob }: 
                     {other && <span className={s.other}> · 다른 버스</span>}
                   </span>
                 </span>
-                <LevelBadge item={i} state={arrivalState(i, now, fetchedAt)} prob={prob} />
+                {isMine && <LevelBadge item={i} state={arrivalState(i, now, fetchedAt)} prob={prob} />}
               </button>
             </li>,
           ];
