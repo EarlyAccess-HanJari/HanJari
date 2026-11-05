@@ -19,7 +19,7 @@
       python src/serve.py check        라이트 자체 점검 (호출 없음)
       python src/serve.py export-lite  라이트 모델 다시 학습 (수집 로그·원본 CSV 필요)
 """
-import datetime as dt, json, math, sys, tempfile
+import datetime as dt, json, math, os, sys, tempfile
 from numbers import Integral
 from pathlib import Path
 import build_dataset as B
@@ -191,20 +191,23 @@ class NoSnapshotError(RuntimeError):
 
 
 def _snapshot_files(sources, pattern):
-    """날짜 폴더가 바뀌어도 수집 시각으로 정렬한다. 잘못된 파일명은 선택하지 않는다."""
+    """날짜 폴더가 바뀌어도 수집 시각으로 정렬한다. 잘못된 파일명은 선택하지 않는다.
+    하루 파일이 수천 개라 요청마다 전부 시각으로 바꾸면 응답이 느려진다. 이름의 자릿수가 고정이라 글자로 정렬하고, 쓰는 파일만 바꾼다."""
     folders = sources if isinstance(sources, (list, tuple)) else [sources]
-    files = {}
-    for folder in folders:
-        for path in Path(folder).glob(pattern):
-            stamp = path.stem.rsplit("_", 1)[-1]
-            if len(path.parent.name) != 8 or len(stamp) != 6:
-                continue
-            try:
-                when = dt.datetime.strptime(path.parent.name + stamp, "%Y%m%d%H%M%S")
-            except ValueError:
-                continue
-            files[path] = when
-    return sorted(((when, path) for path, when in files.items()), reverse=True)
+    prefix, suffix = pattern.split("*")
+    names = []
+    for folder in map(Path, folders):
+        if len(folder.name) != 8 or not folder.is_dir():
+            continue
+        for name in os.listdir(folder):
+            stamp = name[:-len(suffix)].rsplit("_", 1)[-1]
+            if name.startswith(prefix) and name.endswith(suffix) and len(stamp) == 6:
+                names.append((folder.name + stamp, name, folder))
+    for key, name, folder in sorted(names, reverse=True):
+        try:
+            yield dt.datetime.strptime(key, "%Y%m%d%H%M%S"), folder / name
+        except ValueError:
+            continue
 
 
 def latest_snapshot(src, route=None, now=None):
@@ -227,6 +230,8 @@ def latest_snapshot(src, route=None, now=None):
         for at, pos in _snapshot_files(src, f"{route}_pos_*.json"):
             paired = at == collected
             if reference is not None and not paired and not -5 <= (reference - at).total_seconds() <= MAX_AGE + 5:
+                if at < collected and (reference - at).total_seconds() > MAX_AGE + 5:
+                    break  # 뒤는 더 오래된 파일뿐이라 같은 시각 위치도, 최근 위치도 없다
                 continue
             try:
                 B.read_items(pos)
