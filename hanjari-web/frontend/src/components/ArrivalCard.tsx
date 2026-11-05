@@ -1,6 +1,6 @@
 import type { PredictItem } from "../types";
 import { arrivalAt, etaText, mmss, pct, stopsAwayText, verdict } from "../utils/format";
-import type { ArrivalState } from "../utils/format";
+import type { ArrivalState, ProbState } from "../utils/format";
 import s from "./ArrivalCard.module.css";
 
 interface Props {
@@ -8,17 +8,19 @@ interface Props {
   state: ArrivalState;
   fetchedAt: number;  // 응답을 받은 시각(ms)
   now: number;
-  invalid: boolean;   // 입력이 잘못됐으면 이전 인원으로 계산한 판정을 보이지 않는다
+  prob: ProbState;    // 지금 입력한 인원의 확률이 아니면 이전 인원으로 계산한 판정을 보이지 않는다
 }
 
 const SOON_SEC = 60;  // 남은 시간이 이보다 적으면(1분 미만) '곧 도착'
 
-export default function ArrivalCard({ item, state, fetchedAt, now, invalid }: Props) {
+export default function ArrivalCard({ item, state, fetchedAt, now, prob }: Props) {
   // 차량/제공 시각이 바뀌면 새 ETA를 즉시 반영한다. 이전 차량의 예정 시각을 이어 쓰지 않는다.
   const left = Math.max(0, Math.ceil((arrivalAt(item, fetchedAt) - now) / 1000));
   const t = mmss(left);
   const v = verdict(item);
-  const showP = state === "upcoming" && item.level !== "확률 보류" && item.level !== "판단하기 일러요" && item.p_board != null;
+  const current = state === "upcoming" && prob === "current";
+  const showP = current && item.level !== "확률 보류" && item.level !== "판단하기 일러요" && item.p_board != null;
+  const badge = current ? v.badge : state === "upcoming" && prob === "calculating" ? "계산 중" : "확률 보류";
   const stale = state === "stale";
   return (
     <section className={s.arrival} aria-label="남은 시간" data-testid="arrival">
@@ -52,9 +54,9 @@ export default function ArrivalCard({ item, state, fetchedAt, now, invalid }: Pr
               )}
             </span>
           )}
-          {!invalid && (
+          {prob !== "invalid" && (
             <span className={s.verdict} data-testid="verdict">
-              {state === "upcoming" ? v.badge : "확률 보류"}{showP ? ` · ${pct(item.p_board!)}%` : ""}
+              {badge}{showP ? ` · ${pct(item.p_board!)}%` : ""}
             </span>
           )}
         </div>

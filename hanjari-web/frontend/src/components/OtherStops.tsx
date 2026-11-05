@@ -1,6 +1,7 @@
 import { ROUTES } from "../types";
 import type { PredictItem, RouteCode } from "../types";
 import { arrivalState, arrivalText } from "../utils/format";
+import type { ProbState } from "../utils/format";
 import LevelBadge from "./LevelBadge";
 import s from "./OtherStops.module.css";
 
@@ -11,10 +12,11 @@ interface Props {
   onPick: (route: RouteCode, stop: string) => void;
   now: number;
   fetchedAt: number;
+  prob?: ProbState;
 }
 
 /** 첫 화면 아래 같은 노선의 다른 정류장. 정보가 없어도(오류·불러오는 중) 줄은 그대로 두어 위쪽 카드 크기가 변하지 않게 한다 */
-export default function OtherStops({ route, stop, items = [], onPick, now, fetchedAt }: Props) {
+export default function OtherStops({ route, stop, items = [], onPick, now, fetchedAt, prob = "current" }: Props) {
   return (
     <section className={s.wrap} aria-label="같은 노선 다른 정류장">
       <h3 className={s.title}>같은 노선 다른 정류장</h3>
@@ -27,7 +29,7 @@ export default function OtherStops({ route, stop, items = [], onPick, now, fetch
                 <span className={s.name}>{x.name}</span>
                 <span className={s.eta}>{i ? arrivalText(i, now, fetchedAt) : "정보 없음"}</span>
               </span>
-              {i ? <LevelBadge item={i} held={arrivalState(i, now, fetchedAt) !== "upcoming"} /> : <span className={s.dash}>—</span>}
+              {i ? <LevelBadge item={i} state={arrivalState(i, now, fetchedAt)} prob={prob} /> : <span className={s.dash}>—</span>}
             </button>
           );
         })}

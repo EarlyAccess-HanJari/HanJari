@@ -4,6 +4,7 @@ import { fetchPredict } from "./api/predict";
 import { N_MAX, N_MIN, ROUTES } from "./types";
 import type { ApiResult, RouteCode } from "./types";
 import { arrivalAt, arrivalState, isOlderSnapshot, parseN, verdict } from "./utils/format";
+import type { ProbState } from "./utils/format";
 import Header from "./components/Header";
 import ArrivalCard from "./components/ArrivalCard";
 import AheadInput from "./components/AheadInput";
@@ -52,6 +53,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState(0);  // 0: 지금 탈 수 있을까? / 1: 앞·뒤 정류장
   const [degraded, setDegraded] = useState(false);  // 이미 받은 정보가 있는데 새로고침만 실패 — 화면은 그대로 두고 상태 줄로만 알림
+  const [failedN, setFailedN] = useState<number | null>(null);  // 마지막 요청이 실패한 인원
   const [online, setOnline] = useState(() => navigator.onLine);
   const reqId = useRef(0);
   const activeReq = useRef<number | null>(null);
@@ -86,8 +88,9 @@ export default function App() {
     setLoading(false);
     // 한 번 받은 뒤의 일시적 서버 오류는 화면을 갈아엎지 않고 마지막 정보를 유지 (카드가 사라졌다 나타나며 출렁이던 원인).
     // 시간이 지나면 arrivalState 가 오래된 정보로 바꾸므로 낡은 도착 시간이 남지 않는다.
-    if (!r.ok && r.error.kind !== "bad_input" && lastGood.current) { setDegraded(true); return; }
+    if (!r.ok && r.error.kind !== "bad_input" && lastGood.current) { setDegraded(true); setFailedN(nn); return; }
     setDegraded(false);
+    setFailedN(null);
     const previous = lastGood.current;
     const next: ApiResult = r.ok && previous?.ok
       ? { ...r, data: { ...r.data, results: r.data.results.map(item => {
@@ -119,6 +122,12 @@ export default function App() {
   }, [load, queryN]);
 
   const items = res?.ok ? res.data.results : [];
+  // 응답의 n_ahead 가 입력과 다르면 화면의 확률은 이전 인원의 것이다. 응답 전·실패 때 그 확률을 보이지 않는다
+  const resultN = res?.ok ? res.data.n_ahead : null;
+  const prob: ProbState = n === null ? "invalid"
+    : resultN === null || resultN === n ? "current"
+    : !online || (failedN === n && !loading) ? "unavailable"
+    : "calculating";
   const sourceStatus = res?.ok ? res.data.service?.routes[sel.route]?.status : undefined;
   const delayed = sourceStatus === "stale" || sourceStatus === "missing";
   const mine = items.find((i) => i.route === sel.route && i.stop === sel.stop) ?? null;
@@ -197,23 +206,23 @@ export default function App() {
   } else {
     // 위→아래: [히어로 카드: 도착 시간·판정 → 게이지·결론 → 차내 인원 → 대기 인원] → 다른 정류장 / 두 번째 화면: 앞·뒤 정류장
     const vd = verdict(mine);
-    const hold = n === null || state !== "upcoming";
+    const hold = prob !== "current" || state !== "upcoming";
     const tone = hold ? lv.hold : TONE_CLASS[vd.tone];
     body = (
       <>
         <Tabs index={view} onChange={setView} />
         <Pager index={view} onChange={setView}>
           <>
-            <section className={`${s.hero} ${tone}`} data-level={mine.level} data-tone={hold ? "hold" : vd.tone} data-testid="hero" aria-busy={loading}>
-              <ArrivalCard item={mine} state={state} fetchedAt={fetchedAt} now={now} invalid={n === null} />
-              <ResultCard item={mine} invalid={n === null} arrivalState={state} />
+            <section className={`${s.hero} ${tone}`} data-level={prob === "current" ? mine.level : "확률 보류"} data-tone={hold ? "hold" : vd.tone} data-testid="hero" aria-busy={loading}>
+              <ArrivalCard item={mine} state={state} fetchedAt={fetchedAt} now={now} prob={prob} />
+              <ResultCard item={mine} prob={prob} n={n} online={online} arrivalState={state} onRetry={retry} />
               <LoadCompare item={mine} stale={state !== "upcoming"} />
               {input}
               {loading && <div className={s.loadbar} aria-hidden="true" />}
             </section>
-            <OtherStops route={mine.route} stop={mine.stop} items={items} onPick={pick} now={now} fetchedAt={fetchedAt} />
+            <OtherStops route={mine.route} stop={mine.stop} items={items} onPick={pick} now={now} fetchedAt={fetchedAt} prob={prob} />
           </>
-          <Timeline items={items.filter((i) => i.route === mine.route)} mine={mine} onPick={(i) => pick(i.route, i.stop)} now={now} fetchedAt={fetchedAt} />
+          <Timeline items={items.filter((i) => i.route === mine.route)} mine={mine} onPick={(i) => pick(i.route, i.stop)} now={now} fetchedAt={fetchedAt} prob={prob} />
         </Pager>
       </>
     );
