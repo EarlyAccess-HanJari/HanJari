@@ -11,7 +11,7 @@ import t from "./Timeline.module.css";
 import s from "./Offline.module.css";
 
 /** 첫 불러오기: 실제 카드와 같은 틀(시간 · 결론 · 대기 인원 · 차내 인원)에 반짝이는 자리표시 */
-export function HeroSkeleton() {
+export function HeroSkeleton({ slow = false }: { slow?: boolean }) {
   return (
     <section className={`${app.hero} ${lv.hold}`} role="status" aria-label="버스 정보를 불러오는 중" data-testid="hero-skeleton">
       <div className={s.block}>
@@ -21,6 +21,7 @@ export function HeroSkeleton() {
       <div className={s.block}>
         <div className={app.sk} style={{ width: "100%", height: 8, borderRadius: 999 }} />
         <div className={app.sk} style={{ width: "74%", height: 16, marginTop: 14 }} />
+        {slow && <p className={s.slowNote} data-testid="slow-note">평소보다 오래 걸리고 있어요. 조금만 기다려 주세요.</p>}
       </div>
       <div className={app.sk} style={{ width: "100%", height: 53, marginTop: "auto" }} />
       <div className={app.sk} style={{ width: "100%", borderRadius: 16,

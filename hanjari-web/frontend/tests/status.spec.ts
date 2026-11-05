@@ -118,3 +118,57 @@ test.describe("지금 입력한 인원과 다른 확률을 보이지 않는다",
     });
   }
 });
+
+test.describe("응답이 오래 걸릴 때", () => {
+  test("3초가 넘으면 기다리는 중임을 알리고 도착 시간과 입력은 계속 쓸 수 있다", async ({ page }) => {
+    await start(page);
+    await scenario(page, "slow");
+    await chip(page, 20).click();
+    await page.clock.runFor(1_000);
+    await expect(page.getByTestId("result")).toContainText("20명 기준으로 다시 계산");
+    await expect(page.getByTestId("result")).not.toContainText("오래 걸리고");
+    await page.clock.runFor(3_600);
+    await expect(page.getByTestId("result")).toContainText("오래 걸리고");
+    await expect(page.getByText("응답이 늦어지고 있어요")).toBeVisible();
+    await expect(page.getByTestId("result")).not.toContainText(PERCENT);
+    await expect(page.getByTestId("arrival")).toContainText(TIME);
+    await expect(page.getByTestId("n-input")).toBeEditable();
+  });
+
+  test("끝내 응답이 없으면 확률을 못 받았다고 바꿔 안내한다", async ({ page }) => {
+    await start(page);
+    await scenario(page, "slow");
+    await chip(page, 20).click();
+    await page.clock.runFor(9_500);
+    await expect(page.getByTestId("result")).toContainText("20명 기준 확률을 못 받았어요");
+    await expect(page.getByTestId("result")).not.toContainText("오래 걸리고");
+  });
+
+  test("첫 불러오기가 길면 안내하고, 끝내 안 오면 사용자 탓을 하지 않는다", async ({ page }) => {
+    await page.clock.install({ time: new Date("2026-09-30T08:00:00+09:00") });
+    await page.goto("/?scenario=slow");
+    await page.getByTestId("stop-sb02-32").click();
+    await expect(page.getByTestId("hero-skeleton")).toBeVisible();
+    await expect(page.getByTestId("slow-note")).toHaveCount(0);
+    await page.clock.runFor(4_500);
+    await expect(page.getByTestId("slow-note")).toBeVisible();
+    await page.clock.runFor(6_000);
+    const notice = page.getByTestId("notice-timeout");
+    await expect(notice).toContainText("응답이 늦어지고 있어요");
+    await expect(notice).not.toContainText("네트워크");
+  });
+
+  for (const [width, height] of [[320, 568], [360, 640], [412, 915]] as [number, number][]) {
+    test(`${width}x${height}: 오래 걸린다는 안내가 나와도 대기 인원 버튼 위치가 같다`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
+      await start(page);
+      const y = async () => (await page.getByTestId("n-minus").boundingBox())!.y;
+      const normal = await y();
+      await scenario(page, "slow");
+      await chip(page, 20).click();
+      await page.clock.runFor(4_600);
+      await expect(page.getByTestId("result")).toContainText("오래 걸리고");
+      expect(Math.abs(await y() - normal)).toBeLessThanOrEqual(1);
+    });
+  }
+});

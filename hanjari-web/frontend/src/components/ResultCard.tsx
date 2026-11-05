@@ -7,13 +7,14 @@ interface Props {
   item: PredictItem;
   prob: ProbState;
   n: number | null;  // 지금 입력한 인원
+  slow: boolean;     // 응답이 평소보다 오래 걸리는 중
   online: boolean;
   arrivalState: ArrivalState;
   onRetry: () => void;
 }
 
 /** 히어로 카드 안의 게이지 + 한 줄 가이드. 색은 바깥 히어로 카드(--lv-*)가 준다 */
-export default function ResultCard({ item, prob, n, online, arrivalState, onRetry }: Props) {
+export default function ResultCard({ item, prob, n, slow, online, arrivalState, onRetry }: Props) {
   if (prob === "invalid") {
     return (
       <div className={s.card} aria-live="polite" data-testid="result">
@@ -60,6 +61,7 @@ export default function ResultCard({ item, prob, n, online, arrivalState, onRetr
       )}
       <p className={s.guide}>{calculating ? `${n}명 기준으로 다시 계산하고 있어요.` : verdict(item).guide}</p>
       {!showP && !calculating && <p className={s.why}>{whyText(item)}</p>}
+      {calculating && slow && <p className={s.why}>평소보다 오래 걸리고 있어요. 도착 시간은 그대로 볼 수 있어요.</p>}
     </div>
   );
 }
