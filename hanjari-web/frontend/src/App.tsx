@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { fetchPredict } from "./api/predict";
 import { N_MAX, N_MIN, ROUTES } from "./types";
-import type { ApiResult, RouteCode } from "./types";
+import type { ApiError, ApiResult, RouteCode } from "./types";
 import { arrivalAt, arrivalState, isOlderSnapshot, parseN, verdict } from "./utils/format";
 import type { ProbState } from "./utils/format";
 import Header from "./components/Header";
@@ -29,6 +29,14 @@ const AUTO_REFRESH_MS = 30_000;
 const NEAR_REFRESH_MS = 5_000;
 const ERROR_RETRY_MS = 60_000;
 const SLOW_MS = 3_000;  // 평소 응답은 1초 안팎, 요청이 몰려도 2.6초(운영 기록). 이보다 길면 기다리는 중임을 알린다
+
+// 첫 조회 실패 때 상태 줄. 본문 안내와 같은 말을 한다
+const ERROR_STATUS: Record<ApiError["kind"], { text: string; tone: "warn" | "bad" }> = {
+  server_down: { text: "연결 실패", tone: "bad" },
+  timeout: { text: "응답 지연", tone: "warn" },
+  unknown: { text: "버스 정보 확인 실패", tone: "bad" },
+  bad_input: { text: "입력 확인 필요", tone: "warn" },
+};
 
 function loadSel(): Sel | null {
   try {
@@ -164,20 +172,20 @@ export default function App() {
   };
 
   const status =
-    !online ? { text: "인터넷 연결 끊김", tone: "bad" as const }
+    !online ? { text: mine ? "인터넷 연결 끊김 · 마지막으로 받은 정보예요" : "인터넷 연결 끊김", tone: "bad" as const }
     : slow ? { text: "응답이 늦어지고 있어요…", tone: "warn" as const }
     : loading ? { text: "새로 불러오는 중…", tone: "normal" as const }
     : degraded ? { text: "연결이 불안정해요 · 마지막으로 받은 정보예요", tone: "warn" as const }
-    : res && !res.ok ? { text: "연결 실패", tone: "bad" as const }
+    : res && !res.ok ? ERROR_STATUS[res.error.kind]
     : delayed ? { text: "버스 정보 갱신 지연", tone: "warn" as const }
-    : res && items.length === 0 ? { text: sourceStatus === "fresh" ? "도착 정보 확인 중" : "운행 시간 아님", tone: "normal" as const }
+    : res && !mine ? { text: items.length === 0 && sourceStatus !== "fresh" ? "운행 시간 아님" : "도착 정보 없음", tone: "normal" as const }
     : mine ? { text: `버스 정보 ${updated} 기준`, tone: state !== "upcoming" ? "warn" as const : "normal" as const }
     : { text: "", tone: "normal" as const };
 
   const input = <AheadInput raw={raw} n={n} error={inputError} onChange={onInput} />;
 
   let body: ReactNode;
-  if (!online) {
+  if (!online && !mine) {  // 받아 둔 정보가 있으면 지우지 않는다. 낡으면 arrivalState 가 오래된 정보로 바꾼다
     body = <Notice kind="offline" />;
   } else if (!res) {
     body = (
@@ -195,8 +203,7 @@ export default function App() {
           <Tabs index={view} onChange={setView} />
           <Pager index={view} onChange={setView}>
             <>
-              <HeroError kind={res.error.kind} detail={res.error.kind === "unknown" ? res.error.message : undefined}
-                onRetry={retry} retrying={loading} input={input} />
+              <HeroError kind={res.error.kind} onRetry={retry} retrying={loading} input={input} />
               <OtherStops route={sel.route} stop={sel.stop} onPick={pick} now={now} fetchedAt={fetchedAt} />
             </>
             <TimelinePlaceholder route={sel.route} stop={sel.stop} onPick={pick} />
@@ -235,7 +242,7 @@ export default function App() {
   }
 
   // 탭이 있는 화면(정상·오류·첫 불러오기)은 페이지 높이에 고정, 나머지 안내는 일반 흐름
-  const paged = online && (!res || (res.ok ? mine !== null && items.length > 0 : res.error.kind !== "bad_input"));
+  const paged = (online || mine !== null) && (!res || (res.ok ? mine !== null && items.length > 0 : res.error.kind !== "bad_input"));
 
   return (
     <div className={s.app}>

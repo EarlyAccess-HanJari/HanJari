@@ -73,7 +73,8 @@ async function fetchReal(n: number): Promise<ApiResult> {
       return { ok: false, error: { kind: "server_down", message: "서버가 잠시 응답하지 않아요. 조금 뒤 다시 시도해 주세요." } };
     }
     if (!res.ok) {
-      return { ok: false, error: { kind: "unknown", message: `서버 오류 (${res.status})` } };
+      console.warn(`[predict] HTTP ${res.status}`);
+      return { ok: false, error: { kind: "unknown", message: "버스 정보를 확인할 수 없어요. 잠시 뒤 다시 시도해 주세요." } };
     }
 
     const data = (await res.json()) as unknown;

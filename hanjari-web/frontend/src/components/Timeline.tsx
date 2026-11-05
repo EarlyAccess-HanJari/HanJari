@@ -21,6 +21,7 @@ export default function Timeline({ items, mine, onPick, now, fetchedAt, prob }: 
   const sameBus = ordered.map((i, idx) => ({ i, idx })).filter((x) => x.i.plate === mine.plate);
   const lead = sameBus.reduce((a, b) => (b.i.stops_away < a.i.stops_away ? b : a), sameBus[0]);
   const busAtRow = lead.i.stops_away === 0;   // 0 이면 그 정류장 도착 직전 → 그 줄에 아이콘, 아니면 그 줄 위쪽 공간에 아이콘
+  const located = arrivalState(mine, now, fetchedAt) === "upcoming";  // 정보가 낡았거나 도착 확인 중이면 버스 위치를 모른다
 
   return (
     <section className={s.wrap} aria-label="같은 노선 앞·뒤 정류장" data-testid="timeline">
@@ -30,9 +31,9 @@ export default function Timeline({ items, mine, onPick, now, fetchedAt, prob }: 
           const eta = arrivalText(i, now, fetchedAt);
           const tag = isMine ? "내 정류장" : idx < at ? "직전" : "다음";
           const other = !isMine && i.plate !== mine.plate;
-          const hasBus = busAtRow && idx === lead.idx;
+          const hasBus = located && busAtRow && idx === lead.idx;
           return [
-            !busAtRow && idx === lead.idx && (
+            located && !busAtRow && idx === lead.idx && (
               <li key={`bus-${i.stop}`} className={`${s.row} ${s.gap} ${s.bus}`} data-testid="bus-marker">
                 <span className={s.marker} aria-hidden="true"><BusIcon /></span>
                 <span className={s.gapText}>버스 접근 중 · {mine.stops_away}정류장 전</span>

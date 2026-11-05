@@ -4,6 +4,7 @@ import type { RouteCode } from "../types";
 import { TEXT } from "./Notice";
 import type { NoticeKind } from "./Notice";
 import { LoadPlaceholder } from "./LoadCompare";
+import StatusIcon from "./StatusIcon";
 import lv from "./levels.module.css";
 import app from "../App.module.css";
 import a from "./ArrivalCard.module.css";
@@ -30,15 +31,9 @@ export function HeroSkeleton({ slow = false }: { slow?: boolean }) {
   );
 }
 
-const OffIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M3 3l18 18" /><path d="M8.5 16.5a5 5 0 0 1 7 0" /><path d="M5 12.5a10 10 0 0 1 4-2.3" /><path d="M14.5 10.3a10 10 0 0 1 4.5 2.2" /><path d="M12 20h.01" />
-  </svg>
-);
-
 /** 오류: 화면 전체를 갈아엎지 않고 카드 안에 안내만 — 대기 인원 입력은 그대로 쓸 수 있다 */
-export function HeroError({ kind, detail, onRetry, retrying, input }:
-  { kind: NoticeKind; detail?: string; onRetry: () => void; retrying: boolean; input: ReactNode }) {
+export function HeroError({ kind, onRetry, retrying, input }:
+  { kind: NoticeKind; onRetry: () => void; retrying: boolean; input: ReactNode }) {
   const m = TEXT[kind];
   return (
     <section className={`${app.hero} ${lv.hold}`} data-tone="hold" data-testid="hero-error" aria-busy={retrying}>
@@ -48,13 +43,12 @@ export function HeroError({ kind, detail, onRetry, retrying, input }:
       </div>
       <div className={s.box} role="status" data-testid={`notice-${kind}`}>
         <div className={s.boxTop}>
-          <span className={s.title}><OffIcon />{m.title}</span>
+          <span className={s.title}><StatusIcon kind={kind} size={20} />{m.title}</span>
           <button type="button" className={s.retry} onClick={onRetry} disabled={retrying}>
             {retrying ? "연결 중…" : "다시 시도"}
           </button>
         </div>
         {m.body && <p className={s.body}>{m.body}</p>}
-        {detail && <p className={s.detail}>{detail}</p>}
       </div>
       <LoadPlaceholder />
       {input}
