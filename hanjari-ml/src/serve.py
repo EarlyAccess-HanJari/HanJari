@@ -33,8 +33,9 @@ SAMPLE = B.ROOT / "data/sample/20260930"  # 실제 스냅샷 1장(도착·위치
 HISTORY = ["since_prev", "hw_ratio", "q_bias3", "q_prev", "q_today", "q_eb", "q_live2", "q_today2", "q_rate", "gap_sum"]
 FULL = sum(GROUPS.values(), [])
 LITE = [f for f in FULL if f not in HISTORY]
-# 라이트 학습에서 피처를 만든 뒤엔 안 쓰는 열(중간값·기록용 글자). trip·time 은 날짜가 적을 때 운행 단위 분할에 쓰여 남긴다.
-LITE_UNUSED = ["q_live", "q_cover", "pos_sect", "source_updated", "source_schema", "data_status", "arrive_time", "term", "exam"]
+# 라이트 학습에서 피처를 만든 뒤엔 안 쓰는 열(중간값·기록용 글자). trip·time 은 날짜가 적을 때 운행 단위 분할에,
+# arrive_time 은 장애 대체 안내의 '평소 이 시간' 표(실제 도착 시각·간격)에 쓰여 남긴다.
+LITE_UNUSED = ["q_live", "q_cover", "pos_sect", "source_updated", "source_schema", "data_status", "term", "exam"]
 
 
 def lite_rule(d):
@@ -44,9 +45,15 @@ KST = dt.timezone(dt.timedelta(hours=9))
 # ponytail: 기능흐름도는 60초지만 수집 간격이 한산한 시간 150초라 180초. 백엔드가 API 를 직접 부르게 되면 60초로.
 MAX_AGE = 180
 HARD = 0.3
+# 11-05: '여유'라고 했는데 못 탄 버스가 창신역4번출구·녹십자약국에 몰렸다(10/26~11/04 앞 3명 29대 중 24대, 조회 뒤 +34명 몰림).
+#   두 곳은 P ≥ 0.95 일 때만 '여유'. 두 기간 시험: '여유' 표시 −2%p, 못 탄 버스 14→8대·27→19대. 현장 관측(11/9~13) 뒤 다시 본다.
+STOP_MIN_TH = {("jr03", "23"): 0.95, ("sb02", "32"): 0.95}
 # 11-04: 동대문역 앞 구간에서 차가 4~5분 서 있는 동안 API 남은 시간이 '5초'에 멈춰 화면이 내내 '갱신 중'이었다.
 # 도착 정보보다 새 위치(60초 안)가 '아직 정류장 전·정차 중'이면 '곧 도착'(지금+30초)으로 두고 확률을 낸다.
 APPROACH_POS_SEC, ARRIVING_SEC = 60, 30
+# 11-05: 수집이 끊겨도 10분까지는 마지막 정보로 추정한다(예측 후 8분까지 '여유'인데 못 탐 0.6% 이하, 12분+ 는 2.6%).
+# 그 뒤와 첫 버스가 이미 도착했을 시각이 지나면 '평소 이 시간' 표로 안내한다. 기존 필드(보류)는 그대로 두고 fallback 에만 담는다.
+LAST_KNOWN_SEC = 600
 NAMES = {("sb02", "30"): "한성대입구역5번출구", ("sb02", "31"): "한성대입구역2번출구", ("sb02", "32"): "녹십자약국",
          ("jr03", "19"): "동대문역.흥인지문", ("jr03", "20"): "동묘앞역", ("jr03", "23"): "창신역4번출구"}
 LEVELS = ["확률 보류", "판단하기 일러요", "여유 있음", "어려울 수 있음", "빠듯함"]
@@ -110,6 +117,7 @@ def export(lite=False, until=None, out_dir=None):
     meta = dict(
         feats=feats, f0=T.F0, qs=T.QS.tolist(), cats=d.attrs["cats"],
         capacity_policy=T.capacity_policy(), calibration_rows=calibration_rows,
+        typical=T.typical_table(d) if lite else {},
         res0={str(k): v.tolist() for k, v in m["res0"].items()}, gain_q=m["gain_q"],
         thresholds=[[p, s, None if t in (None, "부족") else float(t), t == "부족"] for (p, s), (t, _, _) in th.items()],
         hist_all={r: [[j, h, v] for (j, h), v in tab.items()] for r, tab in B.HIST_ALL.items()},
@@ -146,7 +154,7 @@ def load(lite, src=None):
     return m, meta
 
 
-def level(p, q10, q90, k, peak, weekday_ok, th, age):
+def level(p, q10, q90, k, peak, weekday_ok, th, age, floor=0.0):
     if age > MAX_AGE:
         return "확률 보류", f"정보가 {age:.0f}초 전 것"
     if not weekday_ok:
@@ -155,6 +163,8 @@ def level(p, q10, q90, k, peak, weekday_ok, th, age):
     t, short = th[cell]
     if short:
         return "확률 보류", "이 시간대·거리는 검증 데이터 부족"
+    if t is not None:
+        t = max(t, floor)  # 몰림이 잦은 정류장은 더 높은 기준(STOP_MIN_TH)
     if t is not None and p >= t:
         return "여유 있음", f"P {p:.2f} ≥ 기준 {t:.2f}"
     if p <= HARD:
@@ -445,8 +455,27 @@ def next_bus_sec(eta2):
     return int(sec) if math.isfinite(sec) and sec > 0 else None
 
 
+def typical_estimate(route, stop, now, n_ahead, meta):
+    """'평소 이 시간' 대체 안내 — 같은 노선·정류장·요일유형·30분 칸의 과거 도착에서 앞 N명이어도 탈 수 있었던 비율.
+    버스마다 구별하지 못하므로 '여유' 기준을 더 높게(T.TYPICAL_TH) 잡는다. 일요일·공휴일은 보류 유지(11-04 결정)."""
+    import train as T
+    tab, day = meta.get("typical") or {}, C.day_type(now.date())
+    if not tab or day not in ("wkd", "sat"):
+        return None
+    sec = now.hour * 3600 + now.minute * 60 + now.second
+    for key in (f"{route}|{stop}|{day}|{sec // 1800}", f"{route}|{stop}|{day}|h{sec // 3600}", f"{route}|{stop}|{day}"):
+        cell = tab.get(key)
+        if cell:
+            p = float(cell["p"][n_ahead])
+            lv = "여유 있음" if p >= T.TYPICAL_TH else "어려울 수 있음" if p <= HARD else "빠듯함"
+            return dict(mode="typical", p_board=round(p, 3), level=lv, headway_min=cell["gap"],
+                        full_share=round(1 - float(cell["p"][0]), 3), trips=cell["n"], basis=key)
+    return None
+
+
 def results(rows, m, meta, n_ahead, now, max_age, lite, approaching=()):
     out, eligible, indices = [], [], []
+    last_known, lk_indices = [], []  # 수집이 끊긴 지 LAST_KNOWN_SEC 안의 행 — 보류는 그대로, fallback 에 추정만
     for row in rows:
         r = dict(row)
         t_snap = dt.datetime.strptime(str(r["date"]) + r["time"], "%Y%m%d%H:%M:%S")
@@ -483,21 +512,49 @@ def results(rows, m, meta, n_ahead, now, max_age, lite, approaching=()):
                 source_age = (source_now - made).total_seconds() if made is not None and made.tzinfo is None else age
                 seconds = max(age, source_age, 0)
                 result["reason"] = f"정보가 {seconds:.0f}초 전 것이어서 갱신을 기다리고 있어요"
+                expected = dt.datetime.fromisoformat(result["arrival_at"]).replace(tzinfo=None)
+                if (r.get("data_status") == "ok" and seconds <= LAST_KNOWN_SEC and expected > source_now
+                        and not probability_issue(r["route"], r["bus_type"], r["r_now"], meta, r["plate"], r.get("vehicle_id", ""))):
+                    lk_indices.append(len(out))
+                    last_known.append((r, seconds))
+                else:  # 오래 끊겼거나 첫 버스가 이미 도착했을 시각 → 평소 이 시간
+                    result["fallback"] = typical_estimate(result["route"], result["stop"], source_now, n_ahead, meta)
         else:
             indices.append(len(out))
             eligible.append(r)
         out.append(result)
-    if not eligible:
+    if not eligible and not last_known:
         return out  # 결측을 0으로 채우거나 미검증 입력에 모델을 실행하지 않는다.
     import numpy as np
     import pandas as pd
     import train as T
-    d = T.features(pd.DataFrame(eligible).assign(arrive_time=""), cats=meta["cats"])
-    if lite:
-        d = d.assign(rule=lite_rule(d))
-    point, Pm, Q = T.predict(m, d, quantiles=True)
     qs = np.array(meta["qs"])
     th = {(p, s): (t, short) for p, s, t, short in meta["thresholds"]}
+
+    def run(rows_):
+        d = T.features(pd.DataFrame(rows_).assign(arrive_time=""), cats=meta["cats"])
+        if lite:
+            d = d.assign(rule=lite_rule(d))
+        return (d, *T.predict(m, d, quantiles=True))
+
+    if last_known:
+        d, point, Pm, Q = run([r for r, _ in last_known])
+        for i, r in enumerate(d.itertuples()):
+            result = out[lk_indices[i]]
+            q10, q90 = np.interp([0.1, 0.9], qs, Q[i])
+            p = float(Pm[i, n_ahead])
+            lv = level(p, q10, q90, r.stops_away, r.is_peak == 1,
+                       not r.holiday and pd.notna(r.weekday) and r.weekday != "일", th, 0,
+                       floor=STOP_MIN_TH.get((r.route, str(r.stop)), 0.0))[0] \
+                if np.isfinite([point[i], q10, q90, p]).all() and 0 <= p <= 1 else "확률 보류"
+            seconds = last_known[i][1]
+            result["fallback"] = (dict(mode="last_known", age_sec=round(seconds), r_now=DQ.integer(last_known[i][0]["r_now"]),
+                                       arrival_at=result["arrival_at"], p_board=round(p, 3), level=lv,
+                                       load_pred=round(float(point[i]), 1))
+                                  if lv != "확률 보류" else typical_estimate(result["route"], result["stop"], now, n_ahead, meta))
+    if not eligible:
+        return out
+    d, point, Pm, Q = run(eligible)
     for i, r in enumerate(d.itertuples()):
         result = out[indices[i]]
         q10, q90 = np.interp([0.1, 0.9], qs, Q[i])
@@ -506,7 +563,8 @@ def results(rows, m, meta, n_ahead, now, max_age, lite, approaching=()):
             hold_result(result, "prediction_invalid")
             continue
         lv, why = level(p, q10, q90, r.stops_away, r.is_peak == 1,
-                        not r.holiday and pd.notna(r.weekday) and r.weekday != "일", th, 0)
+                        not r.holiday and pd.notna(r.weekday) and r.weekday != "일", th, 0,
+                        floor=STOP_MIN_TH.get((r.route, str(r.stop)), 0.0))
         if lv == "확률 보류":
             hold_result(result, "calibration_hold", why)
         else:
