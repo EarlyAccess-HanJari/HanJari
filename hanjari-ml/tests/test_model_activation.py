@@ -89,13 +89,24 @@ class ModelActivation(unittest.TestCase):
             return D.run('20261105')
 
     def test_run_failure_records_false_and_preservation_warning(self):
-        with patch.object(D.shutil,'copytree',side_effect=OSError('copy failed')):
-            _,warn=self.run_fake()
-        rows=list(csv.DictReader((self.reports/'models.csv').open()))
-        self.assertEqual(rows[-1]['promoted'],'False')
-        self.assertTrue(any('기존 모델 유지' in w for w in warn))
-        self.assertEqual(self.contents(self.live),self.old)
-        self.assertFalse((self.reports/'restart_required').exists())
+        original_copy,original_rename=shutil.copytree,Path.rename
+        def corrupt(src,dst):
+            original_copy(src,dst);(dst/'point.json').write_text('corrupt')
+        def fail_rename(path,target):
+            if path.name=='.lite-staging':raise OSError('rename failed')
+            return original_rename(path,target)
+        failures=[patch.object(D.shutil,'copytree',side_effect=OSError('copy failed')),
+                  patch.object(D.shutil,'copytree',side_effect=corrupt),patch.object(Path,'rename',fail_rename)]
+        for label,failure in zip(('copy','hash','second rename'),failures):
+            with self.subTest(failure=label),failure:
+                self.send.reset_mock()
+                _,warn=self.run_fake()
+            with (self.reports/'models.csv').open() as stream:rows=list(csv.DictReader(stream))
+            self.assertEqual(rows[-1]['promoted'],'False')
+            self.assertTrue(any('기존 모델 유지' in w for w in warn))
+            self.assertTrue(any('기존 모델 유지' in c.args[0] and c.args[1]=='WARN' for c in self.send.call_args_list))
+            self.assertEqual(self.contents(self.live),self.old)
+            self.assertFalse((self.reports/'restart_required').exists())
 
     def test_cleanup_failure_after_promotion_still_succeeds(self):
         def fail(day):raise OSError('cleanup failed')
@@ -132,6 +143,13 @@ class ModelActivation(unittest.TestCase):
         train.assert_not_called();self.assertTrue(any('디스크' in w for w in warn))
         self.assertEqual(self.contents(self.live),self.old)
 
+    def test_identical_model_does_not_request_restart(self):
+        self.make(self.candidate,'20261104')
+        self.meta=json.loads((self.candidate/'meta.json').read_text())
+        self.run_fake()
+        self.assertFalse((self.reports/'restart_required').exists())
+        self.assertEqual(self.contents(self.live),self.old)
+
     def test_activation_requires_twice_candidate_size(self):
         with patch.object(D.shutil,'disk_usage',return_value=SimpleNamespace(free=1)):
             with self.assertRaises(D.ActivationError):D.activate_model(self.candidate,'20261105')
@@ -154,6 +172,15 @@ class ModelActivation(unittest.TestCase):
     def test_rollback_without_candidate_changes_nothing(self):
         with self.assertRaises(SystemExit):D.rollback()
         self.assertEqual(self.contents(self.live),self.old)
+
+    def test_current_version_uses_publication_not_last_training_day(self):
+        self.make(self.versions/'20261103','20261103')
+        self.make(self.versions/'20261104','20261104')
+        (self.reports/'models.csv').write_text('version,created,promoted\n20261103,20261103,True\n20261104,20261104,True\n')
+        meta=json.loads((self.live/'meta.json').read_text());meta['trained_on']=['20261102']
+        (self.live/'meta.json').write_text(json.dumps(meta))
+        D.rollback()
+        self.assertEqual(json.loads((self.live/'meta.json').read_text())['created'],'20261103')
 
     def test_rollback_restart_failure_warns_without_reverting_model(self):
         self.history([('20261105',True)])

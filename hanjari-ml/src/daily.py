@@ -5,14 +5,14 @@
                  (처음 보는 날 성적 = 모니터링. 정답은 버스 도착 때 재차라 자동으로 생김)
   ③ 재학습      어제까지 전체 데이터로 후보 모델 → models/versions/YYYYMMDD/ (일요일·공휴일은 건너뜀 — 수업 있는 날만 학습, 토요일 포함)
   ④ 합격 판정    후보의 날짜 분할 성적이 지금 모델보다 10% 넘게 나쁘지 않음 · '여유' 후 API 기준 계산 탑승 ≥ 97% · 자체 점검 통과
-  ⑤ 배포        합격이면 models/lite 교체(이전 모델은 versions/ 에 남음 → 되돌리기 = 폴더 복사)
+  ⑤ 배포        합격이면 검증한 임시 폴더로 models/lite 교체, 실패 시 이전 폴더 복구
   ⑥ 정리        원본 로그는 최근 KEEP_RAW 일만 폴더로, 그 전은 tar.gz 로 압축(223MB → 15MB/일, 개수 확인 후 폴더 삭제)
-                모델 버전은 최근 KEEP_VERSIONS 개만. 남은 디스크 < MIN_FREE_GB 면 경고
+                최근 KEEP_VERSIONS 개와 승인된 최근 2개·현재 버전 보존. 디스크 부족 시 재학습 생략
   기록: reports/models.csv (버전별 성적·합격 여부), reports/daily/YYYYMMDD.md (사람이 읽는 요약)
 
 실행: python src/daily.py                    어제 마감
       python src/daily.py 20260929           그 날 마감
-      python src/daily.py rollback [버전]     서비스 모델을 이전 버전(기본: 바로 전 버전)으로 되돌림
+      python src/daily.py rollback [버전] [--force]  기본: 현재를 제외한 최근 승인 버전
 알림: 매일 요약(이상 있으면 WARN), 실패하면 ERROR — src/notify.py (디스코드 웹훅 설정 시)
 """
 import csv, datetime as dt, hashlib, json, shutil, subprocess, sys, tarfile, time
@@ -84,12 +84,13 @@ def activate_model(src, version):
     """Validate a complete copy before touching the shared real lite directory."""
     root = LIVE.parent.resolve()
     staging, previous = LIVE.parent / '.lite-staging', LIVE.parent / '.lite-previous'
-    before = fingerprint(LIVE) if LIVE.is_dir() else None
+    before = None
     try:
         # Never follow a leftover child symlink while removing or renaming models.
         for path in (LIVE, staging, previous):
             if path.is_symlink() or path.resolve().parent != root:
                 raise ValueError('모델 교체 경로 확인 필요')
+        before = fingerprint(LIVE) if LIVE.is_dir() else None
         if staging.exists():
             shutil.rmtree(staging)
         if shutil.disk_usage(root).free < 2 * folder_size(src):
@@ -98,6 +99,9 @@ def activate_model(src, version):
         model_meta(staging)
         if fingerprint(src) != fingerprint(staging):
             raise ValueError('모델 SHA-256 불일치')
+        if before == fingerprint(staging):
+            shutil.rmtree(staging)
+            return False
         if previous.exists():
             shutil.rmtree(previous)
         if LIVE.exists():
@@ -110,7 +114,7 @@ def activate_model(src, version):
             raise
     except (OSError, ValueError, TypeError) as exc:
         raise ActivationError(f'{version} 전환 실패: {exc} · {live_message(before)}') from exc
-    return version
+    return True
 
 
 def mark_restart(version):
@@ -118,13 +122,27 @@ def mark_restart(version):
     C.write_snapshot(REPORTS / 'restart_required', str(version).encode())
 
 
-def promoted_versions():
+def model_records():
     try:
         with (REPORTS / 'models.csv').open(newline='') as stream:
-            latest = {row['version']: row.get('promoted', '').lower() == 'true' for row in csv.DictReader(stream)}
+            return list(csv.DictReader(stream))
     except FileNotFoundError:
         return []
+
+
+def promoted_versions():
+    latest = {row['version']: row.get('promoted', '').lower() == 'true' for row in model_records()}
     return sorted(v for v, ok in latest.items() if ok and valid_day(v) and (VERS / v).is_dir())
+
+
+def current_version():
+    try:
+        meta = model_meta(LIVE)
+        # A candidate can contain no new training day; trained_on alone is not its version.
+        return next((r['version'] for r in reversed(model_records()) if r.get('created') == meta['created']),
+                    meta.get('trained_on', [None])[-1])
+    except (OSError, ValueError, TypeError, IndexError):
+        return None
 
 
 def header_ok(f):
@@ -217,10 +235,7 @@ def cleanup(day):
             tgz.unlink()
             notes.append(f"{folder.name} 압축 확인 실패 → 원본 유지")
     protected = set(promoted_versions()[-2:])
-    try:
-        protected.add(model_meta(LIVE)['trained_on'][-1])
-    except (OSError, ValueError, KeyError, IndexError, TypeError):
-        pass
+    protected.add(current_version())
     old = [p for p in day_folders(VERS)[:-KEEP_VERSIONS] if p.name not in protected]
     for v in old:
         shutil.rmtree(v)
@@ -292,15 +307,16 @@ def run(day):
                   else f"③ 재학습: {len(meta['trained_on'])}일 · 날짜분할 오차 {meta['oof']['mae']:.2f} (첫 모델)",
                   "④ 합격 → ⑤ 배포 (models/lite 교체)" if ok else "④ 불합격: " + "; ".join(why) + " → 지금 모델 유지"]
         promoted = False
+        changed = False
         if ok:
             try:
-                activate_model(cand, day)
+                changed = activate_model(cand, day)
                 promoted = True
             except ActivationError as exc:
                 warn.append(str(exc))
                 lines[-1] = str(exc)
                 notify(str(exc), 'ERROR' if '복구 실패' in str(exc) else 'WARN')
-            if promoted:
+            if changed:
                 try:
                     mark_restart(day)
                 except OSError as exc:
@@ -328,16 +344,19 @@ def run(day):
 
 def rollback(version=None, force=False):
     vs = [p.name for p in day_folders(VERS)]
-    now = json.loads((LIVE / "meta.json").read_text())["trained_on"][-1] if (LIVE / "meta.json").exists() else None
+    now = current_version()
     approved = promoted_versions()
     version = version or next((v for v in reversed(approved) if v != now), None)
     if version not in vs or (version not in approved and not force):
         raise SystemExit(f"승인된 되돌림 버전 없음: {version} (미승인 버전은 명시적 --force 필요)")
     try:
-        activate_model(VERS / version, version)
+        changed = activate_model(VERS / version, version)
     except ActivationError as exc:
         notify(str(exc), 'ERROR')
         raise SystemExit(str(exc)) from exc
+    if not changed:
+        notify(f'모델 {version} 이미 적용 중 · 웹 재시작 안 함', 'INFO')
+        return
     try:
         mark_restart(version)
     except OSError as exc:
