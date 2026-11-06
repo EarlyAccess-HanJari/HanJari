@@ -26,6 +26,7 @@ import build_dataset as B
 import collect as C
 import data_quality as DQ
 from feature_schema import GROUPS
+from date_paths import day_folders, valid_day
 
 MODELS = B.ROOT / "models"
 SAMPLE = B.ROOT / "data/sample/20260930"  # 실제 스냅샷 1장(도착·위치 × 2노선) — 키 없이 돌려보기용
@@ -109,7 +110,7 @@ def export(lite=False, until=None, out_dir=None):
         raise ValueError("바로 앞 버스 학습 데이터가 50행 미만: 모델 저장 보류")
     for route in B.STOPS:  # q_hist 용 과거 순증감 표 — 날짜별 캐시 합산(학습 q_hist 와 같은 정의, 원본 재읽기 없음)
         if B.hist_from_cache(route, until) is None:  # 캐시가 없는 설치: 예전처럼 원본에서
-            B.build(route, sorted(p.name for p in B.LOG.glob("2026*") if p.is_dir() and (not until or p.name <= until)))
+            B.build(route, [p.name for p in day_folders(B.LOG) if not until or p.name <= until])
     out_dir.mkdir(parents=True, exist_ok=True)
     m["pt"].save_model(out_dir / "point.json")
     m["qm"].save_model(out_dir / "quantile.json")
@@ -207,7 +208,7 @@ def _snapshot_files(sources, pattern):
     prefix, suffix = pattern.split("*")
     names = []
     for folder in map(Path, folders):
-        if len(folder.name) != 8 or not folder.is_dir():
+        if not valid_day(folder.name) or not folder.is_dir():
             continue
         for name in os.listdir(folder):
             stamp = name[:-len(suffix)].rsplit("_", 1)[-1]
@@ -405,7 +406,7 @@ def predict_latest(n_ahead):
     active = {route for route in B.STOPS if C.allowed(now, route, sched)}
     if not active:
         return []
-    folders = sorted((p for p in B.LOG.glob("20*") if p.is_dir() and p.name <= now.strftime("%Y%m%d")), reverse=True)[:2]
+    folders = sorted((p for p in day_folders(B.LOG) if p.name <= now.strftime("%Y%m%d")), reverse=True)[:2]
     if not folders:
         raise NoSnapshotError("버스 수집 로그가 없음")
     return [row for row in predict_live(n_ahead, log_dir=folders, reference_now=now) if row["route"] in active]
@@ -419,7 +420,7 @@ def hold_result(result, issue, reason=None):
 def source_health(now=None):
     """프로세스 생존과 실제 데이터 갱신 상태를 분리한다. 추가 API 호출 없음."""
     now = now or dt.datetime.now(KST).replace(tzinfo=None)
-    folders = sorted((p for p in B.LOG.glob("20*") if p.is_dir() and p.name <= now.strftime("%Y%m%d")), reverse=True)[:2]
+    folders = sorted((p for p in day_folders(B.LOG) if p.name <= now.strftime("%Y%m%d")), reverse=True)[:2]
     routes = {}
     sched = C.load_sched()
     for route in B.STOPS:

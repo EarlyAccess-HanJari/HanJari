@@ -8,7 +8,7 @@ data/api_logs/YYYYMMDD/{노선}_{arr,pos}_HHMMSS.json  (시각은 KST)
 실행: nohup python3 src/collect.py >> data/api_logs/collect.log 2>&1 &
 키: .env 의 SEOUL_BUS_API_KEY* 전부를 풀로 묶어 호출마다 돌아가며 사용. 간격 = 기본간격 × 노선수 ÷ 키수 (키당 한도 유지).
 """
-import datetime as dt, hashlib, itertools, json, os, tempfile, time, urllib.error, urllib.parse, urllib.request
+import datetime as dt, hashlib, itertools, json, os, sys, tempfile, time, urllib.error, urllib.parse, urllib.request
 from pathlib import Path
 from api_response import response_items
 
@@ -57,9 +57,25 @@ def day_type(day):
 
 def load_sched():
     try:
-        return json.loads(SCHED.read_text())
+        raw = json.loads(SCHED.read_text())
     except (OSError, ValueError):
         return {}
+    clean = {}
+    bad = not isinstance(raw, dict)
+    for route, days in raw.items() if isinstance(raw, dict) else ():
+        if route not in ROUTES or not isinstance(days, dict):
+            bad = True
+            continue
+        for kind, window in days.items():
+            if (kind not in ('wkd', 'sat', 'sun') or not isinstance(window, list) or len(window) != 2
+                    or any(type(v) is not int for v in window)
+                    or not 0 <= window[0] <= window[1] < 48 * 60):
+                bad = True
+                continue
+            clean.setdefault(route, {})[kind] = window
+    if bad:
+        print('시간표의 잘못된 항목을 제외했습니다. 해당 항목은 기본 시간표를 사용합니다.', file=sys.stderr)
+    return clean
 
 
 def learn(sched, items, route):

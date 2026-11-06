@@ -41,6 +41,7 @@ from collections import defaultdict
 from pathlib import Path
 import data_quality as DQ
 from api_response import response_items
+from date_paths import day_folders, day_caches
 
 ROOT = Path(__file__).resolve().parents[1]
 LOG, OUT = ROOT / "data/api_logs", ROOT / "data/processed"
@@ -391,7 +392,7 @@ def hist_from_cache(route, until=None):
     11-04: export 가 원본을 통째로 다시 읽어 41일에 30분+ 걸렸고, 서버는 압축 안 된 최근 3일만 읽혀
     학습 행의 q_hist(전체 기간 누적)와 서비스 표(최근 3일)가 달랐다. 캐시가 없으면 None."""
     acc, n = defaultdict(lambda: [0.0, 0]), 0
-    for f in sorted((OUT / "days").glob(f"2026*_{route}.json")):
+    for f in day_caches(OUT / "days", route):
         if until and f.name[:8] > until:
             continue
         n += 1
@@ -429,10 +430,10 @@ def main(full=False, out=None):
         cache = OUT / "days"
         cache.mkdir(exist_ok=True)
         # 원본 폴더가 압축·삭제된 날(daily.py ⑥ 정리)도 캐시가 있으면 그대로 이어 붙임
-        folders = sorted({p.name for p in LOG.glob("2026*") if p.is_dir()} | {f.name.split("_")[0] for f in cache.glob("2026*_*.json")})
+        folders = sorted({p.name for p in day_folders(LOG)} | {f.name[:8] for f in day_caches(cache)})
         # 검증 규칙이 바뀐 캐시는 원본 전체를 복구하기 전에는 손대지 않는다.
         outdated = any(json.loads(f.read_text()).get("source_schema") != DQ.SCHEMA_VERSION
-                       for f in cache.glob("2026*_*.json"))
+                       for f in day_caches(cache))
         missing = [d for d in folders if not (LOG / d).is_dir()]
         if outdated and missing:
             raise RuntimeError(f"데이터 검증 규칙 변경: 원본 archive 복구 후 재빌드 필요 ({', '.join(missing)}). 기존 캐시 보존.")

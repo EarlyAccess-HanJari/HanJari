@@ -23,6 +23,7 @@ import notify as N
 import serve as S
 import train as T
 from api_response import response_items
+from date_paths import day_folders
 
 REPORTS = B.ROOT / "reports"
 VERS = S.MODELS / "versions"
@@ -105,7 +106,7 @@ def cleanup(day):
     arch = logs.parent / "archive"
     arch.mkdir(exist_ok=True)
     cutoff = (dt.datetime.strptime(day, "%Y%m%d") - dt.timedelta(days=KEEP_RAW - 1)).strftime("%Y%m%d")
-    for folder in sorted(p for p in logs.glob("2026*") if p.is_dir() and p.name < cutoff):
+    for folder in (p for p in day_folders(logs) if p.name < cutoff):
         metas = [B.OUT / "days" / f"{folder.name}_{r}.json" for r in B.STOPS]
         if not all(m.exists() and "n" in json.loads(m.read_text()) for m in metas):
             notes.append(f"{folder.name} 캐시 없음 → 압축 보류")
@@ -123,7 +124,7 @@ def cleanup(day):
         else:
             tgz.unlink()
             notes.append(f"{folder.name} 압축 확인 실패 → 원본 유지")
-    old = sorted(p for p in VERS.glob("2026*") if p.is_dir())[:-KEEP_VERSIONS]
+    old = day_folders(VERS)[:-KEEP_VERSIONS]
     for v in old:
         shutil.rmtree(v)
     if old:
@@ -201,7 +202,7 @@ def run(day):
 
 
 def rollback(version=None):
-    vs = sorted(p.name for p in VERS.glob("2026*") if p.is_dir())
+    vs = [p.name for p in day_folders(VERS)]
     now = json.loads((LIVE / "meta.json").read_text())["trained_on"][-1] if (LIVE / "meta.json").exists() else None
     version = version or next((v for v in reversed(vs) if v < (now or "9")), None)
     if version not in vs:
