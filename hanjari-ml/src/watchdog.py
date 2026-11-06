@@ -33,6 +33,8 @@ def load_state(now):
         if not isinstance(state, dict) or not isinstance(state.get('open', []), list) \
                 or any(not isinstance(p, str) for p in state.get('open', [])):
             raise ValueError('invalid watchdog state')
+        if type(state.get('web_failures', 0)) is not int:
+            raise ValueError('invalid web failure count')
         for key in ('restarted', 'web_restarted'):
             if key in state and (not isinstance(state[key], str) or dt.datetime.fromisoformat(state[key]).tzinfo is not None):
                 raise ValueError('invalid restart time')
@@ -110,13 +112,23 @@ def main():
             r = subprocess.run(["sudo", "-n", "systemctl", "restart", "hanjari-collect"], capture_output=True, text=True)
             problems.append("수집기 재시작 " + ("함" if r.returncode == 0 else f"실패({r.stderr.strip()[:80]})"))
             st["restarted"] = now.isoformat()
+    web_problem, web_stale = None, False
     try:
         web = web_health()
         model = web.get('model') or {}
         if not web['ready']:
             status = model.get('status', 'unknown') if isinstance(model, dict) else 'unknown'
-            problems.append(f'웹 모델 {status}(ready=false, 확인 후 ~/hanjari-ml/src/daily.py rollback 검토)')
-            if status == 'stale' and restart_due(st, 'web_restarted', now):
+            web_problem = f'웹 모델 {status}(ready=false, 확인 후 ~/hanjari-ml/src/daily.py rollback 검토)'
+            web_stale = status == 'stale'
+    except (OSError, ValueError, TypeError):
+        web_problem = '웹 연결/상태 확인 실패(확인 후 ~/hanjari-ml/src/daily.py rollback 검토)'
+    st['web_failures'] = st.get('web_failures', 0) + 1 if web_problem else 0
+    if web_problem:
+        if st['web_failures'] == 1:
+            print(now.strftime('%H:%M'), '웹 감시 1회 실패, 다음 점검에서 재확인:', web_problem)
+        else:
+            problems.append(web_problem)
+            if web_stale and restart_due(st, 'web_restarted', now):
                 st['web_restarted'] = now.isoformat()
                 try:
                     r = subprocess.run(['sudo', '-n', 'systemctl', 'try-restart', 'hanjari-web'],
@@ -125,8 +137,6 @@ def main():
                 except (OSError, subprocess.SubprocessError) as exc:
                     note = f'실패({type(exc).__name__})'
                 problems.append('웹 재시작 ' + note)
-    except (OSError, ValueError, TypeError):
-        problems.append('웹 연결/상태 확인 실패(확인 후 ~/hanjari-ml/src/daily.py rollback 검토)')
     key = sorted(p.split("(")[0] for p in problems if not p.startswith(("수집기 재시작", '웹 재시작')))
     previous = st.get("open", [])
     sched = C.load_sched()
@@ -140,7 +150,8 @@ def main():
     st["open"], st["checked"], st["outside_service_routes"] = tracked, now.isoformat(), inactive
     N.REPORTS.mkdir(exist_ok=True)
     C.write_snapshot(STATE, json.dumps(st, ensure_ascii=False).encode())
-    print(now.strftime("%H:%M"), problems or ("운행시간 밖 노선은 다음 운행에서 재확인" if pending else "문제 없음"))
+    print(now.strftime("%H:%M"), problems or ("운행시간 밖 노선은 다음 운행에서 재확인" if pending else
+          "웹 재확인 대기" if st['web_failures'] == 1 else "문제 없음"))
 
 
 if __name__ == "__main__":

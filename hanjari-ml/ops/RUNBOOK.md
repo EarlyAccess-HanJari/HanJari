@@ -26,7 +26,7 @@
 
 ## 2. 잘 돌고 있나 (명령 3개)
 
-다음 절차는 service-hardening 변경을 설치한 뒤 적용합니다. 이 문서 갱신 자체는 운영 반영을 뜻하지 않습니다. `/api/health`는 항상 HTTP 200이므로 상태 코드만 보지 말고 `ready`, `model.status`, `model.loaded`, `model.disk`를 함께 확인합니다. 정상은 `status=ok`, `ready=true`입니다. 정책이 꺼진 `not_required`, 비운행 시간의 `not_loaded`는 정상일 수 있습니다. `missing/broken/stale`은 `ready=false`이며, `stale`일 때 watchdog이 30분 간격 제한으로 웹만 try-restart합니다. 모델 자동 rollback은 하지 않습니다.
+다음 절차는 service-hardening 변경을 설치한 뒤 적용합니다. 이 문서 갱신 자체는 운영 반영을 뜻하지 않습니다. `/api/health`는 항상 HTTP 200이므로 상태 코드만 보지 말고 `ready`, `model.status`, `model.loaded`, `model.disk`를 함께 확인합니다. 정상은 `status=ok`, `ready=true`입니다. 정책이 꺼진 `not_required`, 비운행 시간의 `not_loaded`는 정상일 수 있습니다. `missing/broken/stale`은 `ready=false`이며, 웹 감시는 연결 실패 또는 ready=false가 연속 2회일 때부터 알리고 stale이면 30분 간격 제한으로 웹만 try-restart합니다. 첫 실패는 로그만 남기며 ready=true이면 연속 실패 횟수를 초기화합니다. 모델 자동 rollback은 하지 않습니다.
 ```bash
 systemctl is-active hanjari-collect; systemctl list-timers 'hanjari-*' --no-pager
 cat ~/hanjari-ml/reports/daily/$(date -d '+9 hour -1 day' +%Y%m%d).md    # 어젯밤 마감 요약
