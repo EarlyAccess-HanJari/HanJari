@@ -14,7 +14,6 @@ import sys
 import threading
 import time
 import asyncio
-from collections import OrderedDict
 from concurrent.futures import Future, TimeoutError as FutureTimeout
 from copy import deepcopy
 from contextlib import asynccontextmanager
@@ -42,10 +41,8 @@ _import_seconds = time.perf_counter() - _import_started
 _lock = threading.Lock()
 LOCK_WAIT_SECONDS = 7
 SHARE_SECONDS = 1
-MAX_COMPLETED = 8
 _requests_lock = threading.Lock()
 _pending = {}
-_completed = OrderedDict()
 
 
 def rss_mib():
@@ -105,15 +102,6 @@ def _predict(n: int) -> list[dict]:
                 finally:
                     compute += time.monotonic() - calculating
                 completed = time.monotonic()
-                # Only callers that saw this pending request may share its result.
-                with _requests_lock:
-                    _completed[n] = (completed, future)
-                    _completed.move_to_end(n)
-                    for key, (at, _) in list(_completed.items()):
-                        if completed - at > SHARE_SECONDS:
-                            del _completed[key]
-                    while len(_completed) > MAX_COMPLETED:
-                        _completed.popitem(last=False)
                 future.set_result((deepcopy(rows), completed, sources))
                 return rows
             except Exception as exc:
