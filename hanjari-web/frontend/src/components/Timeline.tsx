@@ -1,5 +1,6 @@
 import type { PredictItem } from "../types";
 import { arrivalState, arrivalText } from "../utils/format";
+import type { ProbState } from "../utils/format";
 import LevelBadge from "./LevelBadge";
 import s from "./Timeline.module.css";
 
@@ -11,8 +12,9 @@ const BusIcon = () => (
 
 /** 같은 노선 정류장을 노선 순서(정류장 번호 순 = 버스가 지나가는 순서)로 세로 타임라인에 그린다.
  *  - 정류장마다 보이는 버스는 '그 정류장에 가장 먼저 오는 버스'라서 내 정류장의 버스와 다른 차일 수 있다 → '다른 버스'로 밝힌다
- *  - 버스 아이콘은 내 정류장 버스(plate)의 실제 위치: 어느 정류장에 닿기 직전이면 그 줄, 그보다 앞이면 첫 줄 위쪽에 둔다 */
-export default function Timeline({ items, mine, onPick, now, fetchedAt }: { items: PredictItem[]; mine: PredictItem; onPick: (i: PredictItem) => void; now: number; fetchedAt: number }) {
+ *  - 버스 아이콘은 내 정류장 버스(plate)의 실제 위치: 어느 정류장에 닿기 직전이면 그 줄, 그보다 앞이면 첫 줄 위쪽에 둔다
+ *  - 탑승 확률은 내 정류장 줄에만 보인다. 다른 정류장의 대기 인원은 모르기 때문이다(2026-11-04 팀 결정) */
+export default function Timeline({ items, mine, onPick, now, fetchedAt, prob }: { items: PredictItem[]; mine: PredictItem; onPick: (i: PredictItem) => void; now: number; fetchedAt: number; prob: ProbState }) {
   const ordered = [...items].sort((a, b) => Number(a.stop) - Number(b.stop));
   const at = ordered.findIndex((i) => i === mine);
 
@@ -20,6 +22,7 @@ export default function Timeline({ items, mine, onPick, now, fetchedAt }: { item
   const sameBus = ordered.map((i, idx) => ({ i, idx })).filter((x) => x.i.plate === mine.plate);
   const lead = sameBus.reduce((a, b) => (b.i.stops_away < a.i.stops_away ? b : a), sameBus[0]);
   const busAtRow = lead.i.stops_away === 0;   // 0 이면 그 정류장 도착 직전 → 그 줄에 아이콘, 아니면 그 줄 위쪽 공간에 아이콘
+  const located = arrivalState(mine, now, fetchedAt) === "upcoming";  // 정보가 낡았거나 도착 확인 중이면 버스 위치를 모른다
 
   return (
     <section className={s.wrap} aria-label="같은 노선 앞·뒤 정류장" data-testid="timeline">
@@ -29,9 +32,9 @@ export default function Timeline({ items, mine, onPick, now, fetchedAt }: { item
           const eta = arrivalText(i, now, fetchedAt);
           const tag = isMine ? "내 정류장" : idx < at ? "직전" : "다음";
           const other = !isMine && i.plate !== mine.plate;
-          const hasBus = busAtRow && idx === lead.idx;
+          const hasBus = located && busAtRow && idx === lead.idx;
           return [
-            !busAtRow && idx === lead.idx && (
+            located && !busAtRow && idx === lead.idx && (
               <li key={`bus-${i.stop}`} className={`${s.row} ${s.gap} ${s.bus}`} data-testid="bus-marker">
                 <span className={s.marker} aria-hidden="true"><BusIcon /></span>
                 <span className={s.gapText}>버스 접근 중 · {mine.stops_away}정류장 전</span>
@@ -49,7 +52,7 @@ export default function Timeline({ items, mine, onPick, now, fetchedAt }: { item
                     {other && <span className={s.other}> · 다른 버스</span>}
                   </span>
                 </span>
-                <LevelBadge item={i} held={arrivalState(i, now, fetchedAt) !== "upcoming"} />
+                {isMine && <LevelBadge item={i} state={arrivalState(i, now, fetchedAt)} prob={prob} />}
               </button>
             </li>,
           ];

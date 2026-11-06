@@ -220,7 +220,11 @@ test("connection restoration immediately refreshes the installed app", async ({ 
   await page.getByTestId("stop-jr03-23").click();
   await expect(page.getByTestId("arrival")).toBeVisible();
   await page.evaluate(() => window.dispatchEvent(new Event("offline")));
-  await expect(page.getByTestId("notice-offline")).toBeVisible();
+  // 받아 둔 도착 정보와 입력칸은 그대로 두고 상태 줄로 알린다
+  await expect(page.getByText("인터넷 연결 끊김")).toBeVisible();
+  await expect(page.getByTestId("arrival")).toBeVisible();
+  await expect(page.getByTestId("n-input")).toBeVisible();
+  await expect(page.getByTestId("notice-offline")).toHaveCount(0);
   const before = requests;
   await page.evaluate(() => window.dispatchEvent(new Event("online")));
   await expect(page.getByTestId("arrival")).toBeVisible();

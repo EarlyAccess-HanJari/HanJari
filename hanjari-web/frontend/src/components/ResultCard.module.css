@@ -3,4 +3,7 @@
 .fill { height: clamp(6px, 1dvh, 10px); border-radius: 999px; background: var(--lv-bar); transition: width .4s ease; }
 .guide { margin: 6px 0 0; font-size: clamp(14px, 2dvh, 17px); line-height: 1.5; font-weight: 500; color: #1F2937; }
 .why { margin: 0; font-size: 13px; line-height: 1.55; color: var(--c-text-2); }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.row .guide { margin: 0; }
+.retry { flex: none; height: 36px; padding: 0 14px; border-radius: 999px; border: 0; background: var(--c-text-1); color: #fff; font-size: 14px; font-weight: 600; }
 @media (max-height: 600px) { .card { gap: 4px; } .guide { margin-top: 2px; line-height: 1.4; } }

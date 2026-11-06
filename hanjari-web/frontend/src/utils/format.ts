@@ -112,6 +112,10 @@ function sourceAt(i: PredictItem): number | null {
 
 export type ArrivalState = "upcoming" | "checking" | "stale";
 
+/** 화면에 받아 둔 확률이 지금 입력한 인원으로 계산된 것인지. 도착 시간·차내 인원은 인원과 무관하므로 확률에만 쓴다.
+ *  current: 같은 인원 / calculating: 새 인원의 응답을 기다리는 중 / unavailable: 새 인원의 응답을 못 받음(실패·인터넷 끊김) / invalid: 입력이 잘못됨 */
+export type ProbState = "current" | "calculating" | "unavailable" | "invalid";
+
 export function isOlderSnapshot(next: PredictItem, previous: PredictItem): boolean {
   const source = sourceAt(next), before = sourceAt(previous);
   return Boolean(next.updated_at && previous.updated_at && Date.parse(next.updated_at) < Date.parse(previous.updated_at))

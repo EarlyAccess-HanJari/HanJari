@@ -73,7 +73,8 @@ async function fetchReal(n: number): Promise<ApiResult> {
       return { ok: false, error: { kind: "server_down", message: "서버가 잠시 응답하지 않아요. 조금 뒤 다시 시도해 주세요." } };
     }
     if (!res.ok) {
-      return { ok: false, error: { kind: "unknown", message: `서버 오류 (${res.status})` } };
+      console.warn(`[predict] HTTP ${res.status}`);
+      return { ok: false, error: { kind: "unknown", message: "버스 정보를 확인할 수 없어요. 잠시 뒤 다시 시도해 주세요." } };
     }
 
     const data = (await res.json()) as unknown;
@@ -87,7 +88,7 @@ async function fetchReal(n: number): Promise<ApiResult> {
     return { ok: true, data };
   } catch (e) {
     if (e instanceof DOMException && e.name === "AbortError") {
-      return { ok: false, error: { kind: "timeout", message: "응답이 너무 느려요. 다시 시도해 주세요." } };
+      return { ok: false, error: { kind: "timeout", message: "응답이 늦어지고 있어요. 잠시 뒤 다시 시도해 주세요." } };
     }
     return { ok: false, error: { kind: "server_down", message: "서버에 연결할 수 없어요." } };
   } finally {
@@ -120,7 +121,7 @@ async function fetchMock(n: number): Promise<ApiResult> {
 
   switch (sc) {
     case "slow":
-      return { ok: false, error: { kind: "timeout", message: "응답이 너무 느려요. 다시 시도해 주세요." } };
+      return { ok: false, error: { kind: "timeout", message: "응답이 늦어지고 있어요. 잠시 뒤 다시 시도해 주세요." } };
     case "down":
       return { ok: false, error: { kind: "server_down", message: "서버가 잠시 응답하지 않아요. 조금 뒤 다시 시도해 주세요." } };
     case "error":

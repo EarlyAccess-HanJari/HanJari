@@ -187,7 +187,8 @@ test("첫 화면 아래 같은 노선 다른 정류장 2곳이 보이고, 누르
   await expect(page.getByTestId("other-sb02-30")).toBeVisible();
   await expect(page.getByTestId("other-sb02-31")).toBeVisible();
   await expect(page.getByTestId("other-sb02-32")).toHaveCount(0);                 // 내 정류장은 빠짐
-  await expect(page.getByTestId("other-sb02-30")).toContainText(/탑승 확률 \d+%|확률 보류|판단하기 일러요/);
+  await expect(page.getByTestId("other-sb02-30")).toContainText(/약 \d+분 후|곧 도착/);
+  await expect(page.getByTestId("other-sb02-30")).not.toContainText(/\d+%|확률/);
   await page.getByTestId("other-sb02-30").click();
   await expect(page.getByTestId("stop-name")).toHaveText("한성대입구역5번출구");
   await expect(page.getByTestId("other-sb02-32")).toBeVisible();
