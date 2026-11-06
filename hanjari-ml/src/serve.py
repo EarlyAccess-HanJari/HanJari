@@ -45,6 +45,9 @@ KST = dt.timezone(dt.timedelta(hours=9))
 # ponytail: 기능흐름도는 60초지만 수집 간격이 한산한 시간 150초라 180초. 백엔드가 API 를 직접 부르게 되면 60초로.
 MAX_AGE = 180
 HARD = 0.3
+# 11-05: '여유'라고 했는데 못 탄 버스가 창신역4번출구·녹십자약국에 몰렸다(10/26~11/04 앞 3명 29대 중 24대, 조회 뒤 +34명 몰림).
+#   두 곳은 P ≥ 0.95 일 때만 '여유'. 두 기간 시험: '여유' 표시 −2%p, 못 탄 버스 14→8대·27→19대. 현장 관측(11/9~13) 뒤 다시 본다.
+STOP_MIN_TH = {("jr03", "23"): 0.95, ("sb02", "32"): 0.95}
 # 11-04: 동대문역 앞 구간에서 차가 4~5분 서 있는 동안 API 남은 시간이 '5초'에 멈춰 화면이 내내 '갱신 중'이었다.
 # 도착 정보보다 새 위치(60초 안)가 '아직 정류장 전·정차 중'이면 '곧 도착'(지금+30초)으로 두고 확률을 낸다.
 APPROACH_POS_SEC, ARRIVING_SEC = 60, 30
@@ -151,7 +154,7 @@ def load(lite, src=None):
     return m, meta
 
 
-def level(p, q10, q90, k, peak, weekday_ok, th, age):
+def level(p, q10, q90, k, peak, weekday_ok, th, age, floor=0.0):
     if age > MAX_AGE:
         return "확률 보류", f"정보가 {age:.0f}초 전 것"
     if not weekday_ok:
@@ -160,6 +163,8 @@ def level(p, q10, q90, k, peak, weekday_ok, th, age):
     t, short = th[cell]
     if short:
         return "확률 보류", "이 시간대·거리는 검증 데이터 부족"
+    if t is not None:
+        t = max(t, floor)  # 몰림이 잦은 정류장은 더 높은 기준(STOP_MIN_TH)
     if t is not None and p >= t:
         return "여유 있음", f"P {p:.2f} ≥ 기준 {t:.2f}"
     if p <= HARD:
@@ -557,7 +562,8 @@ def results(rows, m, meta, n_ahead, now, max_age, lite, approaching=()):
             hold_result(result, "prediction_invalid")
             continue
         lv, why = level(p, q10, q90, r.stops_away, r.is_peak == 1,
-                        not r.holiday and pd.notna(r.weekday) and r.weekday != "일", th, 0)
+                        not r.holiday and pd.notna(r.weekday) and r.weekday != "일", th, 0,
+                        floor=STOP_MIN_TH.get((r.route, str(r.stop)), 0.0))
         if lv == "확률 보류":
             hold_result(result, "calibration_hold", why)
         else:

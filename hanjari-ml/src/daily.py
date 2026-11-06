@@ -81,7 +81,8 @@ def monitor(day, model_dir):
     point, Pm, Q = T.predict(m, d, quantiles=True)
     board = (d.y.values[:, None] <= T.thresholds(d)).astype(bool)
     th = {(p, s): t for p, s, t, _ in meta["thresholds"]}
-    cell = np.array([th[("수업 직전" if pk else "평소", S.seg_name(k))] or 9 for pk, k in zip(d.is_peak == 1, d.stops_away)])
+    cell = np.array([max(th[("수업 직전" if pk else "평소", S.seg_name(k))] or 9, S.STOP_MIN_TH.get((r, str(s)), 0.0))
+                     for pk, k, r, s in zip(d.is_peak == 1, d.stops_away, d.route, d.stop)])
     shown = Pm >= cell[:, None]                                   # 서비스가 '여유'를 띄웠을 칸
     valid = np.array([S.probability_hold(r.route, r.bus_type, r.r_now, meta, r.plate, r.vehicle_id) is None
                       for r in d.itertuples()])

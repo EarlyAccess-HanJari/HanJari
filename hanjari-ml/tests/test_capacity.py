@@ -111,6 +111,12 @@ class CapacityRegression(unittest.TestCase):
         self.assertEqual(S.level(0.5, 13, 36, 1, False, True, th, 0)[0], "빠듯함")
         self.assertEqual(S.level(0.1, 0, 60, 1, False, True, th, 0)[0], "어려울 수 있음")
 
+    def test_crowded_stops_need_higher_probability_for_yeoyu(self):
+        th = {(p, s): (0.8, False) for p in ("평소", "수업 직전") for s in T.SEGS}
+        self.assertEqual(S.level(0.9, 0, 0, 3, False, True, th, 0, floor=S.STOP_MIN_TH[("jr03", "23")])[0], "빠듯함")
+        self.assertEqual(S.level(0.96, 0, 0, 3, False, True, th, 0, floor=S.STOP_MIN_TH[("sb02", "32")])[0], "여유 있음")
+        self.assertEqual(S.level(0.9, 0, 0, 3, False, True, th, 0)[0], "여유 있음")  # 다른 정류장은 그대로
+
     def test_stale_reason_still_hides_countdown(self):
         row, m, meta = fixture(60)
         got = result(row, m, meta, age=181)
