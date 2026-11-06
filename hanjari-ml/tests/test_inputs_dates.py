@@ -17,7 +17,7 @@ import date_paths as dates
 
 class InputsAndDates(unittest.TestCase):
     def test_schedule_keeps_valid_entries_and_rejects_bad_shapes(self):
-        bad=[None, True, [3], [True, 500], [-1, 400], [100, 99], [100, 2880], ['330', 1500]]
+        bad=[None, True, [3], [True, 500], [-1, 400], [100, 99], [100, 2880], [1500,1600], ['330', 1500]]
         with tempfile.TemporaryDirectory() as folder:
             path=Path(folder)/'schedule.json'
             for value in bad:

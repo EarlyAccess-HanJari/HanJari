@@ -69,7 +69,7 @@ def load_sched():
         for kind, window in days.items():
             if (kind not in ('wkd', 'sat', 'sun') or not isinstance(window, list) or len(window) != 2
                     or any(type(v) is not int for v in window)
-                    or not 0 <= window[0] <= window[1] < 48 * 60):
+                    or not 0 <= window[0] < 24 * 60 or not window[0] <= window[1] < 48 * 60):
                 bad = True
                 continue
             clean.setdefault(route, {})[kind] = window
