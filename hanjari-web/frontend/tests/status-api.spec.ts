@@ -97,7 +97,7 @@ test("실제 응답에서 인원을 바꾼 요청이 실패하면 이전 확률�
   await expect(page.getByTestId("verdict")).toContainText(/\d+%/);
   await page.getByTestId("n-input").fill("9");
   await expect(page.getByTestId("result")).toContainText("9명 기준 확률을 못 받았어요");
-  await expect(page.getByTestId("verdict")).toHaveText("확률 보류");
+  await expect(page.getByTestId("verdict")).toHaveText("예측 없음");
   await expect(page.locator("[data-testid^=other-]").first()).not.toContainText(/\d+%/);
   await expect(page.getByTestId("arrival")).toContainText("이번 버스");
   await expect(page.getByText("연결이 불안정해요")).toBeVisible();
