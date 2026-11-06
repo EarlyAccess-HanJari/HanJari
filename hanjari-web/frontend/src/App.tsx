@@ -68,6 +68,7 @@ export default function App() {
   const reqId = useRef(0);
   const activeReq = useRef<number | null>(null);
   const activeN = useRef<number | null>(null);
+  const activeController = useRef<AbortController | null>(null);
   const lastGood = useRef<ApiResult | null>(null);
   const answered = useRef(false);
   const [now, setNow] = useState(Date.now);
@@ -75,6 +76,7 @@ export default function App() {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
+  useEffect(() => () => { activeController.current?.abort(); ++reqId.current; }, []);
 
   const parsed = parseN(raw, N_MIN, N_MAX);
   const n = "n" in parsed ? parsed.n : null;
@@ -83,7 +85,15 @@ export default function App() {
   const onInput = (v: string) => {
     setRaw(v);
     const p = parseN(v, N_MIN, N_MAX);
-    if ("n" in p) setQueryN(p.n);
+    if ("n" in p) {
+      if (activeReq.current !== null && activeN.current !== p.n) {
+        activeController.current?.abort();
+        ++reqId.current;
+        activeReq.current = null;
+        activeN.current = null;
+      }
+      setQueryN(p.n);
+    }
   };
 
   // silent: 자동 새로고침 — 화면을 흐리게 하거나 '불러오는 중'을 띄우지 않음
@@ -93,8 +103,10 @@ export default function App() {
     activeReq.current = id;
     activeN.current = nn;
     if (!silent || !answered.current) setLoadingSince(Date.now());  // 첫 응답 전에는 자동 조회여도 화면이 기다리는 중이다
-    const r = await fetchPredict(nn);
-    if (id !== reqId.current) return;  // 그사이 더 최근 요청이 나갔으면 버림
+    const controller = new AbortController();
+    activeController.current = controller;
+    const r = await fetchPredict(nn, controller.signal);
+    if (r === null || id !== reqId.current) return;  // 취소나 이전 인원의 늦은 응답은 화면에 반영하지 않는다.
     answered.current = true;
     activeReq.current = null;
     setLoadingSince(null);
