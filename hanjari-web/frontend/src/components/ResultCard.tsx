@@ -53,6 +53,7 @@ export default function ResultCard({ item, prob, n, slow, online, arrivalState, 
   // F-04: 보류·판단 이른 단계에선 확률·예상 인원을 숨긴다
   const showP = !calculating && item.level !== "확률 보류" && item.level !== "판단하기 일러요" && item.p_board != null && Number.isFinite(item.p_board);
   const p = item.p_board == null ? null : pct(item.p_board);
+  const why = whyText(item);
   return (
     <div className={s.card} aria-live="polite" data-testid="result" data-level={calculating ? "확률 보류" : item.level}>
       {/* 계산 중에도 게이지 자리를 비워 두어 결과가 오면 글자가 밀리지 않고 게이지만 차오른다 */}
@@ -60,7 +61,7 @@ export default function ResultCard({ item, prob, n, slow, online, arrivalState, 
         <div className={s.track} aria-hidden="true"><div className={s.fill} style={{ width: showP ? `${p}%` : "0%" }} /></div>
       )}
       <p className={s.guide}>{calculating ? `${n}명 기준으로 다시 계산하고 있어요.` : verdict(item).guide}</p>
-      {!showP && !calculating && <p className={s.why}>{whyText(item)}</p>}
+      {!showP && !calculating && why && <p className={s.why}>{why}</p>}
       {calculating && slow && <p className={s.why}>평소보다 오래 걸리고 있어요. 도착 시간은 그대로 볼 수 있어요.</p>}
     </div>
   );

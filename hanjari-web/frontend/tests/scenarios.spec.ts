@@ -123,6 +123,18 @@ test("확률이 바뀌면 카드 위쪽 색(그라데이션)이 초록에서 빨
   expect(red).not.toBe(green);
 });
 
+test("서버가 '빠듯함'이면 확률이 80%를 넘어도 주황이고 '수업 시간' 문구를 쓰지 않는다", async ({ page }) => {
+  await run(page, "");
+  const hero = page.getByTestId("hero");
+  await expect(hero).toHaveAttribute("data-tone", "ok");
+  await page.getByRole("button", { name: "15명", exact: true }).click();   // 목업 n15 → 녹십자약국 '빠듯함' 94%
+  await expect(hero).toHaveAttribute("data-level", "빠듯함");
+  await expect(hero).toHaveAttribute("data-tone", "warn");
+  await expect(page.getByTestId("verdict")).toContainText("94%");
+  await expect(page.getByTestId("result")).toContainText("대체로 타지만, 사람이 몰리면 못 탈 수도 있어요.");
+  await expect(page.getByTestId("result")).not.toContainText("수업 시간");
+});
+
 test("nocount: 차내 인원을 모르면 null명 대신 —", async ({ page }) => {
   await page.goto("/?scenario=nocount");
   await page.evaluate(() => localStorage.setItem("hanjari.sel", JSON.stringify({ route: "sb02", stop: "30" })));

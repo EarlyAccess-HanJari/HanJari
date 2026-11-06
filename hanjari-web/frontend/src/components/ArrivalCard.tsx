@@ -20,7 +20,7 @@ export default function ArrivalCard({ item, state, fetchedAt, now, prob }: Props
   const v = verdict(item);
   const current = state === "upcoming" && prob === "current";
   const showP = current && item.level !== "확률 보류" && item.level !== "판단하기 일러요" && item.p_board != null;
-  const badge = current ? v.badge : state === "upcoming" && prob === "calculating" ? "계산 중" : "확률 보류";
+  const badge = current ? v.badge : state === "upcoming" && prob === "calculating" ? "계산 중" : "예측 없음";
   const stale = state === "stale";
   return (
     <section className={s.arrival} aria-label="남은 시간" data-testid="arrival">
