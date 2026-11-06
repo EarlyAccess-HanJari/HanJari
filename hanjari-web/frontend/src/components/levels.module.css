@@ -4,3 +4,4 @@
 .warn { --lv-bg: #FFF7ED; --lv-fg: #EA580C; --lv-line: #FED7AA; --lv-bar: #F59E0B; --lv-track: #FEF3C7; }
 .bad  { --lv-bg: #FEF2F2; --lv-fg: #DC2626; --lv-line: #FECACA; --lv-bar: #EF4444; --lv-track: #FEE2E2; }
 .hold { --lv-bg: #F3F4F6; --lv-fg: #374151; --lv-line: #D1D5DB; --lv-bar: #6B7280; --lv-track: #E5E7EB; }
+.idle { --lv-bg: #F1F5FB; --lv-fg: #1D4F91; --lv-line: #D5DCE6; --lv-bar: #7FA3D1; --lv-track: #E3ECF8; }

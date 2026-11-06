@@ -1,10 +1,11 @@
-/* 대기 인원 바로 위. 이 묶음(차내 인원 + 대기 인원)을 카드 아래쪽에 붙여 상태가 바뀌어도 같은 자리에 둔다 */
-.wrap { margin-top: auto; display: flex; justify-content: center; align-items: stretch; padding-bottom: 12px; border-bottom: 1px solid var(--c-line-2); }
-.col { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 0 20px; white-space: nowrap; }
-.sep { width: 1px; background: var(--c-line-2); margin: 2px 0; }
-.k { font-size: 12px; line-height: 17px; color: var(--c-text-3); }
-.v { font-size: 15px; line-height: 22px; font-weight: 600; color: var(--c-text-2); font-variant-numeric: tabular-nums; }
-.em { font-weight: 700; color: var(--c-text-1); }
-.range { font-size: 11px; line-height: 14px; color: var(--c-text-3); font-variant-numeric: tabular-nums; }
-@media (max-height: 680px) { .range { display: none; } }
-@media (max-width: 340px) { .col { padding: 0 10px; } }
+/* 인원 → 내 앞 사람 → 결론이 한 문단으로 읽히도록 입력 바로 위에 모은다 */
+.wrap { margin-top: auto; display: flex; flex-direction: column; gap: 4px; }
+/* 출처는 같은 줄 오른쪽에. 좁으면 다음 줄로 내려간다 */
+.row { margin: 0; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; column-gap: 8px; }
+.main { font-size: 14px; line-height: 20px; font-weight: 500; letter-spacing: -0.01em; color: var(--c-text-2); word-break: keep-all; }
+.main b { font-weight: 800; font-variant-numeric: tabular-nums; }
+.em { color: var(--c-text-1); }
+.check { margin: 0; font-size: 12px; line-height: 17px; color: var(--c-text-2); word-break: keep-all; }
+.sub { font-size: 12px; line-height: 16px; color: var(--c-text-3); word-break: keep-all; font-variant-numeric: tabular-nums; }
+@media (max-height: 680px) { .wrap { gap: 2px; } }
+@media (max-width: 340px) { .sub { font-size: 11px; } }

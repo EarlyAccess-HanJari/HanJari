@@ -83,7 +83,10 @@ test("recorded first bus switch appears automatically within five seconds", asyn
   });
   let response = first;
   let requests = 0;
-  await page.route("**/api/predict?*", r => { requests++; return r.fulfill({ json: response }); });
+  await page.route("**/api/predict?*", r => {
+    requests++;
+    return r.fulfill({ json: { ...response, n_ahead: Number(new URL(r.request().url()).searchParams.get("n")) } });  // 실제 서버처럼 요청한 인원을 돌려준다
+  });
   await page.goto("/");
   await page.getByTestId("stop-jr03-23").click();
   await page.clock.runFor(1_000);
@@ -184,7 +187,7 @@ test("fresh estimated count remains visible while boarding prediction is held", 
   await page.goto("/");
   await page.getByTestId("stop-jr03-23").click();
   await expect(page.getByTestId("loads")).toContainText("약 22명");
-  await expect(page.getByTestId("loads")).toContainText("공공데이터");
+  await expect(page.getByTestId("loads")).toContainText("서울시 · 태그 기준");
   await expect(page.getByTestId("result")).not.toContainText(/\d+%/);
 });
 

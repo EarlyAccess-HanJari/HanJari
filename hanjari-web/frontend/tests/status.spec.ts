@@ -18,6 +18,8 @@ const start = async (page: Page) => {
   await page.goto("/");
   await page.getByTestId("stop-sb02-32").click();
   await page.clock.runFor(1_000);
+  await page.getByTestId("n-input").fill("3");
+  await page.clock.runFor(700);
   await expect(page.getByTestId("verdict")).toContainText(PERCENT);
   await page.clock.pauseAt(new Date("2026-09-30T08:00:30+09:00"));
   await page.clock.runFor(400);  // 시계가 건너뛰며 시작된 자동 새로고침을 마저 끝낸다
@@ -85,6 +87,7 @@ test.describe("지금 입력한 인원과 다른 확률을 보이지 않는다",
   test("같은 노선 다른 정류장에는 확률 없이 도착 시간만 보여 준다", async ({ page }) => {
     await page.goto("/");
     await page.getByTestId("stop-sb02-32").click();
+    await page.getByTestId("n-input").fill("3");
     await expect(page.getByTestId("verdict")).toContainText(PERCENT);
     const other = page.getByTestId("other-sb02-30");
     await expect(other).toContainText(/약 \d+분 후|곧 도착/);
@@ -101,6 +104,7 @@ test.describe("지금 입력한 인원과 다른 확률을 보이지 않는다",
   test("입력이 잘못되면 내 정류장 줄에도 이전 확률이 남지 않는다", async ({ page }) => {
     await page.goto("/");
     await page.getByTestId("stop-sb02-32").click();
+    await page.getByTestId("n-input").fill("3");
     await expect(page.getByTestId("verdict")).toContainText(PERCENT);
     await page.getByTestId("n-input").fill("41");
     await page.getByTestId("tab-1").click();

@@ -1,5 +1,4 @@
-import { N_MAX } from "../types";
-import type { Level, PredictItem } from "../types";
+import type { PredictItem } from "../types";
 
 export function etaText(sec: number): string {
   if (sec <= 60) return "곧 도착";
@@ -8,11 +7,6 @@ export function etaText(sec: number): string {
 
 export function stopsAwayText(n: number): string {
   return n === 0 ? "바로 앞 정류장" : `${n}정류장 전`;
-}
-
-/** 0~99. 모델이 1.0 을 줘도 '100%' 는 확신처럼 읽혀서 99 에서 멈춤 */
-export function pct(p: number): number {
-  return Math.min(99, Math.round(p * 100));
 }
 
 export function mmss(sec: number): { m: number; s: string } {
@@ -56,42 +50,26 @@ export function whyText(i: PredictItem): string {
   return `버스가 ${stopsAwayText(i.stops_away)}이라 도착 때 인원이 ${Math.round(i.load_10)}~${Math.round(i.load_90)}명으로 아직 폭이 넓어요.`;
 }
 
-export type Tone = "ok" | "warn" | "bad" | "hold";
-export interface Verdict { badge: string; tone: Tone; word: string; guide: string }
+export type Tone = "ok" | "warn" | "bad" | "hold" | "idle";  // idle: 정상인데 입력 전. 회색 hold 는 꺼진 화면처럼 보여 따로 둔다
+export interface Verdict { badge: string; tone: Tone; word: string }
 
-/** 한눈에 보는 판정. 색과 문구는 백엔드 단계(level)를 따른다. 확률 숫자로 색을 정하면 '수업 직전이라 여유를 내지 않는 칸'처럼
- *  서버가 내린 판단과 어긋난다. 확률은 근거로 함께 보여 준다. 혼잡도는 crowdLabel */
+/** 입력한 인원의 판정. 색은 백엔드 단계(level)를 따른다. 확률 숫자로 색을 정하면 '수업 직전이라 여유를 내지 않는 칸'처럼
+ *  서버가 내린 판단과 어긋난다. 문장은 chanceText */
 export function verdict(i: PredictItem): Verdict {
-  if (i.level === "확률 보류" || i.p_board == null) return { badge: "확률 보류", tone: "hold", word: "", guide: "" };
-  if (i.level === "판단하기 일러요") return { badge: "판단하기 일러요", tone: "hold", word: "아직 판단하기 일러요", guide: "" };
+  if (i.level === "확률 보류" || i.p_board == null) return { badge: "확률 보류", tone: "hold", word: "" };
+  if (i.level === "판단하기 일러요") return { badge: "판단하기 일러요", tone: "hold", word: "아직 판단하기 일러요" };
   const badge = "탑승 확률";
-  if (i.level === "여유 있음") return { badge, tone: "ok", word: "여유 있어요", guide: "" };
-  if (i.level === "빠듯함") return { badge, tone: "warn", word: "빠듯해요", guide: i.p_board >= 0.8 ? "장담은 어려워요" : "못 탈 수도 있어요" };
-  return { badge, tone: "bad", word: "타기 어려워요", guide: "" };
+  if (i.level === "여유 있음") return { badge, tone: "ok", word: "" };
+  if (i.level === "빠듯함") return { badge, tone: "warn", word: "" };
+  return { badge, tone: "bad", word: "" };
 }
 
-export interface QueueInfo { ok: number | null; hard: number | null; p: number[] }
-
-/** 서버가 보낸 줄 길이 정보. 구버전 서버이거나 보류면 null */
-export function queueOf(i: PredictItem | null): QueueInfo | null {
-  if (!i?.p_by_n || i.level === "확률 보류") return null;
-  return { ok: i.n_ok ?? null, hard: i.n_hard ?? null, p: i.p_by_n };
-}
-
-/** 앞 인원 n 에 맞춘 값. 서버를 다시 부르지 않고 확률과 단계만 바꾼다 */
-export function withQueue(i: PredictItem, n: number): PredictItem {
-  const q = queueOf(i);
-  if (!q) return i;
-  const level: Level = q.ok !== null && n <= q.ok ? "여유 있음" : q.hard !== null && n <= q.hard ? "빠듯함" : "어려울 수 있음";
-  return { ...i, level, p_board: q.p[n] };
-}
-
-/** 인원을 고르기 전의 결론. 수치는 예측이라 '약'을 붙인다 */
-export function queueSummary(q: QueueInfo): { tone: Tone; headline: string; sub: string } {
-  const limit = q.hard !== null && q.hard < N_MAX ? `약 ${q.hard}명이 넘으면 타기 어려워요` : "";
-  if (q.ok !== null) return { tone: "ok", headline: `앞 약 ${q.ok}명까지는 여유 있어요`, sub: limit };
-  if (q.hard !== null) return { tone: "warn", headline: `앞 약 ${q.hard}명까지는 탈 수 있지만 빠듯해요`, sub: "" };
-  return { tone: "bad", headline: "이번 버스는 타기 어려워요", sub: "" };
+/** 앞 인원이 정해졌을 때의 탑승 가능성.
+ *  0.95 이상·0.05 이하는 분위수 모델(5~95%)이 더 나누지 못하는 구간이라 숫자를 좁혀 말하지 않는다 */
+export function chanceText(p: number): { rate: string; pct: string } {
+  if (p >= 0.95) return { rate: "거의 항상 타요", pct: "95% 이상" };
+  if (p <= 0.05) return { rate: "거의 못 타요", pct: "5% 이하" };
+  return { rate: `10번 중 ${Math.round(p * 10)}번쯤 타요`, pct: `약 ${Math.round(p * 100)}%` };
 }
 
 /** 확률이 없는 이유를 사용자 상황으로 묶는다. 서버가 준 상태만 쓰고 화면이 추측하지 않는다.
@@ -107,12 +85,10 @@ export function holdMessage(i: PredictItem, state: ArrivalState): { title: strin
   return { title: "이 버스는 탑승 예측이 어려워요", body: "도착 시간은 그대로 볼 수 있어요." };
 }
 
-/** 도착 시 탑승 인원 기준 혼잡도. 응답에 차종별 정원이 없어 모든 버스에 같은 구간을 쓴다 */
-export function crowdLabel(load: number): string {
-  if (load <= 15) return "여유";
-  if (load <= 30) return "보통";
-  if (load <= 45) return "혼잡";
-  return "매우 혼잡";
+/** 도착 인원 범위가 이 안이면 사실상 정해진 것이다(달리는 중인 가까운 버스). 응답에 정차 여부가 없어 범위로 판단한다 */
+const SETTLED_SPAN = 3;
+export function isSettled(i: PredictItem): boolean {
+  return i.load_10 != null && i.load_90 != null && Math.round(i.load_90) - Math.round(i.load_10) <= SETTLED_SPAN;
 }
 
 /** serve.py 가 스냅샷이 오래됐을 때 붙이는 reason("…N분 전 것…", "정보가 N초 전 것")으로 판별 */
@@ -130,8 +106,8 @@ function sourceAt(i: PredictItem): number | null {
 export type ArrivalState = "upcoming" | "checking" | "stale";
 
 /** 화면에 받아 둔 확률이 지금 입력한 인원으로 계산된 것인지. 도착 시간·차내 인원은 인원과 무관하므로 확률에만 쓴다.
- *  current: 같은 인원 / calculating: 새 인원의 응답을 기다리는 중 / unavailable: 새 인원의 응답을 못 받음(실패·인터넷 끊김) / invalid: 입력이 잘못됨 */
-export type ProbState = "current" | "calculating" | "unavailable" | "invalid";
+ *  empty: 아직 입력 전 / current: 같은 인원 / calculating: 새 인원의 응답을 기다리는 중 / unavailable: 새 인원의 응답을 못 받음(실패·인터넷 끊김) / invalid: 입력이 잘못됨 */
+export type ProbState = "empty" | "current" | "calculating" | "unavailable" | "invalid";
 
 export function isOlderSnapshot(next: PredictItem, previous: PredictItem): boolean {
   const source = sourceAt(next), before = sourceAt(previous);

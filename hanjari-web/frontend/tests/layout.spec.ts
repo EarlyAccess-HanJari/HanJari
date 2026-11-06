@@ -11,9 +11,9 @@ for (const [width, height] of PHONES) {
     await page.getByTestId("stop-sb02-30").click();
     await expect(page.getByTestId("loads")).toBeVisible();
     const top = async (id: string) => (await page.getByTestId(id).boundingBox())!.y;
-    expect(await top("arrival")).toBeLessThan(await top("result"));
-    expect(await top("result")).toBeLessThan(await top("loads"));
-    expect(await top("loads")).toBeLessThan(await top("n-input"));
+    expect(await top("arrival")).toBeLessThan(await top("loads"));
+    expect(await top("loads")).toBeLessThan(await top("result"));
+    expect(await top("result")).toBeLessThan(await top("n-input"));
     // 첫 화면은 세로 스크롤 없이 한 화면 안에 — 페이지 자체는 스크롤하지 않음
     expect(await page.evaluate(() => document.documentElement.scrollHeight)).toBeLessThanOrEqual(height);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
@@ -65,17 +65,17 @@ for (const [width, height] of [[375, 812], [360, 780], [412, 915]] as [number, n
   });
 }
 
-// 시간(사실) 바로 아래에 결론(예측)이 온다
+// 칩을 누르는 손가락에 가리지 않도록 결론은 입력 바로 위에 온다
 for (const width of [320, 360, 412]) {
-  test(`${width}px: 결론이 남은 시간 바로 아래에 있다`, async ({ page }) => {
+  test(`${width}px: 결론이 입력 바로 위에 있다`, async ({ page }) => {
     await page.setViewportSize({ width, height: 780 });
     await page.goto("/");
     await page.evaluate(() => localStorage.setItem("hanjari.sel", JSON.stringify({ route: "sb02", stop: "30" })));
     await page.reload();
-    const arrival = (await page.getByTestId("arrival").boundingBox())!;
     const verdict = (await page.getByTestId("verdict").boundingBox())!;
-    expect(verdict.y).toBeGreaterThanOrEqual(arrival.y + arrival.height);
-    expect(verdict.y - (arrival.y + arrival.height)).toBeLessThanOrEqual(24);
+    const input = (await page.getByTestId("n-input").boundingBox())!;
+    expect(verdict.y + verdict.height).toBeLessThanOrEqual(input.y);
+    expect(input.y - (verdict.y + verdict.height)).toBeLessThanOrEqual(100);  // 결론 줄 수가 달라져도 입력이 안 밀리도록 잡아 둔 여백 포함
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
   });
 }

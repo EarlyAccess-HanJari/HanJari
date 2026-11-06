@@ -11,6 +11,7 @@ import mockStale from "../mock/predict_stale.json";
 import mockNight from "../mock/predict_empty_night.json";
 import mockBadInput from "../mock/error_bad_input.json";
 import mockCurve from "../mock/predict_curve.json";
+import { APPROACH_STEPS, approachItem } from "../mock/approach";
 
 /** 요청 방식.
  *  - 명세(README·민준 WBS): GET /api/predict?n=3
@@ -25,13 +26,18 @@ export const TIMEOUT_MS = 8000;
 export const USE_MOCK = import.meta.env.VITE_MOCK === "1";
 
 /** 개발·QA 용 시나리오 (URL ?scenario=...). 목업 모드에서만 동작. */
-export type Scenario = "stale" | "wide" | "night" | "error" | "down" | "slow" | "nocount" | "checking" | "curve" | "passed" | "holiday" | "held";
+export type Scenario = "stale" | "wide" | "night" | "error" | "down" | "slow" | "nocount" | "checking" | "curve" | "passed" | "holiday" | "held" | "approach";
 export function currentScenario(): Scenario | null {
   if (typeof window === "undefined") return null;
-  const s = new URLSearchParams(window.location.search).get("scenario") ?? window.location.hash.slice(1);
-  return (["stale", "wide", "night", "error", "down", "slow", "nocount", "checking", "curve", "passed", "holiday", "held"] as const).includes(s as Scenario)
+  const s = scenarioText();
+  if (/^approach-\d+$/.test(s)) return "approach";
+  return (["stale", "wide", "night", "error", "down", "slow", "nocount", "checking", "curve", "passed", "holiday", "held"] as string[]).includes(s)
     ? (s as Scenario)
     : null;
+}
+
+function scenarioText(): string {
+  return new URLSearchParams(window.location.search).get("scenario") ?? window.location.hash.slice(1);
 }
 
 export function validateN(n: unknown): ApiError | null {
@@ -138,7 +144,9 @@ async function fetchMock(n: number): Promise<ApiResult> {
     case "checking":
       return { ok: true, data: { ...withN(mockN3, n), results: mockN3.results.map((r) => ({ ...r, eta_sec: 5, arrival_status: "checking" })) } as PredictResponse };
     case "curve":
-      return { ok: true, data: withN(mockCurve, n) };
+      return { ok: true, data: curveAt(n) };
+    case "approach":
+      return { ok: true, data: approachAt(n) };
     case "passed":
       return { ok: true, data: { ...withN(mockN3, n), results: mockN3.results.map((r) => ({ ...r, eta_sec: 5, arrival_status: "passed" })) } as PredictResponse };
     case "holiday":
@@ -151,6 +159,23 @@ async function fetchMock(n: number): Promise<ApiResult> {
 
   const base = n <= 0 ? mockN0 : n <= 3 ? mockN3 : n <= 15 ? mockN15 : mockN30;
   return { ok: true, data: withN(base, n) };
+}
+
+/** 체험판용. 저장된 실제 모델 값에서 요청한 인원의 값만 꺼내 서버 응답과 같은 모양으로 돌려준다 */
+function curveAt(n: number): PredictResponse {
+  const results = mockCurve.results.map(({ p_by_n, n_ok, n_hard, ...r }) => ({
+    ...r,
+    p_board: p_by_n[n],
+    level: n <= n_ok ? "여유 있음" : n <= n_hard ? "빠듯함" : "어려울 수 있음",
+  }));
+  return { ...withN(mockCurve, n), results: results as PredictResponse["results"] };
+}
+
+/** 체험판용. 동묘앞역 줄만 시뮬레이션 단계의 값으로 바꾼다. ?scenario=approach-3 */
+function approachAt(n: number): PredictResponse {
+  const step = APPROACH_STEPS[Number(scenarioText().split("-")[1]) - 1] ?? APPROACH_STEPS[0];
+  const base = curveAt(n);
+  return { ...base, results: base.results.map((r) => (r.route === "jr03" && r.stop === "20" ? approachItem(r, step, n) : r)) };
 }
 
 function withN(m: unknown, n: number): PredictResponse {

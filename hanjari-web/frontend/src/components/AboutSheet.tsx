@@ -4,9 +4,9 @@ import s from "./AboutSheet.module.css";
 
 // 2026-11-05 운영 모델 기록: API 재생 MAE 2.58명, 현재 승객 수 기준 4.34명. 정답도 API 인원이라 실제 탑승 성능은 아니다.
 // 현장 기록(11/9~13) 결과가 나오면 여기에 함께 적는다
-const ACCURACY = "지금 인원을 그대로 쓰면 평균 4.3명, 예측은 평균 2.6명 틀려요. 2026년 11월 4일 자료를 공공데이터 인원과 비교한 값이에요. 실제 탑승과 비교한 결과는 아니에요.";
+const ACCURACY = "지금 인원을 그대로 쓰면 평균 4.3명, 예측은 평균 2.6명 틀려요. 2026년 11월 4일 자료를 서울시 버스 정보의 인원과 비교한 값이에요. 실제 탑승과 비교한 결과는 아니에요.";
 
-/** 공공데이터와 예측을 나누어 설명한다. reason: 지금 확률이 보류된 경우 서버가 알려 준 이유 */
+/** 서울시 정보와 예측을 나누어 설명한다. reason: 지금 확률이 보류된 경우 서버가 알려 준 이유 */
 export default function AboutSheet({ reason, onClose }: { reason?: string; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => { ref.current?.focus(); }, []);
@@ -22,12 +22,12 @@ export default function AboutSheet({ reason, onClose }: { reason?: string; onClo
           </button>
         </div>
         <section className={s.item}>
-          <h3 className={s.h}>공공데이터</h3>
-          <p className={s.p}>도착 시간과 지금 인원은 서울시 버스 정보예요. 인원은 실제로 세어 본 값이 아니라서 실제와 다를 수 있어요.</p>
+          <h3 className={s.h}>서울시 제공</h3>
+          <p className={s.p}>도착 시간과 지금 인원은 서울시 버스 정보예요. 인원은 실제로 세어 본 값이 아니라 교통카드 태그로 집계한 값이에요. 태그 없이 내린 사람이 남아 평소 1~3명쯤 다를 수 있어요.</p>
         </section>
         <section className={s.item}>
           <h3 className={s.h}>한자리 예측</h3>
-          <p className={s.p}>도착 때 인원과 탈 수 있는 줄 길이는 그동안 모은 버스 기록과 시간대, 수업 시간표로 예측한 값이에요.</p>
+          <p className={s.p}>도착 때 버스 안 인원과 앞 사람 수별 탈 가능성은 그동안 모은 버스 기록과 시간대, 수업 시간표로 예측한 값이에요. 도착 때 인원은 가장 그럴듯한 값이라 실제로는 더 많거나 적을 수 있어요. "10번 중 몇 번"은 그 오차까지 따져서 계산한 값이에요. 인원은 정류장을 출발할 때 갱신돼서, 앞 정류장을 떠나 달리는 버스는 거의 그대로 오지만 앞 정류장에 서 있거나 그 전이면 아직 더 탈 수 있어요.</p>
         </section>
         <section className={s.item}>
           <h3 className={s.h}>얼마나 맞나요</h3>

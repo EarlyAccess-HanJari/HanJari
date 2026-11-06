@@ -19,12 +19,11 @@ export function HeroSkeleton({ slow = false }: { slow?: boolean }) {
         <div className={app.sk} style={{ width: 70, height: 14 }} />
         <div className={app.sk} style={{ width: "62%", height: 56, marginTop: 12 }} />
       </div>
+      <div className={app.sk} style={{ width: "100%", height: 53, marginTop: "auto" }} />
       <div className={s.block}>
-        <div className={app.sk} style={{ width: "100%", height: 8, borderRadius: 999 }} />
-        <div className={app.sk} style={{ width: "74%", height: 16, marginTop: 14 }} />
+        <div className={app.sk} style={{ width: "74%", height: 16 }} />
         {slow && <p className={s.slowNote} data-testid="slow-note">평소보다 오래 걸리고 있어요. 조금만 기다려 주세요.</p>}
       </div>
-      <div className={app.sk} style={{ width: "100%", height: 53, marginTop: "auto" }} />
       <div className={app.sk} style={{ width: "100%", borderRadius: 16,
         height: "calc(2 * clamp(12px, 2dvh, 20px) + 40px + clamp(8px, 1.6dvh, 16px) + clamp(36px, 5dvh, 46px))" }} />
     </section>
@@ -41,6 +40,7 @@ export function HeroError({ kind, onRetry, retrying, input }:
         <div className={a.top}><span className={a.label}>이번 버스</span></div>
         <p className={s.noinfo}>정보 없음</p>
       </div>
+      <LoadPlaceholder />
       <div className={s.box} role="status" data-testid={`notice-${kind}`}>
         <div className={s.boxTop}>
           <span className={s.title}><StatusIcon kind={kind} size={20} />{m.title}</span>
@@ -50,7 +50,6 @@ export function HeroError({ kind, onRetry, retrying, input }:
         </div>
         {m.body && <p className={s.body}>{m.body}</p>}
       </div>
-      <LoadPlaceholder />
       {input}
     </section>
   );

@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
 
 const run = async (page: Page, scenario: string) => {
   await page.goto(`/?scenario=${scenario}`);
-  await page.getByTestId("stop-sb02-32").click();               // 녹십자약국, 앞 3명(기본값)
+  await page.getByTestId("stop-sb02-32").click();               // 녹십자약국, 입력 전
 };
 
 test("stale: '확률 보류' → 오래됨 안내 + 확률·도착 시간 숨김", async ({ page }) => {
@@ -26,6 +26,7 @@ test("stale: '확률 보류' → 오래됨 안내 + 확률·도착 시간 숨김
 
 test("wide: '판단하기 일러요' → 확률 대신 예상 범위 안내", async ({ page }) => {
   await run(page, "wide");
+  await page.getByTestId("n-input").fill("3");
   const result = page.getByTestId("result");
   await expect(page.getByTestId("hero")).toHaveAttribute("data-level", "판단하기 일러요");
   await expect(result).not.toContainText(/\d+%/);
@@ -114,6 +115,7 @@ test("확률이 바뀌면 카드 위쪽 색(그라데이션)이 초록에서 빨
   const hero = page.getByTestId("hero");
   await hero.waitFor();
   const tint = () => hero.evaluate((e) => getComputedStyle(e).getPropertyValue("--tint").trim());
+  await page.getByTestId("n-input").fill("3");
   await expect(hero).toHaveAttribute("data-tone", "ok");
   const green = await tint();
   await page.getByRole("button", { name: "20명", exact: true }).click();
@@ -128,7 +130,7 @@ test("nocount: 차내 인원을 모르면 null명 대신 —", async ({ page }) 
   await page.evaluate(() => localStorage.setItem("hanjari.sel", JSON.stringify({ route: "sb02", stop: "30" })));
   await page.reload();
   const loads = page.getByTestId("loads");
-  await expect(loads).toContainText("지금 · 공공데이터");
+  await expect(loads).toContainText("서울시 · 태그 기준");
   await expect(loads).toContainText("—");
   await expect(page.locator("body")).not.toContainText("null");
 });

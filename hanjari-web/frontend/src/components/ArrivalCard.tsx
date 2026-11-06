@@ -1,5 +1,5 @@
 import type { PredictItem } from "../types";
-import { arrivalAt, mmss, stopsAwayText } from "../utils/format";
+import { arrivalAt, etaText, mmss, stopsAwayText } from "../utils/format";
 import type { ArrivalState } from "../utils/format";
 import s from "./ArrivalCard.module.css";
 
@@ -12,16 +12,17 @@ interface Props {
 
 const SOON_SEC = 60;  // 남은 시간이 이보다 적으면(1분 미만) '곧 도착'
 
-/** 공공데이터가 알려 주는 사실만 담는다. 탈 수 있는지(예측)는 ResultCard 가 말한다 */
+/** 서울시 버스 정보가 알려 주는 값만 담는다. 이번 버스를 탈지 한 대 보낼지 비교하도록 다음 버스를 나란히 둔다. 탈 수 있는지(예측)는 ResultCard 가 말한다 */
 export default function ArrivalCard({ item, state, fetchedAt, now }: Props) {
   // 차량/제공 시각이 바뀌면 새 ETA를 즉시 반영한다. 이전 차량의 예정 시각을 이어 쓰지 않는다.
   const left = Math.max(0, Math.ceil((arrivalAt(item, fetchedAt) - now) / 1000));
   const t = mmss(left);
   const stale = state === "stale";
+  const next = !stale && item.eta2_sec != null ? etaText(item.eta2_sec) : null;
   return (
     <section className={s.arrival} aria-label="남은 시간" data-testid="arrival">
       <div className={s.top}>
-        <span className={s.label}>이번 버스 <span className={s.source}>공공데이터</span></span>
+        <span className={s.label}>이번 버스</span>
         {!stale && <span className={s.away}>{stopsAwayText(item.stops_away)}</span>}
       </div>
       {/* 오래된 정보(수집 중단·새벽)면 몇 시간 전 버스를 카운트다운하게 되므로 도착 시간 대신 안내만 */}
@@ -40,6 +41,12 @@ export default function ArrivalCard({ item, state, fetchedAt, now }: Props) {
                 <span className={s.num}>{t.s}</span><span className={s.unit}>초</span>
               </>
             )}
+          </span>
+        )}
+        {next && (
+          <span className={s.next} data-testid="next-bus">
+            <span className={s.nextLabel}>다음 버스</span>
+            <span className={s.nextValue}>{next}</span>
           </span>
         )}
       </div>
