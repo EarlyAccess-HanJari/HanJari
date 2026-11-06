@@ -22,6 +22,7 @@
 import datetime as dt, json, math, os, sys, tempfile
 from numbers import Integral
 from pathlib import Path
+from functools import lru_cache
 import build_dataset as B
 import collect as C
 import data_quality as DQ
@@ -134,6 +135,34 @@ def export(lite=False, until=None, out_dir=None):
 
 
 _M = {}
+
+
+@lru_cache(maxsize=4)
+def _disk_created(path, signature):
+    meta = json.loads((Path(path) / 'meta.json').read_text())
+    if not isinstance(meta, dict) or not isinstance(meta.get('created'), str) or not meta['created']:
+        raise ValueError('invalid model metadata')
+    return meta['created']
+
+
+def model_status():
+    src = MODELS / 'lite'
+    loaded = _M.get(src, (None, {}))[1].get('created')
+    result = dict(status='not_required', loaded=loaded, disk=None)
+    if not DQ.boarding_policy()['enabled']:
+        return result
+    try:
+        signature = tuple((s.st_mtime_ns, s.st_size) for s in
+                          ((src / name).stat() for name in ('meta.json', 'point.json', 'quantile.json', 'k0.json')))
+        if any(size == 0 for _, size in signature):
+            raise ValueError('empty model file')
+        result['disk'] = _disk_created(str(src), signature)
+        result['status'] = 'not_loaded' if loaded is None else 'ok' if loaded == result['disk'] else 'stale'
+    except FileNotFoundError:
+        result['status'] = 'missing'
+    except (OSError, ValueError, TypeError):
+        result['status'] = 'broken'
+    return result
 
 
 def load(lite, src=None):

@@ -12,9 +12,11 @@ import logging
 import os
 import sys
 import threading
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+_import_started = time.perf_counter()
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 
@@ -30,6 +32,7 @@ sys.path.insert(0, str(ML / "src"))
 import serve  # noqa: E402
 
 log = logging.getLogger("hanjari")
+_import_seconds = time.perf_counter() - _import_started
 
 # serve.predict_live 는 모듈 전역을 바꿔치기하며 돌아서, 두 요청이 겹치면 결과가 섞인다
 _lock = threading.Lock()
@@ -44,8 +47,15 @@ def _predict(n: int) -> list[dict]:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    log.info('startup import=%.3fs', _import_seconds)
     try:
+        started = time.perf_counter()
+        if serve.DQ.boarding_policy()['enabled']:
+            serve.load(True)
+        log.info('startup model_load=%.3fs', time.perf_counter() - started)
+        started = time.perf_counter()
         _predict(0)  # 모델을 미리 읽어 첫 사용자가 몇 초씩 기다리지 않게
+        log.info('startup first_prediction=%.3fs', time.perf_counter() - started)
     except Exception:
         log.exception("워밍업 실패 — 요청이 오면 다시 시도함")
     yield
@@ -65,10 +75,17 @@ async def prevent_prediction_cache(request, call_next):
 
 @app.get("/api/health")
 def health():
-    routes = serve.source_health() if MODE == "latest" else {}
-    return {"status": "ok", "mode": MODE, "release": RELEASE,
+    try:
+        routes = serve.source_health() if MODE == "latest" else {}
+        model = serve.model_status()
+    except Exception:
+        log.exception('상태 확인 실패')
+        routes, model = {}, {'status': 'broken', 'loaded': None, 'disk': None}
+    inactive = bool(routes) and all(r['status'] == 'outside_service' for r in routes.values())
+    ready = model['status'] in ('ok', 'not_required') or (model['status'] == 'not_loaded' and inactive)
+    return {"status": "ok" if ready else "degraded", "mode": MODE, "release": RELEASE,
             "data_status": "degraded" if any(r["status"] in ("missing", "stale") for r in routes.values()) else "ok",
-            "routes": routes}
+            "routes": routes, "model": model, "ready": ready}
 
 
 @app.get("/api/predict")
