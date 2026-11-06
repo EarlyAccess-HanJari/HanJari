@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { PredictItem } from "../types";
-import { chanceText, holdMessage, verdict, whyText } from "../utils/format";
+import { chanceText, holdMessage, people, verdict, whyText } from "../utils/format";
 import type { ArrivalState, ProbState, Tone } from "../utils/format";
 import s from "./ResultCard.module.css";
 
@@ -40,7 +40,10 @@ function Headline({ tone, text, action }: { tone: Tone; text: string; action?: R
 function Basis({ item, n }: { item: PredictItem; n: number | null }) {
   if (item.load_pred == null) return null;
   const load = Math.round(item.load_pred);
-  return <p className={s.basis} data-testid="basis">{n === null ? "여기에 내 앞 사람이 타면…" : `약 ${load}명에 내 앞 ${n}명이 타면 약 ${load + n}명`}</p>;
+  const text = n === null ? "여기에 내 앞 사람이 타면…"
+    : n === 0 ? `${people(load)}에 내 앞에 아무도 없으면`
+    : `${people(load)}에 내 앞 ${n}명이 타면 약 ${load + n}명`;
+  return <p className={s.basis} data-testid="basis">{text}</p>;
 }
 
 /** 탈 수 있는지만 말한다. 앱은 줄을 모르므로 입력 전에는 말하지 않고, 입력 후에는 그 조건의 추정값이라고 밝힌다.

@@ -43,6 +43,46 @@ test("앞 사람 수를 고르면 그 조건의 추정값이라고 밝혀 보여
   await expect(page.getByTestId("hero")).toHaveAttribute("data-tone", "bad");
 });
 
+test("앞 사람이 없으면 '내 앞 0명'이라고 하지 않는다", async ({ page }) => {
+  await open(page, "jr03-20");
+  await page.getByTestId("n-input").fill("0");
+  const result = page.getByTestId("result");
+  await expect(result).toContainText("약 22명에 내 앞에 아무도 없으면");
+  await expect(result).not.toContainText("0명이 타면");
+  await expect(result).toContainText("그러면 거의 항상 타요");
+});
+
+test("몰림이 잦은 정류장은 최신 서버 기준(0.95)을 넘어야 초록이다", async ({ page }) => {
+  await open(page, "jr03-23");  // 창신역4번출구: 앞 6명까지 초록, 10명(88%)은 주황
+  await page.getByTestId("n-input").fill("6");
+  await expect(page.getByTestId("hero")).toHaveAttribute("data-tone", "ok");
+  await page.getByTestId("n-input").fill("7");
+  await expect(page.getByTestId("hero")).toHaveAttribute("data-tone", "warn");
+  await chip(page, 10).click();
+  await expect(page.getByTestId("hero")).toHaveAttribute("data-tone", "warn");
+  await expect(page.getByTestId("result")).toContainText("예상 약 88%");
+});
+
+test("ⓘ 안내는 사용자가 뜻을 몰랐던 표현을 쓰지 않고, 결과가 왜 다른지 말한다", async ({ page }) => {
+  await open(page);
+  await page.getByTestId("about").click();
+  const sheet = page.getByTestId("about-sheet");
+  await expect(sheet).toContainText("버스마다 탈 수 있는 인원");
+  await expect(sheet).toContainText("평소 내리는 사람");
+  await expect(sheet).not.toContainText(/거의 그대로|검증 전|공공데이터/);
+});
+
+test("보류 이유는 개발자 문장 대신 사용자 말로 보여 준다", async ({ page }) => {
+  await page.goto("/?scenario=holiday");
+  await page.getByTestId("stop-sb02-32").click();
+  await expect(page.getByTestId("result")).toContainText("오늘은 탑승 예측을 쉬어요");
+  await expect(page.getByTestId("result")).not.toContainText("검증 전");
+  await expect(page.getByTestId("loads")).toContainText("약 39명");  // 예측을 쉬어도 지금 인원은 서울시 정보라 보인다
+  await page.getByTestId("about").click();
+  await expect(page.getByTestId("about-reason")).toContainText("예측이 맞는지 아직 확인하지 못했어요");
+  await expect(page.getByTestId("about-reason")).not.toContainText("검증 전");
+});
+
 test("95% 이상과 5% 이하는 숫자를 좁혀 말하지 않는다", async ({ page }) => {
   await open(page);
   await page.getByTestId("n-input").fill("3");

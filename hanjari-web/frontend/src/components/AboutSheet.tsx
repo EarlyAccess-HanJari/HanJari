@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { reasonText } from "../utils/format";
 import sheet from "./StopSheet.module.css";
 import s from "./AboutSheet.module.css";
 
@@ -27,7 +28,9 @@ export default function AboutSheet({ reason, onClose }: { reason?: string; onClo
         </section>
         <section className={s.item}>
           <h3 className={s.h}>한자리 예측</h3>
-          <p className={s.p}>도착 때 버스 안 인원과 앞 사람 수별 탈 가능성은 그동안 모은 버스 기록과 시간대, 수업 시간표로 예측한 값이에요. 도착 때 인원은 가장 그럴듯한 값이라 실제로는 더 많거나 적을 수 있어요. "10번 중 몇 번"은 그 오차까지 따져서 계산한 값이에요. 인원은 정류장을 출발할 때 갱신돼서, 앞 정류장을 떠나 달리는 버스는 거의 그대로 오지만 앞 정류장에 서 있거나 그 전이면 아직 더 탈 수 있어요.</p>
+          <p className={s.p}>도착 때 버스 안 인원과 앞 사람 수별 탈 가능성은 그동안 모은 버스 기록과 시간대, 수업 시간표로 예측한 값이에요. 도착 때 인원은 가장 그럴듯한 값이라 실제로는 더 많거나 적을 수 있어요. "10번 중 몇 번"은 그 오차까지 따져서 계산한 값이에요.</p>
+          <p className={s.p}>버스 안 인원은 정류장을 출발할 때 실제 탑승 기록으로 바뀌어요. 그래서 버스가 바로 전 정류장을 출발하면 도착 때 인원이 거의 정해지고, 그 전에는 아직 더 탈 수 있어요.</p>
+          <p className={s.p}>탈 수 있는지는 버스마다 탈 수 있는 인원과 이 정류장에서 평소 내리는 사람까지 따져서 계산해요. 그래서 같은 인원이어도 정류장과 버스에 따라 결과가 달라요. 탈 수 있는 인원도 버스 기록으로 추정한 값이에요.</p>
         </section>
         <section className={s.item}>
           <h3 className={s.h}>얼마나 맞나요</h3>
@@ -40,7 +43,7 @@ export default function AboutSheet({ reason, onClose }: { reason?: string; onClo
         {reason && (
           <section className={s.item}>
             <h3 className={s.h}>지금 확률이 안 나오는 이유</h3>
-            <p className={s.p} data-testid="about-reason">{reason}</p>
+            <p className={s.p} data-testid="about-reason">{reasonText(reason)}</p>
           </section>
         )}
       </div>

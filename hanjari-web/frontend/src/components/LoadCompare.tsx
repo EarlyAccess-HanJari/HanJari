@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { ROUTES } from "../types";
 import type { PredictItem } from "../types";
-import { isSettled } from "../utils/format";
+import { isSettled, people } from "../utils/format";
 import s from "./LoadCompare.module.css";
 
 const NOW_UNKNOWN = "지금 버스 안 —";
@@ -29,13 +29,13 @@ export default function LoadCompare({ item, stale }: { item: PredictItem; stale:
   const currentValid = item.data_status === "ok" || (item.data_status === undefined && item.level !== "확률 보류");
   const now = stale || !currentValid || item.r_now == null
     ? NOW_UNKNOWN
-    : <>지금 <b>{item.r_now === 0 ? "0명" : `약 ${item.r_now}명`}</b> 타고 있어요</>;
+    : <>지금 <b>{people(item.r_now)}</b> 타고 있어요</>;
   if (stale || item.level === "확률 보류" || item.load_pred == null) return <Layout now={now} pred={PRED_UNKNOWN} />;
   // '판단하기 일러요'는 예전 서버의 단계다. 대표 숫자를 믿기 어렵다는 뜻이라 범위로 말한다
   const predN = Math.round(item.load_pred);
   const count = item.level === "판단하기 일러요" && item.load_10 != null && item.load_90 != null
     ? `${Math.round(item.load_10)}~${Math.round(item.load_90)}명`
-    : `약 ${predN}명`;
+    : people(predN);
   // 지금 인원에서 도착 때 인원으로 어떻게 이어지는지 말한다
   const change = currentValid && item.r_now != null ? predN - item.r_now : null;
   const lead = change === null ? "도착 땐" : change >= 2 ? "더 타서 도착 땐" : change <= -2 ? "내려서 도착 땐" : "도착 때도";

@@ -150,9 +150,9 @@ async function fetchMock(n: number): Promise<ApiResult> {
     case "passed":
       return { ok: true, data: { ...withN(mockN3, n), results: mockN3.results.map((r) => ({ ...r, eta_sec: 5, arrival_status: "passed" })) } as PredictResponse };
     case "holiday":
-      return { ok: true, data: { ...withN(mockN3, n), results: mockN3.results.map((r) => ({ ...r, ...HELD, prediction_status: "calibration_hold", reason: "일요일·공휴일(수업 없는 날은 아직 검증 전)" })) } as PredictResponse };
+      return { ok: true, data: { ...withN(mockN3, n), results: mockN3.results.map((r) => ({ ...r, ...HELD, data_status: "ok", prediction_status: "calibration_hold", reason: "일요일·공휴일(수업 없는 날은 아직 검증 전)" })) } as PredictResponse };
     case "held":
-      return { ok: true, data: { ...withN(mockN3, n), results: mockN3.results.map((r) => ({ ...r, ...HELD, prediction_status: "capacity_unverified", reason: "이 차량의 탑승 판단 기준을 확인하고 있어요" })) } as PredictResponse };
+      return { ok: true, data: { ...withN(mockN3, n), results: mockN3.results.map((r) => ({ ...r, ...HELD, data_status: "ok", prediction_status: "capacity_unverified", reason: "이 차량의 탑승 판단 기준을 확인하고 있어요" })) } as PredictResponse };
     case "nocount":
       return { ok: true, data: { ...withN(mockN3, n), results: mockN3.results.map((r) => ({ ...r, r_now: null })) } as PredictResponse };
   }

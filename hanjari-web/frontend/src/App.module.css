@@ -9,6 +9,8 @@
    위쪽 내용은 위에서부터 쌓고 차내·대기 인원은 아래에 고정(LoadCompare 의 margin-top:auto) —
    안내 문구 길이가 달라져도 누르던 버튼이 움직이지 않게 함 */
 .hero { flex: 1 0 auto; position: relative; overflow: hidden; --tint: color-mix(in srgb, var(--lv-bar) 18%, #fff); background: linear-gradient(180deg, var(--tint) 0%, #fff 58%), #fff; transition: --tint .5s ease; border: 1px solid var(--c-line-1); border-radius: 24px; padding: 24px 20px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 14px; min-height: 372px; }
+/* 화면이 길어 남는 공간은 시간 위아래로 나눈다. 인원·입력은 아래에 고정이고, 남는 공간이 없는 작은 화면은 그대로다 */
+.hero > :first-child { margin-top: auto; }
 /* 다시 불러오는 중: 도착 시간·입력은 계속 쓸 수 있으니 흐리게 하지 않고 맨 위 얇은 진행 막대만 */
 .loadbar { position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, transparent, var(--lv-bar), transparent); background-size: 40% 100%; background-repeat: no-repeat; animation: slide 1s ease-in-out infinite; }
 @keyframes slide { from { background-position: -40% 0; } to { background-position: 140% 0; } }

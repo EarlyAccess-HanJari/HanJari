@@ -1,3 +1,4 @@
 .item { display: flex; flex-direction: column; gap: 2px; padding: 0 4px; }
 .h { margin: 0; font-size: 14px; font-weight: 700; color: var(--c-text-1); }
-.p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--c-text-2); }
+.p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--c-text-2); word-break: keep-all; }
+.p + .p { margin-top: 6px; }

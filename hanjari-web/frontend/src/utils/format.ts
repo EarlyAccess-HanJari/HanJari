@@ -9,6 +9,11 @@ export function stopsAwayText(n: number): string {
   return n === 0 ? "바로 앞 정류장" : `${n}정류장 전`;
 }
 
+/** 사람 수를 문장에 넣을 때. 0명은 어림이 아니므로 '약'을 붙이지 않는다 */
+export function people(n: number): string {
+  return n === 0 ? "0명" : `약 ${n}명`;
+}
+
 export function mmss(sec: number): { m: number; s: string } {
   return { m: Math.floor(sec / 60), s: String(sec % 60).padStart(2, "0") };
 }
@@ -56,7 +61,7 @@ export interface Verdict { badge: string; tone: Tone; word: string }
 /** 입력한 인원의 판정. 색은 백엔드 단계(level)를 따른다. 확률 숫자로 색을 정하면 '수업 직전이라 여유를 내지 않는 칸'처럼
  *  서버가 내린 판단과 어긋난다. 문장은 chanceText */
 export function verdict(i: PredictItem): Verdict {
-  if (i.level === "확률 보류" || i.p_board == null) return { badge: "확률 보류", tone: "hold", word: "" };
+  if (i.level === "확률 보류" || i.p_board == null) return { badge: "예측 없음", tone: "hold", word: "" };
   if (i.level === "판단하기 일러요") return { badge: "판단하기 일러요", tone: "hold", word: "아직 판단하기 일러요" };
   const badge = "탑승 확률";
   if (i.level === "여유 있음") return { badge, tone: "ok", word: "" };
@@ -81,8 +86,16 @@ export function holdMessage(i: PredictItem, state: ArrivalState): { title: strin
       ? { title: "이번 버스가 막 지나간 것 같아요", body: "" }  // 위 칸에 새 도착 정보를 확인 중이라고 이미 나온다
       : { title: "버스가 곧 오거나 막 지나갔어요", body: "" };
   }
-  if (i.reason.includes("일요일")) return { title: "오늘은 탑승 예측을 쉬어요", body: "일요일·공휴일은 아직 검증 전이에요. 도착 시간은 그대로 볼 수 있어요." };
+  if (i.reason.includes("일요일")) return { title: "오늘은 탑승 예측을 쉬어요", body: "일요일·공휴일은 예측이 맞는지 아직 확인하지 못했어요. 도착 시간은 그대로 볼 수 있어요." };
   return { title: "이 버스는 탑승 예측이 어려워요", body: "도착 시간은 그대로 볼 수 있어요." };
+}
+
+/** 서버의 보류 이유 중 개발자용 문장을 사용자 말로 바꾼다. 모르는 문장은 그대로 둔다 */
+export function reasonText(reason: string): string {
+  if (reason.includes("일요일")) return "일요일·공휴일은 예측이 맞는지 아직 확인하지 못했어요.";
+  if (reason.includes("검증 데이터 부족")) return "이 시간대에 이만큼 떨어진 버스는 예측을 확인할 기록이 아직 부족해요.";
+  if (reason.includes("전 것")) return "버스 정보가 오래됐어요. 새 정보가 들어오면 다시 계산해요.";
+  return reason;
 }
 
 /** 도착 인원 범위가 이 안이면 사실상 정해진 것이다(달리는 중인 가까운 버스). 응답에 정차 여부가 없어 범위로 판단한다 */
