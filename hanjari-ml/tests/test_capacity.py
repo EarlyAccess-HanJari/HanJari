@@ -235,6 +235,17 @@ class OutageFallback(unittest.TestCase):
         self.assertEqual(fb["arrival_at"], "2026-11-02T10:10:00+09:00")  # 마지막 정보의 도착 예정 그대로
         self.assertEqual(fb["age_sec"], 300)
 
+    def test_last_known_uses_same_crowded_stop_threshold_as_live(self):
+        def predict(m, d, quantiles=False):
+            return np.full(len(d), 20.0), np.full((len(d), 41), 0.9), np.zeros((len(d), len(T.QS)))
+        with patch.object(T, "predict", predict):
+            for stop, want in (("23", "빠듯함"), ("20", "여유 있음")):  # 창신역4번출구는 0.95 기준, 동묘앞은 그대로
+                with self.subTest(stop=stop):
+                    row, m, meta = fixture(20)
+                    row.update(stop=stop, eta=600)
+                    self.assertEqual(result(row, m, meta, age=0)["level"], want)
+                    self.assertEqual(result(row, m, meta, age=300)["fallback"]["level"], want)
+
     def test_long_outage_or_arrived_bus_uses_typical_table_with_strict_threshold(self):
         for eta, age in ((600, 900), (60, 300)):  # 15분 끊김 / 첫 버스가 이미 도착했을 시각
             with self.subTest(eta=eta, age=age):

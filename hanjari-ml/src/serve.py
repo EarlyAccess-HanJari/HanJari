@@ -544,7 +544,8 @@ def results(rows, m, meta, n_ahead, now, max_age, lite, approaching=()):
             q10, q90 = np.interp([0.1, 0.9], qs, Q[i])
             p = float(Pm[i, n_ahead])
             lv = level(p, q10, q90, r.stops_away, r.is_peak == 1,
-                       not r.holiday and pd.notna(r.weekday) and r.weekday != "일", th, 0)[0] \
+                       not r.holiday and pd.notna(r.weekday) and r.weekday != "일", th, 0,
+                       floor=STOP_MIN_TH.get((r.route, str(r.stop)), 0.0))[0] \
                 if np.isfinite([point[i], q10, q90, p]).all() and 0 <= p <= 1 else "확률 보류"
             seconds = last_known[i][1]
             result["fallback"] = (dict(mode="last_known", age_sec=round(seconds), r_now=DQ.integer(last_known[i][0]["r_now"]),
