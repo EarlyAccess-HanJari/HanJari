@@ -25,6 +25,8 @@
 웹은 `~/hanjari-releases/practical-20261105-v9/`의 코드와 별도 웹 가상환경을 사용합니다. 모델·데이터는 위 일일 작업 폴더를 링크합니다. `https://161.33.132.80/` → nginx 443 → `127.0.0.1:8000`이며, 2026-11-05 03:34(KST) 공개 8000 차단을 완료했습니다. HTTP 일반 요청은 308 이동하고 ACME 인증서 검증 경로는 예외입니다.
 
 ## 2. 잘 돌고 있나 (명령 3개)
+
+다음 절차는 service-hardening 변경을 설치한 뒤 적용합니다. 이 문서 갱신 자체는 운영 반영을 뜻하지 않습니다. `/api/health`는 항상 HTTP 200이므로 상태 코드만 보지 말고 `ready`, `model.status`, `model.loaded`, `model.disk`를 함께 확인합니다. 정상은 `status=ok`, `ready=true`입니다. 정책이 꺼진 `not_required`, 비운행 시간의 `not_loaded`는 정상일 수 있습니다. `missing/broken/stale`은 `ready=false`이며, 웹 감시는 연결 실패 또는 ready=false가 연속 2회일 때부터 알리고 stale이면 30분 간격 제한으로 웹만 try-restart합니다. 첫 실패는 로그만 남기며 ready=true이면 연속 실패 횟수를 초기화합니다. 모델 자동 rollback은 하지 않습니다.
 ```bash
 systemctl is-active hanjari-collect; systemctl list-timers 'hanjari-*' --no-pager
 cat ~/hanjari-ml/reports/daily/$(date -d '+9 hour -1 day' +%Y%m%d).md    # 어젯밤 마감 요약
@@ -47,23 +49,26 @@ cd ~/hanjari-releases/practical-20261105-v9/hanjari-ml/src
 | `YYYYMMDD 마감 ⚠ 데이터 FAIL` | 어제 수집에 30분+ 공백·오류가 많음 → 그날은 학습 안 함 | 원인만 확인(서비스 모델은 그대로) |
 | `⚠ '여유' 후 … NN% < 97%` | 알림 문구와 무관하게 API 인원·정원 정책으로 계산한 지표 하락. 실제 탑승 실패 관측값이 아님 | 하루면 지켜보기. 이틀 이상이면 `python src/daily.py rollback` 검토, 원인 분석(행사·시험·날씨) |
 | `⚠ 새 모델 불합격` | 재학습 모델이 나빠서 교체 안 함 | 조치 불필요(이전 모델 유지). 계속되면 데이터 확인 |
-| `마감 실패: …` / `hanjari-daily.service 실패(systemd)` | 코드 오류·메모리 초과 | `journalctl -u hanjari-daily -n 50`. 서비스 모델은 그대로 |
+| `마감 실패: …` / `hanjari-daily.service 실패(systemd)` | 코드 오류·메모리 초과 | `journalctl -u hanjari-daily -n 50`. 모델 유지/복구 실패 문구와 health의 활성 버전 확인 |
 
 ## 4. 자주 쓰는 조작
 ```bash
 cd ~/hanjari-ml/src
-../.venv/bin/python daily.py rollback            # 서비스 모델을 바로 전 버전으로 (특정 버전: rollback 20260930)
+../.venv/bin/python daily.py rollback            # 현재 모델을 제외한 가장 최근 승인 버전
+../.venv/bin/python daily.py rollback 20260930   # 승인 기록과 폴더가 모두 있어야 함
 sudo systemctl start hanjari-daily                # 마감을 지금 한 번 더(어제 날짜)
 ../.venv/bin/python daily.py 20260930             # 특정 날짜 마감(제한 없이 돌므로 수집기 바쁜 낮엔 피하기)
 tar xzf ~/hanjari/data/archive/20260925.tar.gz -C ~/hanjari/data/api_logs   # 압축 로그 풀기(전체 재계산할 때만)
 ```
 
-모델을 수동 복원한 뒤에는 메모리에 남은 모델을 갱신하도록 `hanjari-web` 재시작과 응답 확인이 필요합니다. 정원 정책과 모델 메타데이터의 호환성도 확인합니다. 웹 v9 → v8 복원은 `~/hanjari-releases/practical-20261105-v9/previous-service.conf`를 사용합니다. 공개 8000 차단 설정 복원용 `~/hanjari-backups/close-8000-20261105-033411` 백업은 별도이며 계속 유효합니다. **이 백업의 웹 설정은 v7을 가리키므로 복원할 릴리스를 확인해야 합니다.** 절차는 [운영 구성](../../deployment/README.md)을 따릅니다. 실제 복구 성공은 아직 확인 전입니다. 접근 설정 잔여 점검은 11/8, 복구 검증은 11/13 예정입니다.
+새 rollback 명령은 복사·해시 검증 후 실제 `models/lite` 폴더를 교체하고 `sudo -n systemctl try-restart hanjari-web`을 시도합니다. 미승인 버전은 명시적으로 버전을 지정하고 `--force`를 붙일 때만 허용합니다. 재시작 실패는 모델 복원 실패와 구분해 알립니다. 실행 뒤 반드시 `ready=true`, loaded와 disk 일치를 확인합니다. `.lite-previous`는 직전 폴더 보관용이며 일반 모델 버전으로 탐색하지 않습니다. 두 rename 사이 강제 종료로 lite가 없으면 타이머와 웹을 관리자가 중지한 상태에서 previous를 검증하여 복원해야 합니다. 정상 자동 전환 실패는 이전 lite로 되돌립니다.
+
+웹 릴리스를 되돌려도 공유 모델과 재학습 폴더 코드는 돌아가지 않습니다. 이전 릴리스 설정과 재학습 코드 백업을 별도로 확인하고 정원 정책·모델 호환성을 점검합니다. 과거 v9→v8 및 공개 8000 차단 복원 기록은 [운영 구성](../../deployment/README.md)에 남아 있습니다.
 
 ## 5. 저장 공간 정책 (⑥ 정리, 매일)
 - 수집 원본: 최근 3일만 폴더, 그 전은 `archive/YYYYMMDD.tar.gz`(223MB → 15MB/일). 압축본 파일 수를 확인한 뒤에만 폴더 삭제.
-- 모델 버전: 최근 7개. 수집기 로그·알림 로그: 매주 압축, 8주 보관(logrotate).
-- 하루 증가량 약 17MB → 40GB 디스크로 수년.
+- 모델 버전: 최근 7개에 더해 승인된 최근 2개와 현재 버전을 보존. 수집기 로그·알림 로그는 매주 압축, 8주 보관(logrotate).
+- 5GB 미만이면 데이터셋 생성·재학습을 건너뛰고 현재 모델을 유지합니다. 전환에도 후보 크기 2배의 여유가 필요합니다. archive/processed/models/reports 용량을 마감 요약에서 확인합니다. archive와 학습 자료 자동 삭제는 추가하지 않았으며 총 보관량은 관리자가 결정합니다.
 
 ## 6. 알림 켜기 (디스코드)
 디스코드 채널 → 설정 → 연동 → 웹후크 → 새 웹후크 → URL 복사 →

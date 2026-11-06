@@ -6,7 +6,7 @@
 같은 문제는 한 번만 알리고(reports/watchdog.json), 운행 중 사라지면 '복구' 알림.
 운행 종료는 장애 복구의 증거가 아니므로 해당 노선은 다음 운행에서 다시 확인한다.
 """
-import datetime as dt, json, shutil, subprocess
+import datetime as dt, json, shutil, subprocess, urllib.request
 import build_dataset as B
 import collect as C
 import notify as N
@@ -17,6 +17,47 @@ RECENT = 10
 MIN_FREE_GB = 5
 RESTART_GAP = 30    # 분
 STATE = N.REPORTS / "watchdog.json"
+
+
+def web_health():
+    with urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=5) as response:
+        status = json.loads(response.read())
+    if not isinstance(status, dict) or type(status.get('ready')) is not bool:
+        raise ValueError('invalid web health response')
+    return status
+
+
+def load_state(now):
+    try:
+        state = json.loads(STATE.read_text())
+        if not isinstance(state, dict) or not isinstance(state.get('open', []), list) \
+                or any(not isinstance(p, str) for p in state.get('open', [])):
+            raise ValueError('invalid watchdog state')
+        if type(state.get('web_failures', 0)) is not int:
+            raise ValueError('invalid web failure count')
+        for key in ('restarted', 'web_restarted'):
+            if key in state and (not isinstance(state[key], str) or dt.datetime.fromisoformat(state[key]).tzinfo is not None):
+                raise ValueError('invalid restart time')
+        return state
+    except FileNotFoundError:
+        return {}
+    except (OSError, ValueError, TypeError):
+        backup = STATE.with_name(STATE.name + '.corrupt-' + now.strftime('%Y%m%d%H%M%S%f'))
+        try:
+            STATE.rename(backup)
+            for old in STATE.parent.glob(STATE.name + '.corrupt-*'):
+                if old != backup:
+                    old.unlink()
+        except OSError:
+            pass
+        N.send('감시 상태 손상: 파일 격리 후 계속 감시. 재시작 이력이 불명확하여 30분간 자동 재시작 보류', 'WARN')
+        # Keep an unknown previous restart from causing a restart loop after recovery.
+        return {'restarted': now.isoformat(), 'web_restarted': now.isoformat()}
+
+
+def restart_due(state, key, now):
+    last = state.get(key)
+    return not last or (now - dt.datetime.fromisoformat(last)).total_seconds() > RESTART_GAP * 60
 
 
 def collector_alive(now):
@@ -65,14 +106,38 @@ def check(now):
 def main():
     now = dt.datetime.now(N.KST).replace(tzinfo=None)
     problems, stale = check(now)
-    st = json.loads(STATE.read_text()) if STATE.exists() else {}
+    st = load_state(now)
     if stale:
-        last = st.get("restarted")
-        if not last or (now - dt.datetime.fromisoformat(last)).total_seconds() > RESTART_GAP * 60:
+        if restart_due(st, 'restarted', now):
             r = subprocess.run(["sudo", "-n", "systemctl", "restart", "hanjari-collect"], capture_output=True, text=True)
             problems.append("수집기 재시작 " + ("함" if r.returncode == 0 else f"실패({r.stderr.strip()[:80]})"))
             st["restarted"] = now.isoformat()
-    key = sorted(p.split("(")[0] for p in problems if not p.startswith("수집기 재시작"))
+    web_problem, web_stale = None, False
+    try:
+        web = web_health()
+        model = web.get('model') or {}
+        if not web['ready']:
+            status = model.get('status', 'unknown') if isinstance(model, dict) else 'unknown'
+            web_problem = f'웹 모델 {status}(ready=false, 확인 후 ~/hanjari-ml/src/daily.py rollback 검토)'
+            web_stale = status == 'stale'
+    except (OSError, ValueError, TypeError):
+        web_problem = '웹 연결/상태 확인 실패(확인 후 ~/hanjari-ml/src/daily.py rollback 검토)'
+    st['web_failures'] = st.get('web_failures', 0) + 1 if web_problem else 0
+    if web_problem:
+        if st['web_failures'] == 1:
+            print(now.strftime('%H:%M'), '웹 감시 1회 실패, 다음 점검에서 재확인:', web_problem)
+        else:
+            problems.append(web_problem)
+            if web_stale and restart_due(st, 'web_restarted', now):
+                st['web_restarted'] = now.isoformat()
+                try:
+                    r = subprocess.run(['sudo', '-n', 'systemctl', 'try-restart', 'hanjari-web'],
+                                       capture_output=True, text=True, timeout=60)
+                    note = '함' if r.returncode == 0 else f'실패({r.stderr.strip()[:80]})'
+                except (OSError, subprocess.SubprocessError) as exc:
+                    note = f'실패({type(exc).__name__})'
+                problems.append('웹 재시작 ' + note)
+    key = sorted(p.split("(")[0] for p in problems if not p.startswith(("수집기 재시작", '웹 재시작')))
     previous = st.get("open", [])
     sched = C.load_sched()
     inactive = [route for route in C.ROUTES if not C.allowed(now, route, sched)]
@@ -84,8 +149,9 @@ def main():
         N.send("수집 감시: 복구됨 (" + " / ".join(previous) + ")", "INFO")
     st["open"], st["checked"], st["outside_service_routes"] = tracked, now.isoformat(), inactive
     N.REPORTS.mkdir(exist_ok=True)
-    STATE.write_text(json.dumps(st, ensure_ascii=False))
-    print(now.strftime("%H:%M"), problems or ("운행시간 밖 노선은 다음 운행에서 재확인" if pending else "문제 없음"))
+    C.write_snapshot(STATE, json.dumps(st, ensure_ascii=False).encode())
+    print(now.strftime("%H:%M"), problems or ("운행시간 밖 노선은 다음 운행에서 재확인" if pending else
+          "웹 재확인 대기" if st['web_failures'] == 1 else "문제 없음"))
 
 
 if __name__ == "__main__":

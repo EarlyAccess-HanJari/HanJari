@@ -22,10 +22,15 @@
 import datetime as dt, json, math, os, sys, tempfile
 from numbers import Integral
 from pathlib import Path
+from functools import lru_cache
+from collections import OrderedDict
+from copy import deepcopy
+import threading
 import build_dataset as B
 import collect as C
 import data_quality as DQ
 from feature_schema import GROUPS
+from date_paths import day_folders, valid_day
 
 MODELS = B.ROOT / "models"
 SAMPLE = B.ROOT / "data/sample/20260930"  # 실제 스냅샷 1장(도착·위치 × 2노선) — 키 없이 돌려보기용
@@ -109,7 +114,7 @@ def export(lite=False, until=None, out_dir=None):
         raise ValueError("바로 앞 버스 학습 데이터가 50행 미만: 모델 저장 보류")
     for route in B.STOPS:  # q_hist 용 과거 순증감 표 — 날짜별 캐시 합산(학습 q_hist 와 같은 정의, 원본 재읽기 없음)
         if B.hist_from_cache(route, until) is None:  # 캐시가 없는 설치: 예전처럼 원본에서
-            B.build(route, sorted(p.name for p in B.LOG.glob("2026*") if p.is_dir() and (not until or p.name <= until)))
+            B.build(route, [p.name for p in day_folders(B.LOG) if not until or p.name <= until])
     out_dir.mkdir(parents=True, exist_ok=True)
     m["pt"].save_model(out_dir / "point.json")
     m["qm"].save_model(out_dir / "quantile.json")
@@ -133,24 +138,72 @@ def export(lite=False, until=None, out_dir=None):
 
 
 _M = {}
+_LOAD_FAILURES = OrderedDict()
+
+
+def _model_signature(src):
+    return tuple((s.st_mtime_ns, s.st_size) for s in
+                 ((src / name).stat() for name in ('meta.json', 'point.json', 'quantile.json', 'k0.json')))
+
+
+@lru_cache(maxsize=4)
+def _disk_created(path, signature):
+    meta = json.loads((Path(path) / 'meta.json').read_text())
+    if not isinstance(meta, dict) or not isinstance(meta.get('created'), str) or not meta['created']:
+        raise ValueError('invalid model metadata')
+    return meta['created']
+
+
+def model_status():
+    src = MODELS / 'lite'
+    loaded = _M.get(src, (None, {}))[1].get('created')
+    result = dict(status='not_required', loaded=loaded, disk=None)
+    if not DQ.boarding_policy()['enabled']:
+        return result
+    try:
+        signature = _model_signature(src)
+        if any(size == 0 for _, size in signature):
+            raise ValueError('empty model file')
+        result['disk'] = _disk_created(str(src), signature)
+        result['status'] = 'not_loaded' if loaded is None else 'ok' if loaded == result['disk'] else 'stale'
+        if loaded is None and _LOAD_FAILURES.get(src) == signature:
+            result['status'] = 'broken'
+    except FileNotFoundError:
+        result['status'] = 'missing'
+    except (OSError, ValueError, TypeError):
+        result['status'] = 'broken'
+    return result
 
 
 def load(lite, src=None):
-    import numpy as np
-    import xgboost as xgb
     src = Path(src or (MODELS / "lite" if lite else MODELS))
     if src not in _M:
-        meta = json.loads((src / "meta.json").read_text())
-        m = dict(feats=meta["feats"], m0=xgb.XGBRegressor(), pt=xgb.XGBRegressor(), qm=xgb.XGBRegressor())
-        for k, f in (("pt", "point"), ("qm", "quantile"), ("m0", "k0")):
-            m[k].load_model(src / f"{f}.json")
-        m["res0"] = {k == "True": np.array(v) for k, v in meta["res0"].items()}
-        m["qs"] = np.array(meta["qs"])
-        m["gain_q"] = meta.get("gain_q", {})
-        meta["hist_d"] = {r: {(j, h): v for j, h, v in tab} for r, tab in meta["hist_all"].items()}
-        meta["tab_d"] = {r: {(j, h): tuple(v) for j, h, *v in tab} for r, tab in meta["tab"].items()} if "tab" in meta else {}
-        _M[src] = (m, meta)
-    m, meta = _M[src]
+        try:
+            _M[src] = _read_model(src)
+            _LOAD_FAILURES.pop(src, None)
+        except Exception:
+            try:
+                _LOAD_FAILURES[src] = _model_signature(src)
+                while len(_LOAD_FAILURES) > 4:
+                    _LOAD_FAILURES.popitem(last=False)
+            except OSError:
+                pass
+            raise
+    return _M[src]
+
+
+def _read_model(src):
+    import numpy as np
+    import xgboost as xgb
+    meta = json.loads((src / "meta.json").read_text())
+    m = dict(feats=meta["feats"], m0=xgb.XGBRegressor(), pt=xgb.XGBRegressor(), qm=xgb.XGBRegressor())
+    for k, f in (("pt", "point"), ("qm", "quantile"), ("m0", "k0")):
+        m[k].load_model(src / f"{f}.json")
+    m["res0"] = {k == "True": np.array(v) for k, v in meta["res0"].items()}
+    m["qs"] = np.array(meta["qs"])
+    m["gain_q"] = meta.get("gain_q", {})
+    meta["hist_d"] = {r: {(j, h): v for j, h, v in tab} for r, tab in meta["hist_all"].items()}
+    meta["tab_d"] = {r: {(j, h): tuple(v) for j, h, *v in tab} for r, tab in meta["tab"].items()} if "tab" in meta else {}
     return m, meta
 
 
@@ -205,15 +258,28 @@ def _snapshot_files(sources, pattern):
     하루 파일이 수천 개라 요청마다 전부 시각으로 바꾸면 응답이 느려진다. 이름의 자릿수가 고정이라 글자로 정렬하고, 쓰는 파일만 바꾼다."""
     folders = sources if isinstance(sources, (list, tuple)) else [sources]
     prefix, suffix = pattern.split("*")
-    names = []
-    for folder in map(Path, folders):
-        if len(folder.name) != 8 or not folder.is_dir():
-            continue
-        for name in os.listdir(folder):
-            stamp = name[:-len(suffix)].rsplit("_", 1)[-1]
-            if name.startswith(prefix) and name.endswith(suffix) and len(stamp) == 6:
-                names.append((folder.name + stamp, name, folder))
-    for key, name, folder in sorted(names, reverse=True):
+    cache = B._request.get()
+    cache_key = ('names', tuple(str(p) for p in folders), pattern)
+    names = cache.get(cache_key) if cache is not None else None
+    if names is None:
+        names = []
+        for folder in map(Path, folders):
+            if not valid_day(folder.name) or not folder.is_dir():
+                continue
+            directory_key = ('directory', str(folder))
+            listing = cache.get(directory_key) if cache is not None else None
+            if listing is None:
+                listing = os.listdir(folder)
+                if cache is not None:
+                    cache[directory_key] = listing
+            for name in listing:
+                stamp = name[:-len(suffix)].rsplit("_", 1)[-1]
+                if name.startswith(prefix) and name.endswith(suffix) and len(stamp) == 6:
+                    names.append((folder.name + stamp, name, folder))
+        names.sort(reverse=True)
+        if cache is not None:
+            cache[cache_key] = names
+    for key, name, folder in names:
         try:
             yield dt.datetime.strptime(key, "%Y%m%d%H%M%S"), folder / name
         except ValueError:
@@ -405,7 +471,7 @@ def predict_latest(n_ahead):
     active = {route for route in B.STOPS if C.allowed(now, route, sched)}
     if not active:
         return []
-    folders = sorted((p for p in B.LOG.glob("20*") if p.is_dir() and p.name <= now.strftime("%Y%m%d")), reverse=True)[:2]
+    folders = sorted((p for p in day_folders(B.LOG) if p.name <= now.strftime("%Y%m%d")), reverse=True)[:2]
     if not folders:
         raise NoSnapshotError("버스 수집 로그가 없음")
     return [row for row in predict_live(n_ahead, log_dir=folders, reference_now=now) if row["route"] in active]
@@ -417,9 +483,20 @@ def hold_result(result, issue, reason=None):
 
 
 def source_health(now=None):
+    cache = B._request.get()
+    key = ('health', str(B.LOG), now)
+    if cache is not None and key in cache:
+        return deepcopy(cache[key])
+    result = _source_health(now)
+    if cache is not None:
+        cache[key] = deepcopy(result)
+    return result
+
+
+def _source_health(now=None):
     """프로세스 생존과 실제 데이터 갱신 상태를 분리한다. 추가 API 호출 없음."""
     now = now or dt.datetime.now(KST).replace(tzinfo=None)
-    folders = sorted((p for p in B.LOG.glob("20*") if p.is_dir() and p.name <= now.strftime("%Y%m%d")), reverse=True)[:2]
+    folders = sorted((p for p in day_folders(B.LOG) if p.name <= now.strftime("%Y%m%d")), reverse=True)[:2]
     routes = {}
     sched = C.load_sched()
     for route in B.STOPS:
@@ -471,6 +548,47 @@ def typical_estimate(route, stop, now, n_ahead, meta):
             return dict(mode="typical", p_board=round(p, 3), level=lv, headway_min=cell["gap"],
                         full_share=round(1 - float(cell["p"][0]), 3), trips=cell["n"], basis=key)
     return None
+
+
+_INFERENCE = OrderedDict()
+_INFERENCE_LOCK = threading.Lock()
+_INFERENCE_LIMIT = 8
+_INFERENCE_HITS = 0
+_INFERENCE_MISSES = 0
+
+
+def inference_cache_info():
+    with _INFERENCE_LOCK:
+        return dict(size=len(_INFERENCE), hits=_INFERENCE_HITS, misses=_INFERENCE_MISSES)
+
+
+def _run_inference(rows, model, meta, lite):
+    """Only row-dependent numeric work is shared; freshness and verdicts stay outside."""
+    import pandas as pd
+    import train as T
+    global _INFERENCE_HITS, _INFERENCE_MISSES
+    policy = DQ.POLICY_PATH.stat()
+    key = (id(model), meta.get('created'), lite,
+           T.table_revision(T.P / 'calendar.csv'), T.table_revision(T.P / 'class_starts.csv'),
+           str(DQ.POLICY_PATH), policy.st_mtime_ns, policy.st_size,
+           json.dumps(meta['cats'], sort_keys=True), json.dumps(rows, sort_keys=True))
+    with _INFERENCE_LOCK:
+        cached = _INFERENCE.get(key)
+        if cached is not None:
+            _INFERENCE.move_to_end(key)
+            _INFERENCE_HITS += 1
+            return (cached[1].copy(deep=True), *(v.copy() for v in cached[2:]))
+        _INFERENCE_MISSES += 1
+    data = T.features(pd.DataFrame(rows).assign(arrive_time=''), cats=meta['cats'])
+    if lite:
+        data = data.assign(rule=lite_rule(data))
+    values = T.predict(model, data, quantiles=True)
+    with _INFERENCE_LOCK:
+        # Retain the model object too, so Python cannot reuse its id for another model.
+        _INFERENCE[key] = (model, data.copy(deep=True), *(v.copy() for v in values))
+        while len(_INFERENCE) > _INFERENCE_LIMIT:
+            _INFERENCE.popitem(last=False)
+    return (data, *values)
 
 
 def results(rows, m, meta, n_ahead, now, max_age, lite, approaching=()):
@@ -527,15 +645,11 @@ def results(rows, m, meta, n_ahead, now, max_age, lite, approaching=()):
         return out  # 결측을 0으로 채우거나 미검증 입력에 모델을 실행하지 않는다.
     import numpy as np
     import pandas as pd
-    import train as T
     qs = np.array(meta["qs"])
     th = {(p, s): (t, short) for p, s, t, short in meta["thresholds"]}
 
     def run(rows_):
-        d = T.features(pd.DataFrame(rows_).assign(arrive_time=""), cats=meta["cats"])
-        if lite:
-            d = d.assign(rule=lite_rule(d))
-        return (d, *T.predict(m, d, quantiles=True))
+        return _run_inference(rows_, m, meta, lite)
 
     if last_known:
         d, point, Pm, Q = run([r for r, _ in last_known])

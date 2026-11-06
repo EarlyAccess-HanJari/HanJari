@@ -43,15 +43,19 @@ export function validateN(n: unknown): ApiError | null {
   return null;
 }
 
-export async function fetchPredict(n: number): Promise<ApiResult> {
+export async function fetchPredict(n: number, signal?: AbortSignal): Promise<ApiResult | null> {
+  if (signal?.aborted) return null;
   const invalid = validateN(n);
   if (invalid) return { ok: false, error: invalid };
-  return USE_MOCK ? fetchMock(n) : fetchReal(n);
+  const result = USE_MOCK ? await fetchMock(n) : await fetchReal(n, signal);
+  return signal?.aborted ? null : result;
 }
 
 // ---------- 실서버 ----------
-async function fetchReal(n: number): Promise<ApiResult> {
+async function fetchReal(n: number, signal?: AbortSignal): Promise<ApiResult | null> {
   const ctrl = new AbortController();
+  const cancel = () => ctrl.abort();
+  signal?.addEventListener('abort', cancel, { once: true });
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
     const res =
@@ -87,12 +91,14 @@ async function fetchReal(n: number): Promise<ApiResult> {
     }
     return { ok: true, data };
   } catch (e) {
+    if (signal?.aborted) return null;
     if (e instanceof DOMException && e.name === "AbortError") {
       return { ok: false, error: { kind: "timeout", message: "응답이 늦어지고 있어요. 잠시 뒤 다시 시도해 주세요." } };
     }
     return { ok: false, error: { kind: "server_down", message: "서버에 연결할 수 없어요." } };
   } finally {
     clearTimeout(timer);
+    signal?.removeEventListener('abort', cancel);
   }
 }
 

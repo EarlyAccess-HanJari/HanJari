@@ -14,6 +14,7 @@
 실행: env -u PYTHONPATH /data/VI001/vi004/workspace/miniconda3/envs/dacon/bin/python src/train.py
 """
 import os
+from functools import lru_cache
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -71,6 +72,20 @@ PEAK_CLASSES = 40  # 버스 도착 후 10~35분 안에 이만큼 이상 강좌�
 CAT_COLS = ["route", "stop", "bus_type", "weekday", "term", "exam", "holiday"]
 
 
+def table_revision(path):
+    stat = path.stat()
+    return str(path.resolve()), stat.st_mtime_ns, stat.st_size
+
+
+@lru_cache(maxsize=4)
+def _read_table(path, mtime, size):
+    return pd.read_csv(path, dtype=str)
+
+
+def read_table(path):
+    return _read_table(*table_revision(path)).copy(deep=True)
+
+
 def features(d=None, cats=None):
     """d: build_dataset 행(없으면 dataset.csv). cats: 범주 → 코드 표(서비스는 학습 때 표를 그대로 써야 코드가 같음)."""
     training = d is None
@@ -87,7 +102,7 @@ def features(d=None, cats=None):
     if "y" in d and d.y.notna().any() and not (np.isfinite(d.y) & (d.y >= 0) & (d.y % 1 == 0)).all():
         raise ValueError("잘못된 학습 정답")
     d = d.astype({"date": str, "stop": str, "bus_type": str})
-    cal = pd.read_csv(P / "calendar.csv", dtype=str).set_index("date")
+    cal = read_table(P / "calendar.csv").set_index("date")
     # 11-04: merge 는 42만 행 표 전체를 한 번 더 복사해 마감 메모리 최대치였다 → 날짜로 열만 붙인다(값·순서 동일)
     d = d.reset_index(drop=True)
     for c in ("weekday", "term", "exam", "holiday"):
@@ -96,7 +111,7 @@ def features(d=None, cats=None):
     d["exam"] = d["exam"].fillna("")
     d["minute"] = d["time"].str.slice(0, 2).astype(int) * 60 + d["time"].str.slice(3, 5).astype(int)
     # ponytail: 모든 날짜에 2026-2 시간표 적용. 다른 학기 데이터가 섞이면 yearhakgi 로 맞출 것.
-    cs = pd.read_csv(P / "class_starts.csv", dtype=str)
+    cs = read_table(P / "class_starts.csv")
     cs["m"] = cs["start"].str[:2].astype(int) * 60 + cs["start"].str[3:].astype(int)
     cs["n"] = cs["n"].astype(int)
     arrive = (d["minute"] + d["eta"] / 60).values

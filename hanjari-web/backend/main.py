@@ -12,9 +12,14 @@ import logging
 import os
 import sys
 import threading
+import time
+import asyncio
+from concurrent.futures import Future, TimeoutError as FutureTimeout
+from copy import deepcopy
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+_import_started = time.perf_counter()
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 
@@ -29,23 +34,106 @@ if MODE not in ("sample", "latest"):
 sys.path.insert(0, str(ML / "src"))
 import serve  # noqa: E402
 
-log = logging.getLogger("hanjari")
+log = logging.getLogger("uvicorn.error.hanjari")
+_import_seconds = time.perf_counter() - _import_started
 
 # serve.predict_live 는 모듈 전역을 바꿔치기하며 돌아서, 두 요청이 겹치면 결과가 섞인다
 _lock = threading.Lock()
+LOCK_WAIT_SECONDS = 7
+SHARE_SECONDS = 1
+_requests_lock = threading.Lock()
+_pending = {}
+
+
+def rss_mib():
+    try:
+        if os.name == 'nt':
+            import ctypes
+            class Memory(ctypes.Structure):
+                _fields_ = [('cb', ctypes.c_ulong), ('faults', ctypes.c_ulong)] + [
+                    (name, ctypes.c_size_t) for name in ('peak', 'rss', 'peak_paged', 'paged', 'peak_nonpaged', 'nonpaged', 'pagefile', 'peak_pagefile')]
+            info = Memory()
+            info.cb = ctypes.sizeof(info)
+            ctypes.windll.kernel32.GetCurrentProcess.restype = ctypes.c_void_p
+            read = ctypes.windll.psapi.GetProcessMemoryInfo
+            read.argtypes = [ctypes.c_void_p, ctypes.POINTER(Memory), ctypes.c_ulong]
+            if not read(ctypes.windll.kernel32.GetCurrentProcess(), ctypes.byref(info), info.cb):
+                raise ctypes.WinError()
+            return round(info.rss / 2**20, 1)
+        pages = int(Path('/proc/self/statm').read_text().split()[1])
+        return round(pages * os.sysconf('SC_PAGE_SIZE') / 2**20, 1)
+    except (OSError, ValueError, AttributeError):
+        return None
 
 
 def _predict(n: int) -> list[dict]:
-    with _lock:
-        if MODE == "latest":
-            return serve.predict_latest(n)
-        return serve.predict_live(n, log_dir=serve.SAMPLE)
+    started = time.monotonic()
+    deadline, compute = started + LOCK_WAIT_SECONDS, 0.0
+    try:
+        while True:
+            with _requests_lock:
+                future = _pending.get(n)
+                owner = future is None
+                if owner:
+                    future = _pending[n] = Future()
+            if not owner:
+                try:
+                    rows, completed, sources = future.result(timeout=max(0, deadline - time.monotonic()))
+                except FutureTimeout as exc:
+                    raise HTTPException(503, '예측 요청 대기 시간 초과') from exc
+                if time.monotonic() - completed <= SHARE_SECONDS:
+                    cache = serve.B._request.get()
+                    if cache is not None and sources is not None:
+                        cache[('health', str(serve.B.LOG), None)] = deepcopy(sources)
+                    return deepcopy(rows)
+                continue
+            acquired = False
+            try:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise HTTPException(503, '예측 요청 대기 시간 초과')
+                acquired = _lock.acquire(timeout=remaining)
+                if not acquired:
+                    raise HTTPException(503, '예측 요청 대기 시간 초과')
+                calculating = time.monotonic()
+                try:
+                    rows = serve.predict_latest(n) if MODE == 'latest' else serve.predict_live(n, log_dir=serve.SAMPLE)
+                    sources = serve.source_health() if MODE == 'latest' and serve.B._request.get() is not None else None
+                finally:
+                    compute += time.monotonic() - calculating
+                completed = time.monotonic()
+                future.set_result((deepcopy(rows), completed, sources))
+                return rows
+            except Exception as exc:
+                future.set_exception(exc)
+                raise
+            finally:
+                if acquired:
+                    _lock.release()
+                with _requests_lock:
+                    _pending.pop(n, None)
+    finally:
+        elapsed = time.monotonic() - started
+        if elapsed > 2:
+            log.warning('slow_prediction n=%s wait=%.3fs compute=%.3fs rss_mib=%s',
+                        n, max(0, elapsed - compute), compute, rss_mib())
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    log.info('startup import=%.3fs', _import_seconds)
     try:
-        _predict(0)  # 모델을 미리 읽어 첫 사용자가 몇 초씩 기다리지 않게
+        started = time.perf_counter()
+        try:
+            if serve.DQ.boarding_policy()['enabled']:
+                serve.load(True)
+        finally:
+            log.info('startup model_load=%.3fs', time.perf_counter() - started)
+        started = time.perf_counter()
+        try:
+            _predict(0)
+        finally:
+            log.info('startup first_prediction=%.3fs', time.perf_counter() - started)
     except Exception:
         log.exception("워밍업 실패 — 요청이 오면 다시 시도함")
     yield
@@ -63,12 +151,24 @@ async def prevent_prediction_cache(request, call_next):
     return response
 
 
-@app.get("/api/health")
 def health():
-    routes = serve.source_health() if MODE == "latest" else {}
-    return {"status": "ok", "mode": MODE, "release": RELEASE,
+    try:
+        routes = serve.source_health() if MODE == "latest" else {}
+        model = serve.model_status()
+    except Exception:
+        log.exception('상태 확인 실패')
+        routes, model = {}, {'status': 'broken', 'loaded': None, 'disk': None}
+    inactive = bool(routes) and all(r['status'] == 'outside_service' for r in routes.values())
+    ready = model['status'] in ('ok', 'not_required') or (model['status'] == 'not_loaded' and inactive)
+    return {"status": "ok" if ready else "degraded", "mode": MODE, "release": RELEASE,
             "data_status": "degraded" if any(r["status"] in ("missing", "stale") for r in routes.values()) else "ok",
-            "routes": routes}
+            "routes": routes, "model": model, "ready": ready}
+
+
+@app.get('/api/health')
+async def health_route():
+    # Health must also avoid the synchronous prediction handlers' shared thread pool.
+    return await asyncio.to_thread(health)
 
 
 @app.get("/api/predict")
@@ -78,14 +178,17 @@ def predict(n: int):
         serve.check_n(n)
     except ValueError as e:
         raise HTTPException(400, str(e))
-    try:
-        results = _predict(n)
-    except serve.NoSnapshotError:
-        results = []  # 수집 실패를 운행 종료나 웹 서버 장애로 안내하지 않는다.
-    except Exception as e:  # 스냅샷 없음·버스 API 오류 등 — 프론트는 503 을 '서버 연결 안 됨'으로 보여줌
-        log.exception("예측 실패")
-        raise HTTPException(503, f"예측 실패: {e}")
-    return {"n_ahead": n, "results": results, "service": health()}
+    with serve.B.request_cache():
+        try:
+            results = _predict(n)
+        except serve.NoSnapshotError:
+            results = []  # 수집 실패를 운행 종료나 웹 서버 장애로 안내하지 않는다.
+        except HTTPException:
+            raise
+        except Exception as e:
+            log.exception("예측 실패")
+            raise HTTPException(503, f"예측 실패: {e}")
+        return {"n_ahead": n, "results": results, "service": health()}
 
 
 # /api 라우트 뒤에 붙여야 /api 가 가려지지 않음. 운영 서버에선 nginx 가 이 역할을 함

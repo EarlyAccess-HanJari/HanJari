@@ -38,9 +38,13 @@
 """
 import calendar, csv, datetime as dt, glob, json, os
 from collections import defaultdict
+from contextlib import contextmanager
+from contextvars import ContextVar
+from copy import deepcopy
 from pathlib import Path
 import data_quality as DQ
 from api_response import response_items
+from date_paths import day_folders, day_caches
 
 ROOT = Path(__file__).resolve().parents[1]
 LOG, OUT = ROOT / "data/api_logs", ROOT / "data/processed"
@@ -49,6 +53,21 @@ MAX_GAP = 5 * 60   # 스냅샷 간격이 이보다 벌어지면 운행을 끊고
 K_EB = 3           # 오늘 실측 n 개가 CSV 사전값 몇 개 분량과 맞먹는지 (축소 강도)
 MAX_HEADWAY = 40 * 60  # 이보다 긴 배차 간격은 쌓임 속도 계산에 안 씀
 LINK = 15 * 60     # 같은 버스의 j → j+1 도착이 이 안에 있어야 순증감으로 인정
+
+
+_request = ContextVar('snapshot_request', default=None)
+
+
+@contextmanager
+def request_cache():
+    if _request.get() is not None:
+        yield _request.get()
+        return
+    token = _request.set({})
+    try:
+        yield _request.get()
+    finally:
+        _request.reset(token)
 
 
 def files(route, kind, days=None):
@@ -85,8 +104,19 @@ def snapshots(route, days=None):
 
 
 def read_items(path):
+    cache = _request.get()
+    key = None
+    if cache is not None:
+        p = Path(path)
+        stat = p.stat()
+        key = ('items', str(p.resolve()), stat.st_mtime_ns, stat.st_size)
+        if key in cache:
+            return deepcopy(cache[key])
     with open(path) as f:
-        return response_items(json.load(f))
+        items = response_items(json.load(f))
+    if cache is not None:
+        cache[key] = deepcopy(items)
+    return items
 
 
 def num(x):
@@ -391,7 +421,7 @@ def hist_from_cache(route, until=None):
     11-04: export 가 원본을 통째로 다시 읽어 41일에 30분+ 걸렸고, 서버는 압축 안 된 최근 3일만 읽혀
     학습 행의 q_hist(전체 기간 누적)와 서비스 표(최근 3일)가 달랐다. 캐시가 없으면 None."""
     acc, n = defaultdict(lambda: [0.0, 0]), 0
-    for f in sorted((OUT / "days").glob(f"2026*_{route}.json")):
+    for f in day_caches(OUT / "days", route):
         if until and f.name[:8] > until:
             continue
         n += 1
@@ -429,10 +459,10 @@ def main(full=False, out=None):
         cache = OUT / "days"
         cache.mkdir(exist_ok=True)
         # 원본 폴더가 압축·삭제된 날(daily.py ⑥ 정리)도 캐시가 있으면 그대로 이어 붙임
-        folders = sorted({p.name for p in LOG.glob("2026*") if p.is_dir()} | {f.name.split("_")[0] for f in cache.glob("2026*_*.json")})
+        folders = sorted({p.name for p in day_folders(LOG)} | {f.name[:8] for f in day_caches(cache)})
         # 검증 규칙이 바뀐 캐시는 원본 전체를 복구하기 전에는 손대지 않는다.
         outdated = any(json.loads(f.read_text()).get("source_schema") != DQ.SCHEMA_VERSION
-                       for f in cache.glob("2026*_*.json"))
+                       for f in day_caches(cache))
         missing = [d for d in folders if not (LOG / d).is_dir()]
         if outdated and missing:
             raise RuntimeError(f"데이터 검증 규칙 변경: 원본 archive 복구 후 재빌드 필요 ({', '.join(missing)}). 기존 캐시 보존.")

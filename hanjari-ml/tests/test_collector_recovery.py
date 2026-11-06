@@ -122,19 +122,19 @@ class CollectorRecovery(unittest.TestCase):
         state = self.log / "watchdog.json"
         state.write_text(json.dumps({"open": ["sb02 새 데이터 없음", "jr03 새 데이터 없음"]}))
         with patch.object(W, "STATE", state), patch.object(W.N, "REPORTS", self.log), \
-             patch.object(W, "check", return_value=([], False)), patch.object(W.C, "load_sched", return_value={}), \
+             patch.object(W, "check", return_value=([], False)), patch.object(W, "web_health", return_value={"ready": True}), patch.object(W.C, "load_sched", return_value={}), \
              patch.object(W.C, "allowed", return_value=False), patch.object(W.N, "send") as send:
             W.main()
             send.assert_not_called()
         self.assertEqual(set(json.loads(state.read_text())["open"]), {"sb02 새 데이터 없음", "jr03 새 데이터 없음"})
         with patch.object(W, "STATE", state), patch.object(W.N, "REPORTS", self.log), \
-             patch.object(W, "check", return_value=([], False)), patch.object(W.C, "load_sched", return_value={}), \
+             patch.object(W, "check", return_value=([], False)), patch.object(W, "web_health", return_value={"ready": True}), patch.object(W.C, "load_sched", return_value={}), \
              patch.object(W.C, "allowed", side_effect=lambda now,route,sched: route == "jr03"), patch.object(W.N, "send") as send:
             W.main()
             send.assert_not_called()
         self.assertEqual(json.loads(state.read_text())["open"], ["sb02 새 데이터 없음"])
         with patch.object(W, "STATE", state), patch.object(W.N, "REPORTS", self.log), \
-             patch.object(W, "check", return_value=([], False)), patch.object(W.C, "load_sched", return_value={}), \
+             patch.object(W, "check", return_value=([], False)), patch.object(W, "web_health", return_value={"ready": True}), patch.object(W.C, "load_sched", return_value={}), \
              patch.object(W.C, "allowed", return_value=True), patch.object(W.N, "send") as send:
             W.main()
             send.assert_called_once()

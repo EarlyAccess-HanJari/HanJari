@@ -6,6 +6,20 @@
 
 ## 현재 운영 구성
 
+### service-hardening 설치 예정 변경 (아직 실행하지 않음)
+
+새 웹 릴리스의 backend·ML src·frontend dist와 재학습 폴더 `~/hanjari-ml/src`를 함께 갱신합니다. 공용 모듈 `date_paths.py`를 빠뜨리지 않습니다. `~/hanjari/src/collect.py`도 동일한 검증 코드로 갱신해야 합니다. `models` 링크 구조와 실제 `models/lite` 폴더는 유지합니다. 먼저 이전 릴리스 설정·재학습 코드·서비스 파일을 보관하고 담당자가 설치 시간을 정합니다.
+
+1. 새 웹을 설치하고 health의 `ready`, `model.loaded/disk` 및 예측 응답을 확인합니다. 이어서 재학습·감시·수집 코드를 갱신합니다. 수집기는 실행 중인 프로세스에 새 코드가 반영되도록 담당자가 재시작을 조율합니다.
+2. `installed/hanjari-daily.service`를 설치하고 `sudo systemctl daemon-reload`합니다. 새 설정은 `reports/restart_required`가 있을 때만 웹을 try-restart하고 성공 시 표식을 지웁니다. 실패 시 표식을 유지하고 OnFailure로 알립니다. 이전 서비스 파일도 새 daily 코드와 작동하지만 설치 전까지는 항상 재시작하는 기존 동작이 유지됩니다.
+3. 감시기·수동 rollback 사용자에게 `sudo -n systemctl try-restart hanjari-web` 권한이 필요한지 확인합니다. 기존 수집기 재시작 권한은 별개입니다. watchdog의 localhost health 조회 제한은 5초이며 웹 상태 문제로 수집기를 재시작하지 않습니다. 손상된 감시 상태는 최근 격리 파일 1개만 보관하고, 이력이 불명확한 경우 30분간 자동 재시작을 보류합니다.
+4. nginx 설정을 설치하기 전에 담당자가 `sudo nginx -t`를 실행합니다. 통과한 뒤에만 reload합니다. 추가 gzip은 최소 **1024바이트**, JS·CSS·JSON·SVG·webmanifest MIME 대상이며 API `Cache-Control: no-store`는 유지합니다. 실제 응답의 `Content-Encoding: gzip`과 캐시 헤더를 확인합니다. 이번 Windows 작업에서는 nginx가 없어 `nginx -t`를 검증하지 못했습니다.
+5. 이상 시 이전 웹 릴리스와 재학습 코드·서비스 설정을 각각 복원합니다. 공유 모델을 되돌릴 필요가 있으면 RUNBOOK의 승인 버전 rollback을 사용하고 loaded/disk 일치와 ready를 확인합니다. 웹 코드만 되돌려도 모델은 그대로입니다. 타이머가 전환 중인 모델을 동시에 건드리지 않도록 조율합니다.
+
+모델 준비 상태 이상은 HTTP 200의 `status=degraded, ready=false`로 나타납니다. 기존 배포 검사에서 HTTP 200만 확인하지 않도록 보완해야 합니다. 예측 잠금 대기는 7초를 넘으면 503이며 진행 중 계산 자체의 실행 제한은 아닙니다. 시작 단계와 2초 이상 요청의 대기·계산 시간·RSS를 로그에서 확인합니다. 2027년 날짜 폴더 처리는 추가했지만 다음 연도 학사력·시간표 자료 준비는 별도 작업입니다.
+
+### 기존 운영 확인 기록
+
 확인 날짜: 2026-11-05. 12:37(KST)에 `main` 커밋 `587bb6d`의 웹 `practical-20261105-v9`로 전환했습니다. 전환 후 HTTPS 정상·공개 8000 무응답을 확인했습니다. nginx와 인증서는 변경하지 않았으며, 일반 HTTP 요청의 HTTPS 308 이동도 유지합니다.
 
 - 웹: `/home/ubuntu/hanjari-releases/practical-20261105-v9/hanjari-web/backend`. 실행 환경은 `/home/ubuntu/hanjari-web/backend/.venv`를 사용합니다.
