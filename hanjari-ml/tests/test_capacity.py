@@ -210,3 +210,67 @@ class RepoPolicy(unittest.TestCase):
         caps = {(v["route"], v["capacity"]) for v in p["vehicles"]}
         self.assertEqual(caps, {("sb02", 38), ("sb02", 60), ("jr03", 52), ("jr03", 54)})
         self.assertTrue(all(v["evidence"].startswith("docs/PRACTICAL_CAPACITY") for v in p["vehicles"]))
+
+
+class OutageFallback(unittest.TestCase):
+    """11-05: API·수집이 끊겨도 기존 필드(보류)는 그대로, fallback 에만 추정을 담는다."""
+    def setUp(self):
+        policy = {"version": 1, "enabled": True, "validation_evidence": "test-only",
+                  "vehicles": [{"route": "jr03", "plate": "test", "vehicle_id": "123", "capacity": 55, "evidence": "test-only"}]}
+        p = patch.object(DQ, "boarding_policy", return_value=policy)
+        p.start()
+        self.addCleanup(p.stop)
+
+    def table(self):
+        return {"jr03|23|wkd|20": {"p": [1.0] * 10 + [0.96] * 31, "n": 25, "gap": 8.0},
+                "jr03|23|wkd": {"p": [1.0] * 41, "n": 300, "gap": 9.0}}
+
+    def test_short_outage_keeps_hold_contract_and_adds_last_known_estimate(self):
+        row, m, meta = fixture(20)
+        row["eta"] = 600
+        got = result(row, m, meta, age=300)
+        self.assertEqual((got["level"], got["p_board"], got["r_now"], got["arrival_stale"]), ("확률 보류", None, None, True))
+        fb = got["fallback"]
+        self.assertEqual((fb["mode"], fb["r_now"], fb["level"]), ("last_known", 20, "여유 있음"))
+        self.assertEqual(fb["arrival_at"], "2026-11-02T10:10:00+09:00")  # 마지막 정보의 도착 예정 그대로
+        self.assertEqual(fb["age_sec"], 300)
+
+    def test_last_known_uses_same_crowded_stop_threshold_as_live(self):
+        def predict(m, d, quantiles=False):
+            return np.full(len(d), 20.0), np.full((len(d), 41), 0.9), np.zeros((len(d), len(T.QS)))
+        with patch.object(T, "predict", predict):
+            for stop, want in (("23", "빠듯함"), ("20", "여유 있음")):  # 창신역4번출구는 0.95 기준, 동묘앞은 그대로
+                with self.subTest(stop=stop):
+                    row, m, meta = fixture(20)
+                    row.update(stop=stop, eta=600)
+                    self.assertEqual(result(row, m, meta, age=0)["level"], want)
+                    self.assertEqual(result(row, m, meta, age=300)["fallback"]["level"], want)
+
+    def test_long_outage_or_arrived_bus_uses_typical_table_with_strict_threshold(self):
+        for eta, age in ((600, 900), (60, 300)):  # 15분 끊김 / 첫 버스가 이미 도착했을 시각
+            with self.subTest(eta=eta, age=age):
+                row, m, meta = fixture(20)
+                row["eta"], meta["typical"] = eta, self.table()
+                fb = result(row, m, meta, age=age)["fallback"]
+                self.assertEqual((fb["mode"], fb["basis"], fb["headway_min"]), ("typical", "jr03|23|wkd|20", 8.0))
+                self.assertEqual((fb["p_board"], fb["level"]), (0.96, "빠듯함"))  # 앞 10명, 0.96 < 0.98 → '여유' 아님
+
+    def test_no_table_or_sunday_has_no_fallback(self):
+        row, m, meta = fixture(20)
+        self.assertIsNone(result(row, m, meta, age=900)["fallback"])
+        meta["typical"] = self.table()
+        sunday = dict(row, date="20261101", source_updated="2026-11-01 10:00:00", weekday="일", eta=600)
+        for age in (300, 900):
+            with patch.object(T, "features", return_value=pd.DataFrame([sunday])):
+                got = S.results([sunday], m, meta, 10, dt.datetime(2026, 11, 1, 10) + dt.timedelta(seconds=age), S.MAX_AGE, lite=True)[0]
+            self.assertIsNone(got["fallback"])
+
+    def test_typical_table_counts_each_trip_once_and_falls_back_to_wider_cells(self):
+        rows = [dict(trip=f"t{i}", arrive_time=f"10:{i:02d}:00", y=50 if i == 0 else 20, weekday="월", route="jr03", stop="23",
+                     date="20261102", bus_type="1", plate="test", vehicle_id="123", off_csv=2) for i in range(25)]
+        rows += [dict(rows[1], arrive_time="10:59:00", trip="t1")]  # 같은 운행의 다른 조회 — 한 번만 센다
+        tab = T.typical_table(pd.DataFrame(rows))
+        cell = tab["jr03|23|wkd|20"]
+        self.assertEqual((cell["n"], cell["gap"], cell["p"][0], cell["p"][10]), (25, 1.0, 1.0, 0.96))
+        self.assertIn("jr03|23|wkd|h10", tab)
+        self.assertIn("jr03|23|wkd", tab)

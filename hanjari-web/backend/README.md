@@ -8,6 +8,7 @@ AI 예측(레포 `src/serve.py`, 모델 `models/lite/`)을 HTTP로 내준다. AI
 | `GET /api/health` | `{"status":"ok","mode":"sample"}` |
 | `GET /api/predict?n=3` | `{"n_ahead":3,"results":[정류장 6곳]}` · 새벽엔 `results: []` |
 | 다음 버스 | 결과의 `eta2_sec`(도착까지 초). 다음 버스가 없으면 `null` |
+| 장애 대체 안내 | 정보가 오래돼 보류된 결과에만 `fallback`(마지막 정보 추정 또는 평소 이 시간). 기존 필드는 그대로 보류. [형식·문구안](../../hanjari-ml/docs/OUTAGE_FALLBACK_20261105.md) |
 | n 이 0~40 밖 | 400 `{"detail":"n_ahead 는 0~40 정수"}` |
 | n 이 숫자 아님 | 422 (FastAPI 기본) |
 | 예측 실패(스냅샷 없음 등) | 503 |
