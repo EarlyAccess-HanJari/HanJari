@@ -35,7 +35,8 @@ class Health(unittest.TestCase):
              patch.object(A.serve,'source_health',return_value={'sb02':{'status':'outside_service'},'jr03':{'status':'outside_service'}}), \
              patch.object(A,'MODE','latest'):
             with A._lock:
-                result=A.health()
+                status,result=asyncio.run(asyncio.wait_for(get('/api/health'),timeout=1))
+            self.assertEqual(status,200)
             self.assertTrue(result['ready']);self.assertEqual(result['status'],'ok')
 
     def test_warmup_loads_model_even_when_no_routes_are_active(self):

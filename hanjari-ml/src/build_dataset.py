@@ -38,6 +38,9 @@
 """
 import calendar, csv, datetime as dt, glob, json, os
 from collections import defaultdict
+from contextlib import contextmanager
+from contextvars import ContextVar
+from copy import deepcopy
 from pathlib import Path
 import data_quality as DQ
 from api_response import response_items
@@ -50,6 +53,21 @@ MAX_GAP = 5 * 60   # 스냅샷 간격이 이보다 벌어지면 운행을 끊고
 K_EB = 3           # 오늘 실측 n 개가 CSV 사전값 몇 개 분량과 맞먹는지 (축소 강도)
 MAX_HEADWAY = 40 * 60  # 이보다 긴 배차 간격은 쌓임 속도 계산에 안 씀
 LINK = 15 * 60     # 같은 버스의 j → j+1 도착이 이 안에 있어야 순증감으로 인정
+
+
+_request = ContextVar('snapshot_request', default=None)
+
+
+@contextmanager
+def request_cache():
+    if _request.get() is not None:
+        yield _request.get()
+        return
+    token = _request.set({})
+    try:
+        yield _request.get()
+    finally:
+        _request.reset(token)
 
 
 def files(route, kind, days=None):
@@ -86,8 +104,19 @@ def snapshots(route, days=None):
 
 
 def read_items(path):
+    cache = _request.get()
+    key = None
+    if cache is not None:
+        p = Path(path)
+        stat = p.stat()
+        key = ('items', str(p.resolve()), stat.st_mtime_ns, stat.st_size)
+        if key in cache:
+            return deepcopy(cache[key])
     with open(path) as f:
-        return response_items(json.load(f))
+        items = response_items(json.load(f))
+    if cache is not None:
+        cache[key] = deepcopy(items)
+    return items
 
 
 def num(x):

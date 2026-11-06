@@ -46,5 +46,12 @@ class ModelStatus(unittest.TestCase):
             self.meta.unlink()
             self.assertEqual(S.model_status()['status'],'not_required')
 
+    def test_failed_model_load_is_broken_until_disk_changes(self):
+        self.meta.write_text(json.dumps({'created':'old','feats':[]}))
+        with self.assertRaises(Exception):S.load(True)
+        self.assertEqual(S.model_status()['status'],'broken')
+        self.meta.write_text(json.dumps({'created':'repaired','feats':[]}))
+        self.assertEqual(S.model_status()['status'],'not_loaded')
+
 
 if __name__=='__main__':unittest.main()
