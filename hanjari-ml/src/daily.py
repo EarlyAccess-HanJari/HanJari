@@ -15,7 +15,7 @@
       python src/daily.py rollback [버전]     서비스 모델을 이전 버전(기본: 바로 전 버전)으로 되돌림
 알림: 매일 요약(이상 있으면 WARN), 실패하면 ERROR — src/notify.py (디스코드 웹훅 설정 시)
 """
-import datetime as dt, json, shutil, sys, tarfile, time
+import csv, datetime as dt, hashlib, json, shutil, subprocess, sys, tarfile, time
 import numpy as np, pandas as pd
 import build_dataset as B
 import collect as C
@@ -23,7 +23,7 @@ import notify as N
 import serve as S
 import train as T
 from api_response import response_items
-from date_paths import day_folders
+from date_paths import day_folders, valid_day
 
 REPORTS = B.ROOT / "reports"
 VERS = S.MODELS / "versions"
@@ -33,6 +33,98 @@ BUSY = ("07:00:00", "22:00:00")
 KEEP_RAW = 3        # 마감한 날 포함 최근 3일은 원본 폴더 그대로(증분 빌드가 앞뒤 하루를 읽음)
 KEEP_VERSIONS = 7
 MIN_FREE_GB = 5
+SIZE_WARN_GB = {"archive": 10, "processed": 5, "models": 2, "reports": 1}
+MODEL_FILES = ("meta.json", "point.json", "quantile.json", "k0.json")
+
+
+class ActivationError(RuntimeError):
+    pass
+
+
+def folder_size(path):
+    return sum(p.stat().st_size for p in path.rglob('*') if p.is_file())
+
+
+def model_meta(path):
+    if not all((path / name).is_file() for name in MODEL_FILES):
+        raise ValueError('필수 모델 파일 없음')
+    meta = json.loads((path / 'meta.json').read_text())
+    if not isinstance(meta, dict) or not isinstance(meta.get('created'), str) or not meta['created']:
+        raise ValueError('모델 created 없음')
+    return meta
+
+
+def fingerprint(path):
+    hashes = {}
+    for file in path.rglob('*'):
+        if file.is_file():
+            with file.open('rb') as stream:
+                hashes[str(file.relative_to(path))] = hashlib.file_digest(stream, 'sha256').hexdigest()
+    return hashes
+
+
+def live_message(before=None):
+    try:
+        model_meta(LIVE)
+        if before is not None and fingerprint(LIVE) == before:
+            return '기존 모델 유지'
+        return '현재 모델 파일 존재, 활성 버전 확인 필요'
+    except (OSError, ValueError, TypeError):
+        return '서비스 모델 복구 실패, 즉시 확인'
+
+
+def notify(message, level):
+    try:
+        N.send(message, level)
+    except Exception as exc:
+        print(f'알림 전송/기록 실패: {type(exc).__name__}', file=sys.stderr)
+
+
+def activate_model(src, version):
+    """Validate a complete copy before touching the shared real lite directory."""
+    root = LIVE.parent.resolve()
+    staging, previous = LIVE.parent / '.lite-staging', LIVE.parent / '.lite-previous'
+    before = fingerprint(LIVE) if LIVE.is_dir() else None
+    try:
+        # Never follow a leftover child symlink while removing or renaming models.
+        for path in (LIVE, staging, previous):
+            if path.is_symlink() or path.resolve().parent != root:
+                raise ValueError('모델 교체 경로 확인 필요')
+        if staging.exists():
+            shutil.rmtree(staging)
+        if shutil.disk_usage(root).free < 2 * folder_size(src):
+            raise OSError('모델 크기의 2배 미만 여유 디스크')
+        shutil.copytree(src, staging)
+        model_meta(staging)
+        if fingerprint(src) != fingerprint(staging):
+            raise ValueError('모델 SHA-256 불일치')
+        if previous.exists():
+            shutil.rmtree(previous)
+        if LIVE.exists():
+            LIVE.rename(previous)
+        try:
+            staging.rename(LIVE)
+        except OSError:
+            if previous.exists():
+                previous.rename(LIVE)
+            raise
+    except (OSError, ValueError, TypeError) as exc:
+        raise ActivationError(f'{version} 전환 실패: {exc} · {live_message(before)}') from exc
+    return version
+
+
+def mark_restart(version):
+    REPORTS.mkdir(parents=True, exist_ok=True)
+    C.write_snapshot(REPORTS / 'restart_required', str(version).encode())
+
+
+def promoted_versions():
+    try:
+        with (REPORTS / 'models.csv').open(newline='') as stream:
+            latest = {row['version']: row.get('promoted', '').lower() == 'true' for row in csv.DictReader(stream)}
+    except FileNotFoundError:
+        return []
+    return sorted(v for v, ok in latest.items() if ok and valid_day(v) and (VERS / v).is_dir())
 
 
 def header_ok(f):
@@ -124,13 +216,21 @@ def cleanup(day):
         else:
             tgz.unlink()
             notes.append(f"{folder.name} 압축 확인 실패 → 원본 유지")
-    old = day_folders(VERS)[:-KEEP_VERSIONS]
+    protected = set(promoted_versions()[-2:])
+    try:
+        protected.add(model_meta(LIVE)['trained_on'][-1])
+    except (OSError, ValueError, KeyError, IndexError, TypeError):
+        pass
+    old = [p for p in day_folders(VERS)[:-KEEP_VERSIONS] if p.name not in protected]
     for v in old:
         shutil.rmtree(v)
     if old:
         notes.append(f"모델 버전 {len(old)}개 삭제(최근 {KEEP_VERSIONS}개 유지)")
     free = shutil.disk_usage(logs).free / 1e9
     notes.append(f"남은 디스크 {free:.1f}GB" + (f" ⚠ {MIN_FREE_GB}GB 미만" if free < MIN_FREE_GB else ""))
+    for name, path in (("archive", arch), ("processed", B.OUT), ("models", LIVE.parent), ("reports", REPORTS)):
+        size = folder_size(path) / 1e9
+        notes.append(f'{name} {size:.2f}GB' + (f' ⚠ {SIZE_WARN_GB[name]}GB 초과' if size > SIZE_WARN_GB[name] else ''))
     return notes
 
 
@@ -152,8 +252,10 @@ def run(day):
     lines += [f"① 데이터 {status}: {info}"]
     if status != "OK":
         warn.append(f"데이터 {status}")
-    B.main()  # 학습 데이터 다시 만들기(전체 로그) — ponytail: 로그가 몇 달 쌓이면 날짜별 증분으로
-    mon = monitor(day, LIVE) if (LIVE / "meta.json").exists() else None
+    disk_ok = shutil.disk_usage(LIVE.parent).free >= MIN_FREE_GB * 1e9
+    if disk_ok:
+        B.main()
+    mon = monitor(day, LIVE) if disk_ok and (LIVE / "meta.json").exists() else None
     if mon:
         append(REPORTS / "daily_metrics.csv", mon)
         lines += [f"② API 재생 평가(학습 모델 ~{mon['model']}): 오차 {mon['mae']:.2f}명 (지금 재차 그대로 {mon['persistence_mae']:.2f}) · "
@@ -163,7 +265,10 @@ def run(day):
             warn.append(f"'여유' 후 API 기준 계산 탑승 {mon['yeoyu_ok']:.1%} < {T.TARGET['평소']:.0%}")
         if mon["mae"] >= mon["persistence_mae"]:
             warn.append(f"모델 오차 {mon['mae']:.2f} ≥ 지금 재차 그대로 {mon['persistence_mae']:.2f}")
-    if status == "FAIL":
+    if not disk_ok:
+        warn.append(f'여유 디스크 {MIN_FREE_GB}GB 미만 · 재학습 건너뜀 · 기존 모델 유지')
+        lines += ['③ 재학습 안 함 (디스크 부족)']
+    elif status == "FAIL":
         lines += ["③ 재학습 안 함 (데이터 FAIL)"]
     elif not adds_training_data(day):
         lines += ["③ 재학습 건너뜀 (일요일·공휴일 — 수업 있는 날만 학습이라 데이터가 안 늘어남, 지금 모델 유지)"]
@@ -186,42 +291,79 @@ def run(day):
         lines += [f"③ 재학습: {len(meta['trained_on'])}일 · 날짜분할 오차 {meta['oof']['mae']:.2f} (지금 모델 {old['mae']:.2f})" if old
                   else f"③ 재학습: {len(meta['trained_on'])}일 · 날짜분할 오차 {meta['oof']['mae']:.2f} (첫 모델)",
                   "④ 합격 → ⑤ 배포 (models/lite 교체)" if ok else "④ 불합격: " + "; ".join(why) + " → 지금 모델 유지"]
-        append(REPORTS / "models.csv", dict(version=day, created=meta["created"], days=len(meta["trained_on"]),
-                                            **{f"oof_{k}": v for k, v in meta["oof"].items()}, data=status, promoted=ok))
+        promoted = False
         if ok:
-            if LIVE.exists():
-                shutil.rmtree(LIVE)
-            shutil.copytree(cand, LIVE)
-    notes = cleanup(day)
+            try:
+                activate_model(cand, day)
+                promoted = True
+            except ActivationError as exc:
+                warn.append(str(exc))
+                lines[-1] = str(exc)
+                notify(str(exc), 'ERROR' if '복구 실패' in str(exc) else 'WARN')
+            if promoted:
+                try:
+                    mark_restart(day)
+                except OSError as exc:
+                    warn.append(f'재시작 표식 기록 실패: {exc} · 웹 활성 버전 확인 필요')
+                    notify(warn[-1], 'ERROR')
+        try:
+            append(REPORTS / "models.csv", dict(version=day, created=meta["created"], days=len(meta["trained_on"]),
+                                                **{f"oof_{k}": v for k, v in meta["oof"].items()}, data=status, promoted=promoted))
+        except OSError as exc:
+            warn.append(f'모델 이력 기록 실패: {exc}')
+    try:
+        notes = cleanup(day)
+    except Exception as exc:
+        notes = [f'정리 실패: {exc}']
     warn += [x for x in notes if "⚠" in x or "실패" in x]
     lines += ["⑥ 정리: " + " · ".join(notes), f"소요 {(time.time() - t0) / 60:.0f}분"]
-    (REPORTS / "daily").mkdir(parents=True, exist_ok=True)
-    (REPORTS / "daily" / f"{day}.md").write_text("\n\n".join(lines) + "\n")
+    try:
+        (REPORTS / "daily").mkdir(parents=True, exist_ok=True)
+        (REPORTS / "daily" / f"{day}.md").write_text("\n\n".join(lines) + "\n")
+    except OSError as exc:
+        warn.append(f'마감 보고서 기록 실패: {exc}')
     print("\n".join(lines))
     return lines, warn
 
 
-def rollback(version=None):
+def rollback(version=None, force=False):
     vs = [p.name for p in day_folders(VERS)]
     now = json.loads((LIVE / "meta.json").read_text())["trained_on"][-1] if (LIVE / "meta.json").exists() else None
-    version = version or next((v for v in reversed(vs) if v < (now or "9")), None)
-    if version not in vs:
-        raise SystemExit(f"버전 없음: {version} (있는 버전: {', '.join(vs)})")
-    shutil.rmtree(LIVE, ignore_errors=True)
-    shutil.copytree(VERS / version, LIVE)
-    N.send(f"서비스 모델을 {version} 버전으로 되돌림 (이전: ~{now})", "WARN")
+    approved = promoted_versions()
+    version = version or next((v for v in reversed(approved) if v != now), None)
+    if version not in vs or (version not in approved and not force):
+        raise SystemExit(f"승인된 되돌림 버전 없음: {version} (미승인 버전은 명시적 --force 필요)")
+    try:
+        activate_model(VERS / version, version)
+    except ActivationError as exc:
+        notify(str(exc), 'ERROR')
+        raise SystemExit(str(exc)) from exc
+    try:
+        mark_restart(version)
+    except OSError as exc:
+        notify(f'되돌림 성공, 재시작 표식 기록 실패: {exc}', 'ERROR')
+    try:
+        result = subprocess.run(['sudo', '-n', 'systemctl', 'try-restart', 'hanjari-web'], capture_output=True, text=True, timeout=60)
+        if result.returncode:
+            raise RuntimeError(result.stderr.strip()[:160])
+        (REPORTS / 'restart_required').unlink(missing_ok=True)
+    except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
+        notify(f'모델 {version} 되돌림 성공, 웹 재시작 실패: {exc} · 활성 버전 확인 필요', 'ERROR')
+    notify(f"서비스 모델을 {version} 버전으로 되돌림 (이전: ~{now})", "WARN")
     print("되돌림:", version)
 
 
 if __name__ == "__main__":
     if sys.argv[1:2] == ["rollback"]:
-        rollback(sys.argv[2] if sys.argv[2:] else None)
+        args = [arg for arg in sys.argv[2:] if arg != '--force']
+        rollback(args[0] if args else None, force='--force' in sys.argv[2:])
         sys.exit()
     day = sys.argv[1] if sys.argv[1:] else (dt.datetime.now(S.KST) - dt.timedelta(days=1)).strftime("%Y%m%d")
+    before = fingerprint(LIVE) if LIVE.is_dir() else None
     try:
         lines, warn = run(day)
     except Exception as e:
-        N.send(f"{day} 마감 실패: {e!r} — journalctl -u hanjari-daily 확인. 서비스 모델은 그대로", "ERROR")
+        notify(f"{day} 마감 실패: {e!r} — journalctl -u hanjari-daily 확인. {live_message(before)}", "ERROR")
         raise
-    N.send(f"{day} 마감" + (" ⚠ " + " / ".join(warn) if warn else " 정상") + "\n" + "\n".join(lines[1:]),
+    notify(f"{day} 마감" + (" ⚠ " + " / ".join(warn) if warn else " 정상") + "\n" + "\n".join(lines[1:]),
            "WARN" if warn else "INFO")
