@@ -1,7 +1,8 @@
 """수집 로그(data/api_logs) → 학습 데이터 data/processed/dataset.csv
 
 한 행 = (조회 시각 t, 노선, 정류장 s)에서 본 첫째 버스. 거리 제한 없음(서비스는 늘 첫 버스 확률을 보여줌).
-정답 y = 그 버스가 s 에 도착하기 직전 마지막 스냅샷의 reride_Num1
+정답 y = 그 버스가 s 에 도착할 때의 인원 = s 항목에서 빠진 바로 다음 스냅샷의 같은 차 인원(없으면 빠지기 직전 마지막 값)
+  - 11-10: 예전엔 '빠지기 직전 마지막 값'이라 앞 정류장이 가까우면 그 정류장 탑승분이 빠졌다(녹십자 ← 2번출구, 아래 build 주석).
   - 도착 판정: 정류장 s 항목의 첫째 버스(plainNo1)가 다른 차로 바뀜. 바뀌기 직전 남은 정류장 수(staOrd−sectOrd1)가 0 이어야 인정.
   - 같은 차가 순환해 하루 여러 번 오므로 "연속으로 첫째 버스였던 구간" = 운행 1회.
   - 도착 1분 전쯤 재차가 떨어지는 경우가 많음(앞 정류장 하차가 늦게 반영) → 마지막 값을 씀.
@@ -36,7 +37,7 @@
             9/24 추석: CSV 는 +3.66 예상, 실제 +1.09 → CSV 고정 규칙이 persistence 보다 나빠짐. 휴일·방학·행사 대응.
   q_hist  = Σ_{남은 정류장 j} (조회일 이전 수집일들의 같은 정류장·같은 시간대 순증감 평균). 없으면 비움 → CSV 월평균을 실측으로 대체.
 """
-import calendar, csv, datetime as dt, glob, json, os
+import bisect, calendar, csv, datetime as dt, glob, json, os
 from collections import defaultdict
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -53,6 +54,7 @@ MAX_GAP = 5 * 60   # 스냅샷 간격이 이보다 벌어지면 운행을 끊고
 K_EB = 3           # 오늘 실측 n 개가 CSV 사전값 몇 개 분량과 맞먹는지 (축소 강도)
 MAX_HEADWAY = 40 * 60  # 이보다 긴 배차 간격은 쌓임 속도 계산에 안 씀
 LINK = 15 * 60     # 같은 버스의 j → j+1 도착이 이 안에 있어야 순증감으로 인정
+LABEL_NEXT_SEC = 40  # 정답 보정: s 항목에서 빠진 직후 이 안의 스냅샷만 본다(그 뒤엔 s 출발 갱신이 섞일 수 있음)
 
 
 _request = ContextVar('snapshot_request', default=None)
@@ -261,6 +263,20 @@ def build(route, days=None, open_=False, hist_all=None, tab=None):
                 if r is not None:
                     sg[-1][2] = r
                     sg[-1][4] = t
+    # 11-10: 정답 y 는 's 항목에서 마지막으로 본 인원'이었다. 재차는 앞 정류장(s−1)을 떠날 때 갱신되고 API 반영은 약 27초 뒤라,
+    #   s−1 → s 가 짧으면(2번출구→녹십자 약 30초) 반영되는 순간 버스는 이미 s 에 있고 API 는 s 항목을 다음 버스로 넘긴다.
+    #   그래서 s−1 탑승분이 정답에서 빠졌다(녹십자 7~10시 15%가 +10명 이상, 그 정답으로 채점한 '여유' 오류는 실제의 절반).
+    #   s 항목에서 빠진 바로 다음 스냅샷에 보이는 같은 차의 인원을 정답으로 쓴다. s 정차 중 탑승은 s 출발 뒤 갱신이라 섞이지 않는다.
+    #   피처(arr·ev)는 그대로 둔다 — 서비스도 같은 피처를 만든다.
+    times = sorted(route_load)
+    fixed = []
+    for s, plate, seen, t_end, y in target:
+        if t_end is not None:
+            i = bisect.bisect_right(times, t_end)
+            if i < len(times) and (times[i] - t_end).total_seconds() <= LABEL_NEXT_SEC:
+                y = rr.get((times[i], plate), y)
+        fixed.append((s, plate, seen, t_end, y))
+    target = fixed
     pev = defaultdict(list)
     for pl, sg in segs.items():
         for a, b in zip(sg, sg[1:]):

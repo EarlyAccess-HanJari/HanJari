@@ -296,3 +296,36 @@ class ArrivalFreshness(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ArrivalLabel(unittest.TestCase):
+    """11-10: 앞 정류장 탑승분이 s 항목에서 빠지는 순간에야 반영되면, 빠진 직후의 같은 차 인원이 정답이다."""
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.folder = Path(self.tmp.name) / "20261102"
+        self.folder.mkdir()
+
+    def snap(self, stamp, items, positions):
+        for kind, body in (("arr", items), ("pos", positions)):
+            (self.folder / f"jr03_{kind}_{stamp}.json").write_text(json.dumps({"msgHeader": {"headerCd": "0"}, "msgBody": {"itemList": body}}))
+
+    def item(self, stop, plate, vid, sect, n, made):
+        return dict(staOrd=str(stop), mkTm=f"2026-11-02 {made}.0", routeType="2", plainNo1=plate, vehId1=vid, sectOrd1=str(sect),
+                    traTime1="30", reride_Num1=str(n), rerdie_Div1="2", busType1="1")
+
+    def label(self, after):
+        a, b = ("서울70사5508", "100000014"), ("서울75사3170", "100000069")
+        pos = lambda made: [dict(plainNo=a[0], vehId=a[1], sectOrd="22", stopFlag="1", dataTm=made),
+                            dict(plainNo=b[0], vehId=b[1], sectOrd="20", stopFlag="0", dataTm=made)]
+        self.snap("174039", [self.item(23, *a, 23, 20, "17:40:30"), self.item(24, *b, 21, 5, "17:40:30")], pos("20261102174035"))
+        self.snap(after, [self.item(23, *b, 21, 5, "17:41:00"), self.item(24, *a, 24, 38, "17:41:00")],
+                  [dict(p, sectOrd="23" if p["plainNo"] == a[0] else "20", dataTm="20261102174102") for p in pos("")])
+        self.snap("174300", [self.item(23, *b, 23, 5, "17:42:55"), self.item(24, *b, 22, 5, "17:42:55")], pos("20261102174258"))
+        return next(r["y"] for r in B.build("jr03", [str(self.folder)], tab={}) if r["stop"] == 23 and r["plate"] == a[0])
+
+    def test_label_uses_count_seen_right_after_bus_leaves_stop_entry(self):
+        self.assertEqual(self.label("174106"), 38)  # 27초 뒤 스냅샷: 앞 정류장 탑승 18명 반영
+
+    def test_late_snapshot_keeps_last_count_seen_in_stop_entry(self):
+        self.assertEqual(self.label("174130"), 20)  # 51초 뒤면 s 출발 갱신이 섞일 수 있어 쓰지 않음
