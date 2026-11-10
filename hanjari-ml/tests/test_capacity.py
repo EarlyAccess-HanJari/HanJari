@@ -193,6 +193,14 @@ class SurgeGain(unittest.TestCase):
         self.assertLess(dwelling, 0.9)
         self.assertEqual(unknown, dwelling)  # 위치를 모르면 '주행'으로 과신하지 않는다
 
+    def test_position_behind_previous_stop_uses_dwelling_spread(self):
+        # 11-10 녹십자 12:50: 도착 정보는 '바로 앞'인데 위치는 아직 2번출구 전(구간 21 < 23−1) → 주행으로 과신하면 안 됨
+        row, m, _ = fixture(50, stops=0)
+        m["res0"] = {True: np.linspace(-20, 20, 41), False: np.zeros(41)}
+        p = lambda **kw: T.predict(m, pd.DataFrame([dict(row, **kw)]))[1][0, 0]
+        self.assertEqual(p(pos_dwell=0, pos_sect=22), 1)                        # 앞 정류장 지나 달리는 중
+        self.assertEqual(p(pos_dwell=0, pos_sect=21), p(pos_dwell=1, pos_sect=22))  # 위치가 뒤처짐 = 정차 분포
+
     def test_gain_table_needs_enough_history_and_skips_nearby_bus(self):
         rows = [dict(route="sb02", stop="32", stops_away=1, minute=525, eta=60, y=30 + i % 5, r_now=10) for i in range(40)]
         rows += [dict(route="sb02", stop="32", stops_away=0, minute=525, eta=60, y=30, r_now=10)] * 40
@@ -274,3 +282,14 @@ class OutageFallback(unittest.TestCase):
         self.assertEqual((cell["n"], cell["gap"], cell["p"][0], cell["p"][10]), (25, 1.0, 1.0, 0.96))
         self.assertIn("jr03|23|wkd|h10", tab)
         self.assertIn("jr03|23|wkd", tab)
+
+
+class LongDwell(unittest.TestCase):
+    def test_long_dwell_at_previous_stop_uses_its_own_wider_spread(self):
+        row, m, _ = fixture(50, stops=0)
+        m["res0"] = {True: np.zeros(41), False: np.zeros(41), "long": np.linspace(-20, 20, 41)}
+        p = lambda **kw: T.predict(m, pd.DataFrame([dict(row, pos_dwell=1, pos_sect=22, **kw)]))[1][0, 0]
+        self.assertEqual(p(dwell_sec=30), 1)       # 짧은 정차
+        self.assertLess(p(dwell_sec=90), 0.9)      # 60초+ 정차는 넓은 분포
+        old = dict(m, res0={True: np.zeros(41), False: np.zeros(41)})  # 'long' 없는 예전 모델은 그대로
+        self.assertEqual(T.predict(old, pd.DataFrame([dict(row, pos_dwell=1, pos_sect=22, dwell_sec=90)]))[1][0, 0], 1)

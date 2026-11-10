@@ -40,7 +40,7 @@ FULL = sum(GROUPS.values(), [])
 LITE = [f for f in FULL if f not in HISTORY]
 # 라이트 학습에서 피처를 만든 뒤엔 안 쓰는 열(중간값·기록용 글자). trip·time 은 날짜가 적을 때 운행 단위 분할에,
 # arrive_time 은 장애 대체 안내의 '평소 이 시간' 표(실제 도착 시각·간격)에 쓰여 남긴다.
-LITE_UNUSED = ["q_live", "q_cover", "pos_sect", "source_updated", "source_schema", "data_status", "term", "exam"]
+LITE_UNUSED = ["q_live", "q_cover", "source_updated", "source_schema", "data_status", "term", "exam"]
 
 
 def lite_rule(d):
@@ -120,7 +120,7 @@ def export(lite=False, until=None, out_dir=None):
     m["qm"].save_model(out_dir / "quantile.json")
     m["m0"].save_model(out_dir / "k0.json")
     meta = dict(
-        feats=feats, f0=T.F0, qs=T.QS.tolist(), cats=d.attrs["cats"],
+        feats=feats, f0=m.get("f0", T.F0), qs=T.QS.tolist(), cats=d.attrs["cats"],
         capacity_policy=T.capacity_policy(), calibration_rows=calibration_rows,
         typical=T.typical_table(d) if lite else {},
         res0={str(k): v.tolist() for k, v in m["res0"].items()}, gain_q=m["gain_q"],
@@ -199,9 +199,11 @@ def _read_model(src):
     m = dict(feats=meta["feats"], m0=xgb.XGBRegressor(), pt=xgb.XGBRegressor(), qm=xgb.XGBRegressor())
     for k, f in (("pt", "point"), ("qm", "quantile"), ("m0", "k0")):
         m[k].load_model(src / f"{f}.json")
-    m["res0"] = {k == "True": np.array(v) for k, v in meta["res0"].items()}
+    m["res0"] = {{"True": True, "False": False}.get(k, k): np.array(v) for k, v in meta["res0"].items()}  # "long" 은 그대로
     m["qs"] = np.array(meta["qs"])
     m["gain_q"] = meta.get("gain_q", {})
+    import train as T
+    m["f0"] = meta.get("f0", T.F0_V1)  # 모델이 학습한 바로 앞(k=0) 입력
     meta["hist_d"] = {r: {(j, h): v for j, h, v in tab} for r, tab in meta["hist_all"].items()}
     meta["tab_d"] = {r: {(j, h): tuple(v) for j, h, *v in tab} for r, tab in meta["tab"].items()} if "tab" in meta else {}
     return m, meta
