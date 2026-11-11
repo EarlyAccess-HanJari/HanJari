@@ -54,6 +54,7 @@ MAX_GAP = 5 * 60   # 스냅샷 간격이 이보다 벌어지면 운행을 끊고
 K_EB = 3           # 오늘 실측 n 개가 CSV 사전값 몇 개 분량과 맞먹는지 (축소 강도)
 MAX_HEADWAY = 40 * 60  # 이보다 긴 배차 간격은 쌓임 속도 계산에 안 씀
 LINK = 15 * 60     # 같은 버스의 j → j+1 도착이 이 안에 있어야 순증감으로 인정
+DWELL_CAP = 180  # 정차 시간 피처 상한(초) — 서비스는 최근 MAX_AGE(180초) 위치 파일만 읽으므로 학습도 같게
 LABEL_NEXT_SEC = 40  # 정답 보정: s 항목에서 빠진 직후 이 안의 스냅샷만 본다(그 뒤엔 s 출발 갱신이 섞일 수 있음)
 
 
@@ -238,6 +239,18 @@ def build(route, days=None, open_=False, hist_all=None, tab=None):
                 frac = None
             vs[plate] = (num(v.get("sectOrd")), num(v.get("stopFlag")), frac)
         pos[dt.datetime.strptime(day + hms, "%Y%m%d%H%M%S")] = vs
+    # 11-10: 지금 정류장에 몇 초째 서 있나(같은 구간·정차가 이어진 시간). 오래 서 있으면 많이 타는 중 — 재차는 출발해야 갱신되므로
+    #   2번출구→녹십자처럼 가까우면 이 신호가 유일하다(2번출구 90초+ 정차 시 10명+ 탑승 25%, 30초 미만 1%).
+    dwell = {}
+    state = {}  # 차량 → (구간, 정차, 시작 시각, 마지막 시각)
+    for t in sorted(pos):
+        for pl, (p_, f_, _) in pos[t].items():
+            st = state.get(pl)
+            if st is None or (st[0], st[1]) != (p_, f_) or (t - st[3]).total_seconds() > MAX_GAP:
+                st = (p_, f_, t, t)
+            st = (st[0], st[1], max(st[2], t - dt.timedelta(seconds=DWELL_CAP)), t)
+            state[pl] = st
+            dwell[(t, pl)] = min((t - st[2]).total_seconds(), DWELL_CAP) if f_ == 1 else 0.0
     # 위치 기반 정밀 순승차 사건: pev[j] = [(출발시각, 차량, net, 배차간격초, 알 수 있게 된 시각)]
     #   net 은 구간 j 를 달리는 동안의 마지막 재차로 계산 → 알 수 있는 시각 = 그 구간을 마지막으로 본 시각(출발 시각 아님, 09-24 누설 수정)
     rr = {}  # (t, 차량) → 재차 (도착정보 어느 항목에서든)
@@ -416,6 +429,7 @@ def build(route, days=None, open_=False, hist_all=None, tab=None):
                 q_live=round(q_live, 2), q_cover=round(used / len(J), 2) if len(J) else 1.0, q_prev=q_prev, q_today=q_today, q_eb=q_eb, q_hist=q_hist, q_bias3=q_bias3, since_prev=since_prev, hw_ratio=hw_ratio,
                 eta_gap=(num(it.get("traTime2")) - eta) if num(it.get("traTime2")) else None, route_load=route_load.get(t),
                 pos_sect=ps, pos_dwell=pdw, pos_frac=None if pfr is None else round(pfr, 3), q_pending=q_pending,
+                dwell_sec=None if ps is None else dwell.get((t, plate)),
                 q_live2=q_live2, q_today2=q_today2, q_rate=q_rate, gap_sum=gap_sum,
                 q_csv=round(sum(tab.get((j, h), (0, 0))[0] for j in J), 2),
                 off_csv=round(tab.get((s, h), (0, 0))[1], 2),

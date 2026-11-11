@@ -190,7 +190,27 @@ def metrics(point, Pm, te):
                 lo_ok=board[lo].mean() if lo.any() else np.nan)
 
 
-F0 = ["pos_dwell", "pos_frac", "q_pending", "r_now", "stop_c", "route_c", "minute"]
+F0 = ["pos_dwell", "pos_frac", "q_pending", "dwell_sec", "r_now", "stop_c", "route_c", "minute"]
+F0_V1 = ["pos_dwell", "pos_frac", "q_pending", "r_now", "stop_c", "route_c", "minute"]  # 11-10 이전 모델(정차 시간 없음)
+
+
+def pending_stop(d):
+    """바로 앞(k=0) 버스가 앞 정류장(s−1)에서 아직 태우는 중일 수 있는가 → 넓은(정차) 분포.
+    정차 중, 위치 결측(11-04), 위치가 s−1 보다 뒤(11-10: 도착 정보는 '바로 앞'인데 위치 갱신이 늦어 아직 2번출구 전 —
+    주행으로 보면 범위 20~20명·100% 로 과신했다. 41일 중 이 경우 10명+ 증가 5.8%, 주행은 0.6%)."""
+    sect = pd.to_numeric(d["pos_sect"], errors="coerce").values if "pos_sect" in d else np.full(len(d), np.nan)
+    return (d["pos_dwell"].values != 0) | (sect < pd.to_numeric(d["stop"], errors="coerce").values - 1)
+
+
+LONG_DWELL = 60  # 이 이상 앞 정류장에 서 있으면 따로(11-10: 2번출구 60초+ 정차 → 녹십자 도착 +7명, 짧은 정차보다 넓게 흩어짐)
+
+
+def residual_group(d, res0_keys):
+    """바로 앞 버스 잔차 분포 고르기: 'long'(앞 정류장 오래 정차) / True(정차·위치 불확실) / False(지나 달리는 중).
+    'long' 이 없는 예전 모델은 True·False 만 쓴다."""
+    pend = pending_stop(d)
+    long_ = pend & (pd.to_numeric(d["dwell_sec"], errors="coerce").fillna(0).values >= LONG_DWELL) if "dwell_sec" in d and "long" in res0_keys else np.zeros(len(d), bool)
+    return {"long": long_, True: pend & ~long_, False: ~pend}
 
 
 def fit(tr, feats):
@@ -205,10 +225,10 @@ def fit(tr, feats):
     #   확률은 그 모델 잔차의 (정차 여부) 조건 경험분포. 달리는 중이면 모델도 거의 0 을 냄(오차 0.12).
     tk = tr[tr.stops_away == 0]
     if len(tk) >= 50:
+        m["f0"] = F0
         m["m0"] = xgb.XGBRegressor(objective="reg:absoluteerror", **kw).fit(tk[F0].astype(float), tk.y - tk.r_now, sample_weight=tk.w)
         res0 = tk.y.values - tk.r_now.values - m["m0"].predict(tk[F0].astype(float))
-        dwell = (tk.pos_dwell != 0).values  # 위치 결측은 정차 쪽(넓은 분포)으로 — 주행으로 보면 과신
-        m["res0"] = {dw: np.sort(res0[dwell == dw] if (dwell == dw).sum() >= 20 else res0) for dw in (True, False)}
+        m["res0"] = {k: np.sort(res0[g] if g.sum() >= 20 else res0) for k, g in residual_group(tk, ("long",)).items()}
     m["gain_q"] = gain_table(tr)
     return m
 
@@ -281,13 +301,14 @@ def predict(m, te, quantiles=False):
     k0 = te.stops_away.values == 0
     if k0.any() and m["m0"] is not None:
         te0 = te[k0]
-        point[k0] = np.maximum(te0.r_now.values + m["m0"].predict(te0[F0].astype(float)), 0)
-        for dw in (True, False):
-            # 11-04: 위치 API 가 빠지면 정차 중인 차도 '주행'으로 봐 P 0.92→0.99 로 과신했다 → 결측은 정차 분포로
-            me = k0 & ((te.pos_dwell.values != 0) == dw)
+        f0 = m.get("f0", F0_V1)  # 모델이 학습한 입력 그대로(이전 모델과 호환)
+        point[k0] = np.maximum(te0.r_now.values + m["m0"].predict(te0[f0].astype(float)), 0)
+        # 11-04: 위치 API 가 빠지면 정차 중인 차도 '주행'으로 봐 P 0.92→0.99 로 과신했다 → 결측은 정차 분포로
+        for key, sel in residual_group(te, m["res0"]).items():
+            me = k0 & sel
             if me.any():
-                Pm[me] = empirical_p(m["res0"][dw], point[me], thr[me])
-                Q[me] = np.maximum(point[me, None] + np.quantile(m["res0"][dw], qs)[None, :], 0)
+                Pm[me] = empirical_p(m["res0"][key], point[me], thr[me])
+                Q[me] = np.maximum(point[me, None] + np.quantile(m["res0"][key], qs)[None, :], 0)
     return (point, Pm, Q) if quantiles else (point, Pm)
 
 
