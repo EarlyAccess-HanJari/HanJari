@@ -293,3 +293,11 @@ class LongDwell(unittest.TestCase):
         self.assertLess(p(dwell_sec=90), 0.9)      # 60초+ 정차는 넓은 분포
         old = dict(m, res0={True: np.zeros(41), False: np.zeros(41)})  # 'long' 없는 예전 모델은 그대로
         self.assertEqual(T.predict(old, pd.DataFrame([dict(row, pos_dwell=1, pos_sect=22, dwell_sec=90)]))[1][0, 0], 1)
+
+    def test_stop_specific_spread_overrides_pooled_only_for_that_stop(self):
+        # 11-16 녹십자: 합친 '주행' 분포(거의 0 폭)로 2번출구 막 떠난 차를 100% 로 과신 → 정류장별 분포가 있으면 그것을
+        row, m, _ = fixture(50, stops=0)
+        m["res0"] = {True: np.zeros(41), False: np.zeros(41), f"{row['route']}|{row['stop']}|False": np.linspace(-20, 20, 41)}
+        p = lambda stop: T.predict(m, pd.DataFrame([dict(row, stop=stop, pos_dwell=0, pos_sect=int(stop) - 1)]))[1][0, 0]
+        self.assertLess(p(row["stop"]), 0.9)
+        self.assertEqual(p(str(int(row["stop"]) + 1)), 1)  # 다른 정류장은 합친 분포

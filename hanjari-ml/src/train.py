@@ -203,6 +203,9 @@ def pending_stop(d):
 
 
 LONG_DWELL = 60  # 이 이상 앞 정류장에 서 있으면 따로(11-10: 2번출구 60초+ 정차 → 녹십자 도착 +7명, 짧은 정차보다 넓게 흩어짐)
+# 바로 앞 잔차 분포를 정류장별로 따로 둘 최소 표본. 11-16: 여섯 정류장을 합친 '주행' 분포는 인원이 이미 갱신된 정류장 위주라
+#   거의 0 폭인데, 녹십자는 2번출구를 막 떠나 인원이 아직 안 바뀐 순간이 '주행'이라 범위 10~10명·100% 로 과신했다(실제 +10~24).
+RES0_STOP_MIN = 200
 
 
 def residual_group(d, res0_keys):
@@ -228,7 +231,12 @@ def fit(tr, feats):
         m["f0"] = F0
         m["m0"] = xgb.XGBRegressor(objective="reg:absoluteerror", **kw).fit(tk[F0].astype(float), tk.y - tk.r_now, sample_weight=tk.w)
         res0 = tk.y.values - tk.r_now.values - m["m0"].predict(tk[F0].astype(float))
-        m["res0"] = {k: np.sort(res0[g] if g.sum() >= 20 else res0) for k, g in residual_group(tk, ("long",)).items()}
+        groups = residual_group(tk, ("long",))
+        m["res0"] = {k: np.sort(res0[g] if g.sum() >= 20 else res0) for k, g in groups.items()}
+        for (r, s), at in tk.groupby(["route", "stop"]).indices.items():  # 정류장별 분포가 충분하면 그것을 먼저
+            for k, g in groups.items():
+                if g[at].sum() >= RES0_STOP_MIN:
+                    m["res0"][f"{r}|{s}|{k}"] = np.sort(res0[at][g[at]])
     m["gain_q"] = gain_table(tr)
     return m
 
@@ -304,11 +312,13 @@ def predict(m, te, quantiles=False):
         f0 = m.get("f0", F0_V1)  # 모델이 학습한 입력 그대로(이전 모델과 호환)
         point[k0] = np.maximum(te0.r_now.values + m["m0"].predict(te0[f0].astype(float)), 0)
         # 11-04: 위치 API 가 빠지면 정차 중인 차도 '주행'으로 봐 P 0.92→0.99 로 과신했다 → 결측은 정차 분포로
+        stop_key = te.route.astype(str).values + "|" + te.stop.astype(str).values
         for key, sel in residual_group(te, m["res0"]).items():
-            me = k0 & sel
-            if me.any():
-                Pm[me] = empirical_p(m["res0"][key], point[me], thr[me])
-                Q[me] = np.maximum(point[me, None] + np.quantile(m["res0"][key], qs)[None, :], 0)
+            for sk in np.unique(stop_key[k0 & sel]):
+                me = k0 & sel & (stop_key == sk)
+                res = m["res0"].get(f"{sk}|{key}", m["res0"][key])  # 정류장별 분포가 없으면(예전 모델·적은 표본) 전체 분포
+                Pm[me] = empirical_p(res, point[me], thr[me])
+                Q[me] = np.maximum(point[me, None] + np.quantile(res, qs)[None, :], 0)
     return (point, Pm, Q) if quantiles else (point, Pm)
 
 
