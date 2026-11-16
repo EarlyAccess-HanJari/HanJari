@@ -301,3 +301,13 @@ class LongDwell(unittest.TestCase):
         p = lambda stop: T.predict(m, pd.DataFrame([dict(row, stop=stop, pos_dwell=0, pos_sect=int(stop) - 1)]))[1][0, 0]
         self.assertLess(p(row["stop"]), 0.9)
         self.assertEqual(p(str(int(row["stop"]) + 1)), 1)  # 다른 정류장은 합친 분포
+
+    def test_class_rush_spread_only_right_before_class(self):
+        # 11-16: 큰 수업 20분 전 안쪽 바로 앞 버스는 그 정류장의 '수업 직전' 분포(몰리면 넓게)
+        row, m, _ = fixture(50, stops=0)
+        sk = f"{row['route']}|{row['stop']}|False"
+        m["res0"] = {True: np.zeros(41), False: np.zeros(41), sk: np.zeros(41), sk + "|rush": np.linspace(-20, 20, 41)}
+        p = lambda **kw: T.predict(m, pd.DataFrame([dict(row, pos_dwell=0, pos_sect=int(row["stop"]) - 1, **kw)]))[1][0, 0]
+        self.assertLess(p(min_to_class=10), 0.9)
+        self.assertEqual(p(min_to_class=60), 1)
+        self.assertEqual(p(), 1)  # 수업 정보가 없는 입력은 정류장 분포
