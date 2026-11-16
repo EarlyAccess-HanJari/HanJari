@@ -4,6 +4,7 @@ data/api_logs/
 data/processed/*
 !data/processed/calendar.csv
 !data/processed/class_starts.csv
+!data/processed/subway_trains.csv
 !data/processed/holidays.csv
 !data/processed/*.dvc
 !data/processed/.gitignore
