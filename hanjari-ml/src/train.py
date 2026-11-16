@@ -144,6 +144,9 @@ def features(d=None, cats=None):
     d["rule"] = d["r_now"] + d["q_eb"] + d["q_pending"].fillna(0)
     d["is_peak"] = (d["class_board_win"] >= PEAK_CLASSES).astype(int)
     d["cap"] = row_capacities(d)
+    if "ahead_load" in d:  # 11-16 앞차가 정원의 몇 %로 갔나(차종 모르면 일반차)
+        abt = pd.to_numeric(d["ahead_bt"], errors="coerce").fillna(0).astype(int).astype(str)
+        d["ahead_fill"] = pd.to_numeric(d["ahead_load"], errors="coerce").values / np.array([cap(r, b) for r, b in zip(d["route"], abt)])
     d["fill_ratio"] = d["r_now"] / d["cap"]
     return d
 

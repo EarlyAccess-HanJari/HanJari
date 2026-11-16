@@ -127,6 +127,14 @@ class SnapshotIntegration(unittest.TestCase):
         self.assertEqual(len(results), 6)
         return next(r for r in results if r["route"] == "jr03" and r["stop"] == "23")
 
+    def test_bus_ahead_comes_from_the_same_snapshot(self):
+        # 11-16: 23번의 앞차는 28구간(0.032/0.286 진행) 5507·31명·저상, 20번은 그 정류장에 서 있는 3163도 앞차
+        rows = {int(r["stop"]): r for r in B.build("jr03", [str(self.folder)], open_=True)}
+        self.assertAlmostEqual(rows[23]["ahead_dist"], round(5 + 0.032 / 0.286, 3))
+        self.assertEqual((rows[23]["ahead_load"], rows[23]["ahead_bt"]), (31, "1"))
+        self.assertAlmostEqual(rows[20]["ahead_dist"], round(0.04 / 0.206, 3))
+        self.assertEqual(rows[20]["ahead_load"], 17)
+
     def test_missing_count_retains_arrival_but_never_reports_empty_bus(self):
         self.item.update(rerdie_Div1="0", reride_Num1="0")
         got = self.run_sample()
