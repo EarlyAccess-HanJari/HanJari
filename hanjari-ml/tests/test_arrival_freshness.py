@@ -119,6 +119,35 @@ class ArrivalFreshness(unittest.TestCase):
         self.assertEqual(stamp, "000010")
         self.assertEqual(len(files), 2)
 
+    def early_drop(self, pos=None, far_section="18", down=True):
+        # 11-16·17: 도착 API가 23번 첫째를 5508(바로 앞 구간)에서 3170(먼 차)으로 일찍 바꿈. 5508 은 24번 목록에 아직 있음
+        far = dict(self.first, mkTm="2026-11-02 17:40:50.0", plainNo1="서울75사3170", vehId1="100000069", sectOrd1="19",
+                   traTime1="420", reride_Num1="19", busType1="0", plainNo2="서울75사3164", vehId2="100000067",
+                   sectOrd2="15", traTime2="900", reride_Num2="7", busType2="0")
+        nxt = dict(self.first, staOrd="24", mkTm="2026-11-02 17:40:50.0", sectOrd1="24", traTime1="70",
+                   plainNo2="", vehId2="0", traTime2="0", reride_Num2="", rerdie_Div2="0")
+        self.write("arr", "174055", [far, nxt] if down else [far])
+        self.write("pos", "174055", [pos or dict(self.pos, sectOrd="22", dataTm="20261102174052"),
+                                     dict(self.pos, plainNo="서울75사3170", vehId="100000069", sectOrd=far_section,
+                                          dataTm="20261102174050")])
+        return S.predict_live(0, log_dir=self.folder, reference_now=dt.datetime(2026, 11, 2, 17, 41))[0]
+
+    def test_bus_dropped_early_by_arrival_api_is_restored_while_before_stop(self):
+        got = self.early_drop()
+        self.assertEqual((got["plate"], got["r_now"], got["stops_away"], got["arrival_status"]), ("서울70사5508", 53, 0, "upcoming"))
+        self.assertEqual(got["eta2_sec"], 420)  # 먼 차는 둘째로
+
+    def test_early_drop_is_not_restored_without_evidence(self):
+        for kw in (dict(pos=dict(self.pos, sectOrd="23", stopFlag="0", dataTm="20261102174052")),   # 이미 떠남
+                   dict(pos=dict(self.pos, sectOrd="23", stopFlag="1", dataTm="20261102174052")),   # 이미 정류장에 섬(도착 API 판단대로)
+                   dict(pos=dict(self.pos, sectOrd="22", dataTm="20261102174020")),                  # 위치가 도착 정보보다 30초 옛것
+                   dict(down=False),                                                                # 다음 정류장 목록에 없음
+                   dict(far_section="22")):                                                         # 먼 차도 바로 앞(붙어 다님)
+            with self.subTest(**{k: str(v)[:40] for k, v in kw.items()}):
+                for f in self.folder.glob("*.json"):
+                    f.unlink()
+                self.assertEqual(self.early_drop(**kw)["plate"], "서울75사3170")
+
     def test_stopped_at_target_is_not_departure(self):
         passed, item = self.prepare(positions=[dict(self.pos, stopFlag="1")])
         self.assertFalse(passed)

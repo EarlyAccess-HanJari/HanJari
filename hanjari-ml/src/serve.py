@@ -322,6 +322,43 @@ def latest_snapshot(src, route=None, now=None):
     raise NoSnapshotError("정상 도착 스냅샷이 없음(수집 또는 API 응답 확인 필요)")
 
 
+EARLY_DROP_ETA = 15  # 되살린 차의 남은 시간(초) — 11-16·17 실측: 도착 API가 지운 뒤 3~24초에 정류장 도착
+
+
+def restore_early_drop(it, body, stop, positions, source, now):
+    """도착 API가 정류장에 닿기 20~40초 전에 첫째 차를 지우고 다음 차(5~9분 뒤)를 첫째로 올리는 경우(11-16·17 이틀 23번).
+    더 새 위치가 그 차를 아직 바로 앞 구간(s−1)으로 보이고, 같은 응답의 다음 정류장 목록에 그 차가 아직 있으면
+    첫째로 되살리고 지금 첫째를 둘째로 내린다. 다음 정류장 목록이 차량·인원 필드의 출처라 다른 차 값이 섞이지 않는다."""
+    first = DQ.vehicle_key(it, "1")
+    for (vehicle_id, plate), (made, v) in positions.items():
+        section = B.num(v.get("sectOrd"))
+        if (plate, vehicle_id) in (first, DQ.vehicle_key(it, "2")) or section is None:
+            continue
+        if section != stop - 1:  # s 에 이미 선 차는 도착 API 판단을 따른다(점검에서 문제 아님)
+            continue
+        if made < source - dt.timedelta(seconds=15) or (now - made).total_seconds() > APPROACH_POS_SEC:
+            continue
+        far = positions.get((first[1], first[0]))
+        if far is None or B.num(far[1].get("sectOrd")) is None or B.num(far[1].get("sectOrd")) >= stop - 1:
+            continue  # 지금 첫째의 위치를 모르거나 그 차도 바로 앞이면(붙어 다님) 어느 차가 먼저인지 모름 — 그대로 둠
+        down = min(((B.num(x.get("staOrd")), x, slot) for x in B.response_items(body) for slot in "12"
+                    if DQ.vehicle_key(x, slot) == (plate, vehicle_id) and stop < (B.num(x.get("staOrd")) or 0) <= stop + 5),
+                   key=lambda z: z[0], default=None)
+        if down is None:
+            continue
+        _, src, slot = down
+        mine = {k[:-1]: val for k, val in src.items() if k.endswith(slot)}
+        old = {k[:-1]: val for k, val in it.items() if k.endswith("1")}
+        for key in list(it):
+            if key.endswith(("1", "2")):
+                del it[key]
+        it.update({k + "1": val for k, val in mine.items()})
+        it.update(sectOrd1=str(stop), traTime1=str(EARLY_DROP_ETA))
+        it.update({k + "2": val for k, val in old.items()})
+        return True
+    return False
+
+
 def exclude_departed(snap, now, approaching=None):
     """날짜 경계를 포함한 복사본에서 같은 차량의 최신 제공 시각으로 통과를 확인한다.
     approaching(set)을 주면 새 위치가 아직 정류장 전·정차 중으로 확인한 첫째 차량 (노선, 정류장, 차량번호)를 담는다."""
@@ -357,6 +394,9 @@ def exclude_departed(snap, now, approaching=None):
                     section, flag, _ = located(slot) or (None, None, None)
                     # 목표 정류장에 정차 중인 차를 통과 차량으로 처리하지 않는다.
                     return section is not None and (section > stop or section == stop and flag == 0)
+
+                if approaching is not None and source is not None and source.tzinfo is None:
+                    restore_early_drop(it, body, stop, positions, source, now)
 
                 if not departed("1"):
                     # 통과 근거가 없고, 60초 안의 도착 정보('곧 도착')와 위치가 둘 다 '아직 안 옴'이면 접근 중.
