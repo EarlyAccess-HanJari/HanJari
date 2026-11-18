@@ -133,14 +133,14 @@ class ArrivalFreshness(unittest.TestCase):
         return S.predict_live(0, log_dir=self.folder, reference_now=dt.datetime(2026, 11, 2, 17, 41))[0]
 
     def test_bus_dropped_early_by_arrival_api_is_restored_while_before_stop(self):
-        got = self.early_drop()
+        got = self.early_drop(pos=dict(self.pos, sectOrd="22", dataTm="20261102174025"))  # 위치가 25초 옛것이어도(흔함)
         self.assertEqual((got["plate"], got["r_now"], got["stops_away"], got["arrival_status"]), ("서울70사5508", 53, 0, "upcoming"))
         self.assertEqual(got["eta2_sec"], 420)  # 먼 차는 둘째로
 
     def test_early_drop_is_not_restored_without_evidence(self):
         for kw in (dict(pos=dict(self.pos, sectOrd="23", stopFlag="0", dataTm="20261102174052")),   # 이미 떠남
                    dict(pos=dict(self.pos, sectOrd="23", stopFlag="1", dataTm="20261102174052")),   # 이미 정류장에 섬(도착 API 판단대로)
-                   dict(pos=dict(self.pos, sectOrd="22", dataTm="20261102174020")),                  # 위치가 도착 정보보다 30초 옛것
+                   dict(pos=dict(self.pos, sectOrd="22", dataTm="20261102174005")),                  # 위치가 도착 정보보다 45초 옛것
                    dict(down=False),                                                                # 다음 정류장 목록에 없음
                    dict(far_section="22")):                                                         # 먼 차도 바로 앞(붙어 다님)
             with self.subTest(**{k: str(v)[:40] for k, v in kw.items()}):

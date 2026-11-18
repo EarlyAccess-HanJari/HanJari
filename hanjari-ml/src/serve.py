@@ -323,11 +323,14 @@ def latest_snapshot(src, route=None, now=None):
 
 
 EARLY_DROP_ETA = 15  # 되살린 차의 남은 시간(초) — 11-16·17 실측: 도착 API가 지운 뒤 3~24초에 정류장 도착
+# 위치가 도착 정보보다 이만큼(초)까지 옛것이어도 근거로 씀. 위치는 도착보다 16~30초 늦게 찍히는 일이 잦다.
+#   11/16~17 재생: 15초 → 어긋남 43→30·바뀐 17건 모두 정답, 30초 → 43→19·바뀐 31건 모두 정답, 45초도 같음
+EARLY_DROP_POS_LAG = 30
 
 
 def restore_early_drop(it, body, stop, positions, source, now):
     """도착 API가 정류장에 닿기 20~40초 전에 첫째 차를 지우고 다음 차(5~9분 뒤)를 첫째로 올리는 경우(11-16·17 이틀 23번).
-    더 새 위치가 그 차를 아직 바로 앞 구간(s−1)으로 보이고, 같은 응답의 다음 정류장 목록에 그 차가 아직 있으면
+    위치(도착 정보보다 EARLY_DROP_POS_LAG 초 옛것까지)가 그 차를 아직 바로 앞 구간(s−1)으로 보이고, 같은 응답의 다음 정류장 목록에 그 차가 아직 있으면
     첫째로 되살리고 지금 첫째를 둘째로 내린다. 다음 정류장 목록이 차량·인원 필드의 출처라 다른 차 값이 섞이지 않는다."""
     first = DQ.vehicle_key(it, "1")
     for (vehicle_id, plate), (made, v) in positions.items():
@@ -336,7 +339,7 @@ def restore_early_drop(it, body, stop, positions, source, now):
             continue
         if section != stop - 1:  # s 에 이미 선 차는 도착 API 판단을 따른다(점검에서 문제 아님)
             continue
-        if made < source - dt.timedelta(seconds=15) or (now - made).total_seconds() > APPROACH_POS_SEC:
+        if made < source - dt.timedelta(seconds=EARLY_DROP_POS_LAG) or (now - made).total_seconds() > APPROACH_POS_SEC:
             continue
         far = positions.get((first[1], first[0]))
         if far is None or B.num(far[1].get("sectOrd")) is None or B.num(far[1].get("sectOrd")) >= stop - 1:
