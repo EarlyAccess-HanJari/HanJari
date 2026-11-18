@@ -81,17 +81,21 @@ def export(lite=False, until=None, out_dir=None):
     """until: 이 날짜(YYYYMMDD)까지만 학습(매일 작업·과거 재현용). 반환: meta (oof = 날짜 분할 예측 성적)."""
     import numpy as np
     import train as T
-    d = T.features()
-    if until:
-        d = d[d.date <= until]
     feats, out_dir = (LITE, Path(out_dir or MODELS / "lite")) if lite else (FULL, Path(out_dir or MODELS))
+    # 11-18: 라이트 학습은 안 쓰는 이력·기록 열을 아예 읽지 않는다(q_eb 는 features 의 규칙 계산에 씀).
+    d = T.features(skip=[c for c in HISTORY + ["q_live", "q_cover", "source_updated"] if c != "q_eb" and c not in feats] if lite else ())
+    keep_rows = (d.date <= until) if until else np.ones(len(d), bool)
     if lite:
         # 11-04: 라이트 학습에 안 쓰는 열(전체 모델용 이력 피처·중간값·기록용 글자)은 들고 다니지 않는다.
         #   폴드마다 표 전체를 복사해 마감 메모리가 1.26GB(서버 상한 650MB)였다. 모델 입력(LITE)은 그대로.
-        d = d.drop(columns=[c for c in HISTORY + LITE_UNUSED if c in d.columns and c not in feats])
+        d.drop(columns=[c for c in HISTORY + LITE_UNUSED if c in d.columns and c not in feats], inplace=True)
         # 평일만 학습(10-01 실험: 평일 4폴드 모두 개선, MAE 3.09→2.84, 수업 직전 6.0→4.6). 일요일·공휴일은 서비스에서 '확률 보류'
         # 10-05: 토요일도 정규수업이 있어(지용) 학습에 포함 — 빼는 건 일요일·공휴일만
-        d = d[~d.holiday & (d.weekday != "일")].assign(rule=lambda x: lite_rule(x))
+        keep_rows &= ~d.holiday & (d.weekday != "일")
+    d = d[keep_rows]  # 11-18: 날짜·요일 거르기를 한 번에(전엔 거를 때마다 표 전체 복사)
+    if lite:
+        d["rule"] = lite_rule(d)
+    T.release_memory()
     keep, oof = [], []
     for tr, te in T.folds(d):  # 날짜 블록 전진 검증 — '여유' 기준은 처음 보는 날 예측으로 정한다
         point, Pm, Q = T.predict(T.fit(tr, feats), te, quantiles=True)
@@ -102,6 +106,7 @@ def export(lite=False, until=None, out_dir=None):
                      np.repeat(te.stops_away.values.astype(np.int16)[:, None], len(T.NS), 1)[valid],
                      np.repeat(te.is_peak.values[:, None] == 1, len(T.NS), 1)[valid]))
         del tr, te, point, Pm, Q, valid
+        T.release_memory()
     if not keep:
         raise ValueError("날짜 분할 검증에 필요한 데이터가 부족함")
     Pm, Bd, K, PK = (np.concatenate(x) for x in zip(*keep))
