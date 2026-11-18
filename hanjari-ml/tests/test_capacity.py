@@ -216,7 +216,7 @@ class RepoPolicy(unittest.TestCase):
         self.assertTrue(p["enabled"] and p["validation_evidence"].strip())
         self.assertEqual(len(p["vehicles"]), 14)
         caps = {(v["route"], v["capacity"]) for v in p["vehicles"]}
-        self.assertEqual(caps, {("sb02", 38), ("sb02", 60), ("jr03", 52), ("jr03", 54)})
+        self.assertEqual(caps, {("sb02", 35), ("sb02", 50), ("jr03", 52), ("jr03", 54)})  # 11-17 성북02 38·60 → 35·50
         self.assertTrue(all(v["evidence"].startswith("docs/PRACTICAL_CAPACITY") for v in p["vehicles"]))
 
 

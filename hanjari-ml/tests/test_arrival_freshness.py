@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 import build_dataset as B
 import collect as C
 import serve as S
+import train as T
 
 
 class ArrivalFreshness(unittest.TestCase):
@@ -211,7 +212,9 @@ class ArrivalFreshness(unittest.TestCase):
                     f.unlink()
                 self.write("arr", "174135", [first])
                 self.write("pos", "174152", [dict(self.pos, sectOrd="22", dataTm=pos_time)])
-                got = S.predict_live(0, log_dir=self.folder, reference_now=now)[0]
+                # 도착 상태만 본다: 레포 모델의 정원표가 코드와 달라도(정원 변경 직후) '확률 보류'로 새지 않게 모델 것에 맞춤
+                with patch.object(T, "capacity_policy", return_value=S.load(True)[1]["capacity_policy"]):
+                    got = S.predict_live(0, log_dir=self.folder, reference_now=now)[0]
                 self.assertEqual((got["plate"], got["arrival_status"]), ("서울70사5508", expected))
                 if expected == "upcoming":
                     self.assertEqual(got["r_now"], 53)
