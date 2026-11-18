@@ -179,7 +179,8 @@ src/serve.py predict_latest(N)  ← 운영 백엔드가 부르는 함수
 | `route`, `stop`, `stop_name` | sb02, 32, 녹십자약국 | 노선·정류장 |
 | `plate` | 서울70사6419 | 차량번호 |
 | `stops_away`, `eta_sec` | 0, 100 | 몇 정류장 전, 도착까지 초 |
-| `eta2_sec` | 240 또는 null | 둘째 버스 도착까지 초. 다음 버스 ETA만 제공하며 확률은 없음 |
+| `eta2_sec` | 240 또는 null | 둘째 버스 도착까지 초 |
+| `second` | 없음 또는 dict | 둘째 버스가 첫째 뒤 3분(`BUNCH_SEC`) 안에 붙어 올 때만. `plate`·`eta_sec`·`r_now`·`load_pred`·`load_10`·`load_90`·`p_board`·`level`·`reason`·`prediction_status` 등 첫째와 같은 뜻. 둘째도 평소처럼 태운다고 보고 계산해 예상 인원이 실제보다 평균 3명쯤 많은 보수적인 값(11/16~17: '여유' 831번 중 API 기준 못 탐 0) |
 | `r_now` | 39 또는 null | API 제공 인원. 인원형이 아니면 null. 예측 보류와 원본 데이터 유효성은 별도로 판단 |
 | `load_pred` | 42.5 또는 null | 도착 예상 인원. 보류 시 null |
 | `load_10`, `load_90` | 39, 49 또는 null | 예상 범위. 보류 시 모두 null |

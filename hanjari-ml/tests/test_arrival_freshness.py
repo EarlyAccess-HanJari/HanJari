@@ -148,6 +148,26 @@ class ArrivalFreshness(unittest.TestCase):
                     f.unlink()
                 self.assertEqual(self.early_drop(**kw)["plate"], "서울75사3170")
 
+    def test_bunched_second_bus_gets_its_own_prediction(self):
+        # 11-18: 둘째 차가 3분 안에 붙어 오면 둘째 차의 인원·확률도 준다(추월되거나 첫째가 꽉 차도 둘째를 탈 수 있음)
+        now = dt.datetime(2026, 11, 2, 17, 40, 40)
+        positions = [dict(self.pos, sectOrd="22"), dict(self.pos, plainNo="서울75사3170", vehId="100000069", sectOrd="21")]
+        for eta2, bunched in (("219", True), ("600", False)):
+            with self.subTest(eta2=eta2):
+                for f in self.folder.glob("*.json"):
+                    f.unlink()
+                self.write("arr", "174039", [dict(self.first, traTime2=eta2)])
+                self.write("pos", "174039", positions)
+                got = S.predict_live(3, log_dir=self.folder, reference_now=now)[0]
+                self.assertEqual((got["plate"], got["r_now"]), ("서울70사5508", 53))
+                if bunched:
+                    second = got["second"]
+                    self.assertEqual((second["plate"], second["r_now"], second["eta_sec"]), ("서울75사3170", 19, 219))
+                    self.assertIsNotNone(second["p_board"])
+                    self.assertLessEqual(second["load_10"], second["load_90"])
+                else:
+                    self.assertNotIn("second", got)
+
     def test_stopped_at_target_is_not_departure(self):
         passed, item = self.prepare(positions=[dict(self.pos, stopFlag="1")])
         self.assertFalse(passed)
