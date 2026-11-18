@@ -55,6 +55,7 @@ K_EB = 3           # 오늘 실측 n 개가 CSV 사전값 몇 개 분량과 맞�
 MAX_HEADWAY = 40 * 60  # 이보다 긴 배차 간격은 쌓임 속도 계산에 안 씀
 LINK = 15 * 60     # 같은 버스의 j → j+1 도착이 이 안에 있어야 순증감으로 인정
 DWELL_CAP = 180  # 정차 시간 피처 상한(초) — 서비스는 최근 MAX_AGE(180초) 위치 파일만 읽으므로 학습도 같게
+AHEAD_MAX = 20  # 앞차를 찾는 범위(정류장) — 더 멀면 배차 공백이 매우 긴 것과 같아 결측으로
 LABEL_NEXT_SEC = 40  # 정답 보정: s 항목에서 빠진 직후 이 안의 스냅샷만 본다(그 뒤엔 s 출발 갱신이 섞일 수 있음)
 
 
@@ -253,13 +254,14 @@ def build(route, days=None, open_=False, hist_all=None, tab=None):
             dwell[(t, pl)] = min((t - st[2]).total_seconds(), DWELL_CAP) if f_ == 1 else 0.0
     # 위치 기반 정밀 순승차 사건: pev[j] = [(출발시각, 차량, net, 배차간격초, 알 수 있게 된 시각)]
     #   net 은 구간 j 를 달리는 동안의 마지막 재차로 계산 → 알 수 있는 시각 = 그 구간을 마지막으로 본 시각(출발 시각 아님, 09-24 누설 수정)
-    rr = {}  # (t, 차량) → 재차 (도착정보 어느 항목에서든)
+    rr, rbt = {}, {}  # (t, 차량) → 재차·차종 (도착정보 어느 항목에서든)
     for t, items in snapshots(route, days):
         for it in items.values():
             for i in "12":
                 pl, r = DQ.vehicle_key(it, i)[0], DQ.valid_count(it, t, i)
                 if pl and r is not None and str(it.get("vehId" + i)) == pos_ids.get(t, {}).get(pl):
                     rr[(t, pl)] = r
+                    rbt[(t, pl)] = it.get("busType" + i)
     segs = defaultdict(list)  # 차량 → [구간 p, 출발시각, 구간 안 달리는 중 마지막 재차, 마지막으로 본 시각, 그 재차를 본 시각]
     for t in sorted(pos):
         for pl, (p, f, _) in pos[t].items():
@@ -358,6 +360,13 @@ def build(route, days=None, open_=False, hist_all=None, tab=None):
             ps, pdw, pfr = pos.get(t, {}).get(plate, (None, None, None))
             if status == "vehicle_mismatch":
                 ps = pdw = pfr = None
+            # 11-16 앞차: 같은 스냅샷에서 s 를 이미 지난(또는 s 에 서 있는) 가장 가까운 다른 차. 얼마나 지났나(정류장)와 지금 인원.
+            #   앞차가 꽉 차서 갔으면 s·앞 정류장에 남은 줄이 내 버스로 온다(앞차 70%+ 일 때 '여유'인데 못 탐 4.6~12%, 50% 이하 0.6%).
+            ahead = min(((p_ - s + (fr or 0.0), pl) for pl, (p_, _f, fr) in pos.get(t, {}).items()
+                         if pl != plate and p_ is not None and s <= p_ <= s + AHEAD_MAX), default=None)
+            ahead_dist = ahead_load = ahead_bt = None
+            if ahead is not None and status != "vehicle_mismatch":
+                ahead_dist, ahead_load, ahead_bt = round(ahead[0], 3), rr.get((t, ahead[1])), rbt.get((t, ahead[1]))
             q_live2 = q_today2 = q_rate = gap_sum = None
             if ps is not None and ps < s:
                 J2 = range(ps if pdw == 1 else ps + 1, s)
@@ -430,6 +439,7 @@ def build(route, days=None, open_=False, hist_all=None, tab=None):
                 eta_gap=(num(it.get("traTime2")) - eta) if num(it.get("traTime2")) else None, route_load=route_load.get(t),
                 pos_sect=ps, pos_dwell=pdw, pos_frac=None if pfr is None else round(pfr, 3), q_pending=q_pending,
                 dwell_sec=None if ps is None else dwell.get((t, plate)),
+                ahead_dist=ahead_dist, ahead_load=ahead_load, ahead_bt=ahead_bt,
                 q_live2=q_live2, q_today2=q_today2, q_rate=q_rate, gap_sum=gap_sum,
                 q_csv=round(sum(tab.get((j, h), (0, 0))[0] for j in J), 2),
                 off_csv=round(tab.get((s, h), (0, 0))[1], 2),

@@ -28,7 +28,7 @@ MIN_DAYS, FOLDS = 5, 4
 CAPACITY = {  # (노선, busType) → 실제 만차 인원(API 기준, 11-04 src/exp_practical_capacity.py). busType 은 일반/저상 구분일 뿐
     # 법정 정원(카운티 마을버스형 승객 20~22)보다 훨씬 끼어 탄다. 혼잡 시간 붐비는 정류장을 떠날 때 인원 상위 1%·더 못 타는 인원으로 정함.
     # 차량별 값은 config/boarding_policy.json 이 우선. 관측 최대로 올리지 않는다(그 방식이 종로03 71명·98% 오표시를 만들었다).
-    ("sb02", "0"): 38, ("sb02", "1"): 60,
+    ("sb02", "0"): 35, ("sb02", "1"): 50,  # 11-17 38·60 → 35·50 (docs/PRACTICAL_CAPACITY_20261117.md)
     ("jr03", "0"): 52, ("jr03", "1"): 54,
 }
 
@@ -86,6 +86,32 @@ def read_table(path):
     return _read_table(*table_revision(path)).copy(deep=True)
 
 
+# 버스가 지나갈 정류장 앞 지하철역(정류장 순번 → 역 코드). 성북02 30·31 한성대입구, 종로03 19 동대문·20 동묘앞·23 창신
+SUBWAY_STATIONS = {"sb02": {30: ["0419"], 31: ["0419"]}, "jr03": {19: ["0421", "0155"], 20: ["0159", "2637"], 23: ["2638"]}}
+
+
+def subway_rush(d):
+    """11-16: 버스가 아직 지날(지금 서 있거나 막 떠난 곳 포함, s 제외) 역 앞 정류장에 [지금−4분, 도착−1분] 사이 서는 열차 수를
+    작동할 때만 켠다 — 종로03 17~20시(퇴근해 역에서 내린 주민), 성북02 은 30분 안 시작 강좌 수에 비례(수업 가는 학생).
+    하루 내내 그대로 넣으면 효과가 없었다(09-30, 11-16 재확인). 조건부로 켜면 1정류장+ 앞 10명 '여유'인데 못 탐 74→66대·55→51대."""
+    tab = read_table(P / "subway_trains.csv")
+    trains = {k: np.sort(g["sec"].astype(float).values) for k, g in tab.groupby(["day", "station"])}
+    t = pd.to_timedelta(d["time"]).dt.total_seconds().values
+    eta = np.nan_to_num(pd.to_numeric(d["eta"], errors="coerce").values.astype(float))
+    day = np.where(d["weekday"].values == "토", "SAT", "DAY")
+    n = np.zeros(len(d))
+    keys = pd.DataFrame({"r": d["route"].values, "s": d["stop"].astype(int).values, "k": d["stops_away"].astype(int).values, "day": day})
+    for (r, s, k, dy), idx in keys.groupby(["r", "s", "k", "day"]).indices.items():
+        codes = [c for j, cs in SUBWAY_STATIONS.get(r, {}).items() if s - k - 1 <= j <= s - 1 for c in cs]
+        if codes:
+            x = np.sort(np.concatenate([trains[(dy, c)] for c in codes]))
+            n[idx] = np.maximum(np.searchsorted(x, t[idx] + eta[idx] - 60, side="right") - np.searchsorted(x, t[idx] - 240, side="left"), 0)
+    h = d["minute"].values / 60
+    eve = np.where((d["route"].values == "jr03") & (h >= 17) & (h < 20), n, 0.0)
+    cls = np.where(d["route"].values == "sb02", n * np.minimum(d["class_next30"].values, 60) / 60, 0.0)
+    return eve, cls
+
+
 def features(d=None, cats=None):
     """d: build_dataset 행(없으면 dataset.csv). cats: 범주 → 코드 표(서비스는 학습 때 표를 그대로 써야 코드가 같음)."""
     training = d is None
@@ -133,6 +159,7 @@ def features(d=None, cats=None):
         i = np.searchsorted(g.m.values, arrive[at])  # 첫 m ≥ a (없으면 999)
         mtc[at] = np.where(i < len(g), g.m.values[np.minimum(i, len(g) - 1)] - arrive[at], 999.0)
     d["min_to_class"] = mtc
+    d["sub_eve"], d["sub_cls"] = subway_rush(d)
     cats = cats or {c: sorted(d[c].astype(str).unique()) for c in CAT_COLS}  # astype("category") 와 같은 정렬 → 기존 코드 그대로
     for c in CAT_COLS:
         d[c + "_c"] = pd.Categorical(d[c].astype(str), categories=cats[c]).codes
@@ -144,6 +171,9 @@ def features(d=None, cats=None):
     d["rule"] = d["r_now"] + d["q_eb"] + d["q_pending"].fillna(0)
     d["is_peak"] = (d["class_board_win"] >= PEAK_CLASSES).astype(int)
     d["cap"] = row_capacities(d)
+    if "ahead_load" in d:  # 11-16 앞차가 정원의 몇 %로 갔나(차종 모르면 일반차)
+        abt = pd.to_numeric(d["ahead_bt"], errors="coerce").fillna(0).astype(int).astype(str)
+        d["ahead_fill"] = pd.to_numeric(d["ahead_load"], errors="coerce").values / np.array([cap(r, b) for r, b in zip(d["route"], abt)])
     d["fill_ratio"] = d["r_now"] / d["cap"]
     return d
 

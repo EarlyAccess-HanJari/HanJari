@@ -216,7 +216,7 @@ class RepoPolicy(unittest.TestCase):
         self.assertTrue(p["enabled"] and p["validation_evidence"].strip())
         self.assertEqual(len(p["vehicles"]), 14)
         caps = {(v["route"], v["capacity"]) for v in p["vehicles"]}
-        self.assertEqual(caps, {("sb02", 38), ("sb02", 60), ("jr03", 52), ("jr03", 54)})
+        self.assertEqual(caps, {("sb02", 35), ("sb02", 50), ("jr03", 52), ("jr03", 54)})  # 11-17 성북02 38·60 → 35·50
         self.assertTrue(all(v["evidence"].startswith("docs/PRACTICAL_CAPACITY") for v in p["vehicles"]))
 
 
@@ -311,3 +311,19 @@ class LongDwell(unittest.TestCase):
         self.assertLess(p(min_to_class=10), 0.9)
         self.assertEqual(p(min_to_class=60), 1)
         self.assertEqual(p(), 1)  # 수업 정보가 없는 입력은 정류장 분포
+
+
+class SubwayRush(unittest.TestCase):
+    def test_trains_count_only_when_the_mechanism_works(self):
+        # 11-16: 종로03 은 17~20시만, 성북02 는 30분 안 강좌가 있을 때만. 창신(2638) 은 23번 바로 앞 정류장이 아니라 빠짐
+        tab = pd.read_csv(T.P / "subway_trains.csv")
+        x = np.sort(tab[(tab.day == "DAY") & tab.station.astype(str).str.zfill(4).isin(["0159", "2637"])].sec.values)
+        row = dict(route="jr03", stop="23", stops_away=2, eta=300, weekday="월", class_next30=0)
+        d = pd.DataFrame([dict(row, time="18:00:00", minute=1080), dict(row, time="14:00:00", minute=840),
+                          dict(row, route="sb02", stop="32", stops_away=1, time="08:40:00", minute=520, class_next30=0),
+                          dict(row, route="sb02", stop="32", stops_away=1, time="08:40:00", minute=520, class_next30=60)])
+        eve, cls = T.subway_rush(d)
+        expected = ((x >= 18 * 3600 - 240) & (x <= 18 * 3600 + 300 - 60)).sum()  # 20번(동묘앞) 지남
+        self.assertGreater(expected, 0)
+        self.assertEqual((eve[0], eve[1]), (expected, 0))
+        self.assertEqual((cls[2], cls[3] > 0), (0, True))

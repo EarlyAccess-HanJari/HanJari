@@ -71,6 +71,22 @@ def class_starts():
     return c
 
 
+# 정류장 앞 지하철역 코드(서울교통공사 열차운행시각표): 한성대입구(4) · 동대문(4·1) · 동묘앞(1·6) · 창신(6)
+SUBWAY_CODES = ("0419", "0421", "0155", "0159", "2637", "2638")
+
+
+def subway_trains():
+    """11-16 subway_trains.csv: 역·평일/토요일별 열차 도착 시각(초). 원본 data/raw/subway/서울교통공사_도시철도열차운행시각표_20260914.csv
+    (공공데이터포털, 로그인 없이 받음). 일요일·공휴일은 서비스가 확률을 보류하므로 END 표는 넣지 않는다."""
+    src = next(iter(glob.glob(str(RAW / "subway/서울교통공사_도시철도열차운행시각표_*.csv"))))
+    rows = []
+    for r in csv.DictReader(open(src, encoding="cp949")):
+        if r["역사코드"] in SUBWAY_CODES and r["주중주말"] in ("DAY", "SAT"):
+            h, m, s_ = map(int, (r["열차도착시간"] or r["열차출발시간"]).split(":"))
+            rows.append(dict(day=r["주중주말"], station=r["역사코드"], sec=h * 3600 + m * 60 + s_))
+    write("subway_trains.csv", sorted(rows, key=lambda x: (x["day"], x["station"], x["sec"])))
+
+
 def write(name, rows):
     with open(OUT / name, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0]))
@@ -87,3 +103,4 @@ if __name__ == "__main__":
     for (_, _, t), n in c.items():
         tot[t] += n
     print("강좌(대면+BL) 시작 시각별(주간 합):", sorted(tot.items()))
+    subway_trains()
