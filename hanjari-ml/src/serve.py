@@ -81,17 +81,21 @@ def export(lite=False, until=None, out_dir=None):
     """until: 이 날짜(YYYYMMDD)까지만 학습(매일 작업·과거 재현용). 반환: meta (oof = 날짜 분할 예측 성적)."""
     import numpy as np
     import train as T
-    d = T.features()
-    if until:
-        d = d[d.date <= until]
     feats, out_dir = (LITE, Path(out_dir or MODELS / "lite")) if lite else (FULL, Path(out_dir or MODELS))
+    # 11-18: 라이트 학습은 안 쓰는 이력·기록 열을 아예 읽지 않는다(q_eb 는 features 의 규칙 계산에 씀).
+    d = T.features(skip=[c for c in HISTORY + ["q_live", "q_cover", "source_updated"] if c != "q_eb" and c not in feats] if lite else ())
+    keep_rows = (d.date <= until) if until else np.ones(len(d), bool)
     if lite:
         # 11-04: 라이트 학습에 안 쓰는 열(전체 모델용 이력 피처·중간값·기록용 글자)은 들고 다니지 않는다.
         #   폴드마다 표 전체를 복사해 마감 메모리가 1.26GB(서버 상한 650MB)였다. 모델 입력(LITE)은 그대로.
-        d = d.drop(columns=[c for c in HISTORY + LITE_UNUSED if c in d.columns and c not in feats])
+        d.drop(columns=[c for c in HISTORY + LITE_UNUSED if c in d.columns and c not in feats], inplace=True)
         # 평일만 학습(10-01 실험: 평일 4폴드 모두 개선, MAE 3.09→2.84, 수업 직전 6.0→4.6). 일요일·공휴일은 서비스에서 '확률 보류'
         # 10-05: 토요일도 정규수업이 있어(지용) 학습에 포함 — 빼는 건 일요일·공휴일만
-        d = d[~d.holiday & (d.weekday != "일")].assign(rule=lambda x: lite_rule(x))
+        keep_rows &= ~d.holiday & (d.weekday != "일")
+    d = d[keep_rows]  # 11-18: 날짜·요일 거르기를 한 번에(전엔 거를 때마다 표 전체 복사)
+    if lite:
+        d["rule"] = lite_rule(d)
+    T.release_memory()
     keep, oof = [], []
     for tr, te in T.folds(d):  # 날짜 블록 전진 검증 — '여유' 기준은 처음 보는 날 예측으로 정한다
         point, Pm, Q = T.predict(T.fit(tr, feats), te, quantiles=True)
@@ -102,6 +106,7 @@ def export(lite=False, until=None, out_dir=None):
                      np.repeat(te.stops_away.values.astype(np.int16)[:, None], len(T.NS), 1)[valid],
                      np.repeat(te.is_peak.values[:, None] == 1, len(T.NS), 1)[valid]))
         del tr, te, point, Pm, Q, valid
+        T.release_memory()
     if not keep:
         raise ValueError("날짜 분할 검증에 필요한 데이터가 부족함")
     Pm, Bd, K, PK = (np.concatenate(x) for x in zip(*keep))
@@ -362,6 +367,51 @@ def restore_early_drop(it, body, stop, positions, source, now):
     return False
 
 
+def promote_second(it):
+    """둘째 차를 첫째 자리로. 둘째 차량의 필드가 빠졌을 때 첫째 차량 값을 상속하면 차량과 인원이 섞이므로 다 지우고 옮긴다."""
+    second = {key[:-1] + "1": value for key, value in it.items() if key.endswith("2")}
+    for key in list(it):
+        if key.endswith(("1", "2")):
+            del it[key]
+    it.update(second)
+    it.update(plainNo2="", vehId2="0", traTime2="0", reride_Num2="", rerdie_Div2="0")
+
+
+BUNCH_SEC = 180  # 둘째 차가 첫째 뒤 이 안에 오면 '붙어 옴' — 둘째 차 예측도 함께 준다(11/16~17 조회의 약 6%)
+SECOND_KEYS = ("plate", "vehicle_id", "stops_away", "eta_sec", "arrival_at", "arrival_status", "r_now",
+               "load_pred", "load_10", "load_90", "p_board", "level", "reason", "prediction_status")
+
+
+def bunched_second_rows(days, meta):
+    """11-18: 두 대가 붙어 오면 순서가 바뀌거나(추월) 첫째가 꽉 차도 둘째를 탈 수 있다. 붙어 온 정류장만 둘째 차를 첫째로
+    올린 사본을 만들어 같은 피처·모델로 계산한다. 둘째 차도 정류장마다 평소처럼 태운다고 보므로(실제로는 첫째가 먼저 태움)
+    예상 인원이 실제보다 많게 나오는 보수적인 값이다."""
+    with tempfile.TemporaryDirectory() as tmp:
+        targets = set()
+        for folder in map(Path, days):
+            dest = Path(tmp) / folder.name
+            dest.mkdir(exist_ok=True)
+            for f in folder.iterdir():
+                if "_arr_" not in f.name:
+                    (dest / f.name).write_bytes(f.read_bytes())
+                    continue
+                body = json.loads(f.read_text())
+                route = f.name.split("_")[0]
+                for it in B.response_items(body):
+                    stop, eta1, eta2 = B.num(it.get("staOrd")), B.num(it.get("traTime1")), B.num(it.get("traTime2"))
+                    if (stop in B.STOPS.get(route, ()) and eta1 is not None and eta2 is not None and 0 <= eta2 - eta1 <= BUNCH_SEC
+                            and str(it.get("plainNo2") or "").strip() and (DQ.integer(it.get("vehId2")) or 0) > 0):
+                        targets.add((route, str(stop), DQ.vehicle_key(it, "2")[0]))
+                        promote_second(it)
+                (dest / f.name).write_text(json.dumps(body, ensure_ascii=False))
+        if not targets:
+            return []
+        copies = sorted(str(p) for p in Path(tmp).iterdir())
+        return [r for route in B.STOPS if any(t[0] == route for t in targets)
+                for r in B.build(route, copies, open_=True, hist_all=meta["hist_d"].get(route, {}), tab=meta["tab_d"][route])
+                if (route, str(r["stop"]), r["plate"]) in targets]
+
+
 def exclude_departed(snap, now, approaching=None):
     """날짜 경계를 포함한 복사본에서 같은 차량의 최신 제공 시각으로 통과를 확인한다.
     approaching(set)을 주면 새 위치가 아직 정류장 전·정차 중으로 확인한 첫째 차량 (노선, 정류장, 차량번호)를 담는다."""
@@ -415,13 +465,7 @@ def exclude_departed(snap, now, approaching=None):
                 if (str(it.get("plainNo2") or "").strip() and (DQ.integer(it.get("vehId2")) or 0) > 0
                         and next_section is not None and 0 < next_section <= stop
                         and next_eta is not None and next_eta >= 0 and not departed("2")):
-                    second = {key[:-1] + "1": value for key, value in it.items() if key.endswith("2")}
-                    # 둘째 차량의 필드가 빠졌을 때 첫째 차량 값을 상속하면 차량과 인원이 섞인다.
-                    for key in list(it):
-                        if key.endswith(("1", "2")):
-                            del it[key]
-                    it.update(second)
-                    it.update(plainNo2="", vehId2="0", traTime2="0", reride_Num2="", rerdie_Div2="0")
+                    promote_second(it)
                 else:
                     passed.add((route, str(stop)))
             f.write_text(json.dumps(body, ensure_ascii=False))
@@ -501,9 +545,15 @@ def predict_live(n_ahead, key=None, log_dir=None, model_dir=None, reference_now=
         # 임시 폴더를 절대 경로로 넘김 — 예전엔 B.LOG 전역을 바꿨다 되돌려서 동시 요청이 꼬이고 B.LOG 가 지워진 폴더로 남았다(10-05 정원 발견)
         rows = [r for route in B.STOPS
                 for r in B.build(route, days, open_=True, hist_all=meta["hist_d"].get(route, {}), tab=meta["tab_d"][route])]
+        second_rows = bunched_second_rows(days, meta)
     out = results(rows, m, meta, n_ahead, now, MAX_AGE, lite=True, approaching=approaching)
     for result in out:
         check_arrival(result, now, (result["route"], result["stop"]) in passed)
+    seconds = {(r["route"], r["stop"]): r for r in results(second_rows, m, meta, n_ahead, now, MAX_AGE, lite=True)} if second_rows else {}
+    for result in out:
+        s2 = seconds.get((result["route"], result["stop"]))
+        if s2 is not None and s2["plate"] != result["plate"] and result["arrival_status"] != "passed":
+            result["second"] = {k: s2.get(k) for k in SECOND_KEYS}
     return out
 
 

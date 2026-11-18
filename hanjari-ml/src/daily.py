@@ -184,9 +184,11 @@ def check_data(day):
 def monitor(day, model_dir):
     """그날의 API 기록을 models/lite로 재생 평가한다. '여유'와 계산 탑승은 모델 내부의 판정이다."""
     m, meta = S.load(True, model_dir)
-    d = T.features(cats=meta["cats"])
-    d = d[d.date == day]
-    if d.empty:
+    # 11-18: 그날 행만 하루 캐시에서 읽는다(전에는 42일 전체를 읽고 골라 서버에서 32초·약 650MB, 바로 뒤 학습이 스왑을 씀).
+    #   dataset.csv 는 이 캐시들을 이어 붙인 것이라 행이 같다.
+    parts = [T.read_rows(p) for p in (B.OUT / "days" / f"{day}_{r}.csv" for r in B.STOPS) if p.exists() and p.stat().st_size > 0]
+    d = T.features(pd.concat(parts, ignore_index=True), cats=meta["cats"]) if parts else None
+    if d is None or d.empty:
         return None
     d = d.assign(rule=S.lite_rule(d))
     point, Pm, Q = T.predict(m, d, quantiles=True)
@@ -271,6 +273,7 @@ def run(day):
     if disk_ok:
         B.main()
     mon = monitor(day, LIVE) if disk_ok and (LIVE / "meta.json").exists() else None
+    T.release_memory()
     if mon:
         append(REPORTS / "daily_metrics.csv", mon)
         lines += [f"② API 재생 평가(학습 모델 ~{mon['model']}): 오차 {mon['mae']:.2f}명 (지금 재차 그대로 {mon['persistence_mae']:.2f}) · "

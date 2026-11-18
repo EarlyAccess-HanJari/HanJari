@@ -112,11 +112,40 @@ def subway_rush(d):
     return eve, cls
 
 
-def features(d=None, cats=None):
-    """d: build_dataset 행(없으면 dataset.csv). cats: 범주 → 코드 표(서비스는 학습 때 표를 그대로 써야 코드가 같음)."""
+TEXT_COLS = {"date", "time", "route", "stop", "plate", "data_status", "vehicle_id", "source_updated", "bus_type", "arrive_time"}
+
+
+def read_rows(path, skip=()):
+    """학습 CSV(dataset.csv·하루 캐시)를 숫자는 32비트로 읽는다. XGBoost 는 어차피 float32 로 계산해 모델은 같다.
+    11-18: 64비트로 읽으면 표 217MB·읽는 순간 615MB(1GB 서버에서 매일 학습이 스왑을 씀) → 152MB·462MB."""
+    cols = [c for c in pd.read_csv(path, nrows=0).columns if c not in skip]
+    return pd.read_csv(path, usecols=cols, dtype={c: (str if c in TEXT_COLS else np.int64 if c == "source_schema" else np.float32)
+                                                  for c in cols})
+
+
+def release_memory():
+    """버린 큰 표의 메모리를 운영체제에 돌려준다(파이썬·glibc 는 해제해도 바로 돌려주지 않아 1GB 서버에서 스왑을 썼다).
+    pandas 3 의 글자 열은 pyarrow 메모리 풀(mimalloc)에 있고, 이 풀은 따로 비워야 한다(11-18: 학습 직전 513MB → 356MB)."""
+    import ctypes
+    import gc
+    gc.collect()
+    try:
+        ctypes.CDLL("libc.so.6").malloc_trim(0)
+    except (OSError, AttributeError):
+        pass
+    try:
+        import pyarrow
+        pyarrow.default_memory_pool().release_unused()
+    except (ImportError, AttributeError):
+        pass
+
+
+def features(d=None, cats=None, skip=()):
+    """d: build_dataset 행(없으면 dataset.csv). cats: 범주 → 코드 표(서비스는 학습 때 표를 그대로 써야 코드가 같음).
+    skip: dataset.csv 에서 읽지 않을 열(학습에 안 쓰는 이력·기록 열)."""
     training = d is None
     if training:
-        d = pd.read_csv(DATASET, dtype={"date": str, "stop": str, "bus_type": str, "vehicle_id": str})
+        d = read_rows(DATASET, skip)
     if "source_schema" not in d or not (d.source_schema == DQ.SCHEMA_VERSION).all():
         raise ValueError("이전 검증 규칙의 데이터셋: 원본 로그에서 build_dataset.py 재빌드 필요")
     if "data_status" not in d or not d.data_status.eq("ok").all() or d.r_now.isna().any():
@@ -175,6 +204,12 @@ def features(d=None, cats=None):
         abt = pd.to_numeric(d["ahead_bt"], errors="coerce").fillna(0).astype(int).astype(str)
         d["ahead_fill"] = pd.to_numeric(d["ahead_load"], errors="coerce").values / np.array([cap(r, b) for r, b in zip(d["route"], abt)])
     d["fill_ratio"] = d["r_now"] / d["cap"]
+    if training:  # 학습 표는 새로 만든 열도 32비트로(서비스 몇 행은 그대로)
+        for c, t in d.dtypes.items():
+            if t == np.float64:
+                d[c] = d[c].astype(np.float32)
+            elif t == np.int64:
+                d[c] = d[c].astype(np.int32)
     return d
 
 
@@ -255,7 +290,7 @@ def residual_group(d, res0_keys):
 
 def fit(tr, feats):
     """규칙 잔차를 XGB(점: MAE, 확률: 다분위수)로 학습. 바로 앞(k=0)은 전용 모델."""
-    Xtr, dtr, kw = tr[feats].astype(float), tr.y.values - tr.rule.values, dict(XGB_KW)
+    Xtr, dtr, kw = tr[feats].astype(np.float32), tr.y.values - tr.rule.values, dict(XGB_KW)
     m = dict(feats=feats, qs=QS,
              pt=xgb.XGBRegressor(objective="reg:absoluteerror", **kw).fit(Xtr, dtr, sample_weight=tr.w),
              qm=xgb.XGBRegressor(objective="reg:quantileerror", quantile_alpha=QS, **kw).fit(Xtr, dtr, sample_weight=tr.w),
@@ -266,8 +301,8 @@ def fit(tr, feats):
     tk = tr[tr.stops_away == 0]
     if len(tk) >= 50:
         m["f0"] = F0
-        m["m0"] = xgb.XGBRegressor(objective="reg:absoluteerror", **kw).fit(tk[F0].astype(float), tk.y - tk.r_now, sample_weight=tk.w)
-        res0 = tk.y.values - tk.r_now.values - m["m0"].predict(tk[F0].astype(float))
+        m["m0"] = xgb.XGBRegressor(objective="reg:absoluteerror", **kw).fit(tk[F0].astype(np.float32), tk.y - tk.r_now, sample_weight=tk.w)
+        res0 = tk.y.values - tk.r_now.values - m["m0"].predict(tk[F0].astype(np.float32))
         groups = residual_group(tk, ("long",))
         m["res0"] = {k: np.sort(res0[g] if g.sum() >= 20 else res0) for k, g in groups.items()}
         rush = class_rush(tk)
@@ -332,7 +367,7 @@ def typical_table(d):
 
 def predict(m, te, quantiles=False):
     """(점 예측, P(탑승) 행렬 [행 × N=0..40]). quantiles=True 면 도착재차 분위수(QS)도."""
-    Xte = te[m["feats"]].astype(float)
+    Xte = te[m["feats"]].astype(np.float32)
     # 예측 대상은 API 재차. 잠정 정원으로 자르면 초과값을 숨기고 확률·구간 폭을 왜곡한다.
     point = np.maximum(te.rule.values + m["pt"].predict(Xte), 0)
     Q = np.sort(np.maximum(m["qm"].predict(Xte) + te.rule.values[:, None], 0), axis=1)
@@ -349,7 +384,7 @@ def predict(m, te, quantiles=False):
     if k0.any() and m["m0"] is not None:
         te0 = te[k0]
         f0 = m.get("f0", F0_V1)  # 모델이 학습한 입력 그대로(이전 모델과 호환)
-        point[k0] = np.maximum(te0.r_now.values + m["m0"].predict(te0[f0].astype(float)), 0)
+        point[k0] = np.maximum(te0.r_now.values + m["m0"].predict(te0[f0].astype(np.float32)), 0)
         # 11-04: 위치 API 가 빠지면 정차 중인 차도 '주행'으로 봐 P 0.92→0.99 로 과신했다 → 결측은 정차 분포로
         stop_key = te.route.astype(str).values + "|" + te.stop.astype(str).values
         rush = class_rush(te)
