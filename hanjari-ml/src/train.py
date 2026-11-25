@@ -20,6 +20,7 @@ import pandas as pd
 from pathlib import Path
 import xgboost as xgb
 import data_quality as DQ
+from build_dataset import REFLECT_SEC
 from feature_schema import GROUPS
 
 P = Path(__file__).resolve().parents[1] / "data/processed"
@@ -67,6 +68,11 @@ QS = np.round(np.linspace(0.05, 0.95, 9), 3)  # 10-01: 19개 → 9개(정확도 
 XGB_KW = dict(n_estimators=300, max_depth=5, learning_rate=0.06, min_child_weight=5, subsample=0.8, random_state=0,
               n_jobs=min(8, os.cpu_count() or 1))  # 코어 수만큼(오라클 2) — 공유 서버는 8로 제한
 PEAK_CLASSES = 40  # 버스 도착 후 10~35분 안에 이만큼 이상 강좌가 시작하면 '수업 직전' (10-05: BL 포함으로 수업 수 ~2배 → 20→40, 피크 칸 비율 8%→6.5%)
+# 11-25: 위 기준만으로는 월·수·목 낮 수업 전만 '수업 직전'이었고 아침은 한 번도 안 걸렸다(9·10·10:30 수업은 16~34개).
+#   아침은 모두 밖에서 오는 첫 수업이라 강좌 수가 적어도 붐빈다(성북02 9/23~11/13: 오전 창 16~35개 붐빔 9~27%, 낮 16~40개 0~5%),
+#   녹십자 가장 붐비는 칸은 수업 10분 안쪽 도착(08:45~09:00 붐빔 58%)이다 → 오전 도착은 0~35분 안 강좌 PEAK_CLASSES_AM 개 이상이면 '수업 직전'.
+#   16 = 평일 9시 수업이 가장 적은 월요일 강좌 수. 성북02 '수업 직전' 운행 5.5%→12.0%, 붐빈 운행 중 잡는 비율 40%→69%(prefix: 마지막 폴드 제외).
+PEAK_CLASSES_AM, PEAK_AM_END = 16, 11 * 60
 
 
 CAT_COLS = ["route", "stop", "bus_type", "weekday", "term", "exam", "holiday"]
@@ -198,7 +204,7 @@ def features(d=None, cats=None, skip=()):
     # 규칙: 지금 재차 + 정차 중 미반영 몫 + 남은 구간 순승차(오늘 실측과 CSV 학기평균의 축소 평균).
     #   CSV 고정은 휴일(9/24 추석)에 persistence 보다 나빠짐 → 오늘 실측이 쌓일수록 CSV 에서 벗어나게.
     d["rule"] = d["r_now"] + d["q_eb"] + d["q_pending"].fillna(0)
-    d["is_peak"] = (d["class_board_win"] >= PEAK_CLASSES).astype(int)
+    d["is_peak"] = ((d["class_board_win"] >= PEAK_CLASSES) | ((arrive < PEAK_AM_END) & (win(0, 35) >= PEAK_CLASSES_AM))).astype(int)
     d["cap"] = row_capacities(d)
     if "ahead_load" in d:  # 11-16 앞차가 정원의 몇 %로 갔나(차종 모르면 일반차)
         abt = pd.to_numeric(d["ahead_bt"], errors="coerce").fillna(0).astype(int).astype(str)
@@ -264,9 +270,11 @@ F0_V1 = ["pos_dwell", "pos_frac", "q_pending", "r_now", "stop_c", "route_c", "mi
 def pending_stop(d):
     """바로 앞(k=0) 버스가 앞 정류장(s−1)에서 아직 태우는 중일 수 있는가 → 넓은(정차) 분포.
     정차 중, 위치 결측(11-04), 위치가 s−1 보다 뒤(11-10: 도착 정보는 '바로 앞'인데 위치 갱신이 늦어 아직 2번출구 전 —
-    주행으로 보면 범위 20~20명·100% 로 과신했다. 41일 중 이 경우 10명+ 증가 5.8%, 주행은 0.6%)."""
+    주행으로 보면 범위 20~20명·100% 로 과신했다. 41일 중 이 경우 10명+ 증가 5.8%, 주행은 0.6%),
+    앞 정류장을 떠난 지 REFLECT_SEC 초 안(11-25: 그 정류장 승하차가 아직 인원에 없다 — build_dataset 의 q_pending 과 같은 상태)."""
     sect = pd.to_numeric(d["pos_sect"], errors="coerce").values if "pos_sect" in d else np.full(len(d), np.nan)
-    return (d["pos_dwell"].values != 0) | (sect < pd.to_numeric(d["stop"], errors="coerce").values - 1)
+    run = pd.to_numeric(d["run_sec"], errors="coerce").values if "run_sec" in d else np.full(len(d), np.nan)
+    return (d["pos_dwell"].values != 0) | (sect < pd.to_numeric(d["stop"], errors="coerce").values - 1) | (run <= REFLECT_SEC)
 
 
 LONG_DWELL = 60  # 이 이상 앞 정류장에 서 있으면 따로(11-10: 2번출구 60초+ 정차 → 녹십자 도착 +7명, 짧은 정차보다 넓게 흩어짐)
@@ -442,7 +450,7 @@ def main():
             rows.append((f"XGB {g}", metrics(point, Pm, te)))
         keep.append((Pm, (te.y.values[:, None] <= thresholds(te)).astype(float),
                      np.repeat(te.stops_away.values[:, None], len(NS), 1),
-                     np.repeat((te.class_board_win.values >= PEAK_CLASSES)[:, None], len(NS), 1)))  # 전체 피처 모델
+                     np.repeat((te.is_peak.values == 1)[:, None], len(NS), 1)))  # 전체 피처 모델
     r = pd.DataFrame([dict(model=m, **v) for m, v in rows]).groupby("model", sort=False).mean()
     r.columns = ["MAE", "Brier", "'여유' 비율", "'여유'→탑승", "'어려움'→탑승"]
     with pd.option_context("display.float_format", "{:.3f}".format, "display.width", 140):

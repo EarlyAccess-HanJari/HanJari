@@ -23,7 +23,8 @@
   위치 API(pos, 같은 시각 스냅샷): 재차(reride)는 버스가 정류장을 **떠날 때** 갱신된다(9/23 확인: 5번출구 정차 2분 반 동안 6명, 출발 직후 2명).
     도착정보는 버스가 앞 정류장 p 에 서 있어도 "p+1 쪽으로 가는 중"으로 표시 → p 의 승하차가 아직 재차에 없음.
     pos_dwell = 지금 정차 중(stopFlag), pos_sect = 마지막 정류장 p, pos_frac = 구간 진행률(sectDist/fullSectDist),
-    q_pending = 정차 중이면 p 의 CSV 평균 순승차(아직 반영 안 된 몫), 아니면 0.
+    q_pending = p 의 승하차가 아직 재차에 없을 때(정차 중, 또는 p 를 떠난 지 REFLECT_SEC 초 안) p 의 CSV 평균 순승차, 아니면 0.
+    run_sec = p 를 떠나 달리는 것으로 처음 본 위치 시각부터 지난 초(정차 중·시작을 못 봤으면 비움).
   위치 기반 정류장 순승차(정밀): 버스가 구간 p(=p 출발 후 p+1 로 가는 중, stopFlag 0)에 있을 때의 재차 = p 출발 후 재차.
     net_p = (p 출발 후 재차) − (p−1 출발 후 재차), 사건 시각 = p 출발(구간 p 에서 처음 stopFlag 0).
     q_live2  = Σ_{아직 반영 안 된 정류장 j} 직전 다른 버스의 net_j × clip(경과/그 버스 배차간격, 0.5, 2)
@@ -57,6 +58,16 @@ LINK = 15 * 60     # 같은 버스의 j → j+1 도착이 이 안에 있어야 �
 DWELL_CAP = 180  # 정차 시간 피처 상한(초) — 서비스는 최근 MAX_AGE(180초) 위치 파일만 읽으므로 학습도 같게
 AHEAD_MAX = 20  # 앞차를 찾는 범위(정류장) — 더 멀면 배차 공백이 매우 긴 것과 같아 결측으로
 LABEL_NEXT_SEC = 40  # 정답 보정: s 항목에서 빠진 직후 이 안의 스냅샷만 본다(그 뒤엔 s 출발 갱신이 섞일 수 있음)
+# 11-25: 재차는 정류장을 떠나고 약 27초 뒤 API 에 반영된다. 떠난 뒤 이 초까지는 그 정류장 몫을 아직 미반영으로 본다.
+#   2번출구→녹십자는 약 30초라 반영 전에 녹십자에 닿는데, 예전엔 출발하는 순간 더하던 몫이 0 이 됐다(지용 11-24 결정).
+#   20초 = 출발 뒤 처음 본 위치 관측만(수집 간격 27초). 9/23~11/24 녹십자 바로 앞: 첫 관측은 46%가 아직 정차 때 인원이고
+#   도착까지 +10명 이상 6.6%, 둘째 관측(27초)은 10%(순승차 0인 차와 같은 수준)·0.3% → 35초로 하면 반영된 차에 두 번 더한다.
+#   11-25 전후 비교(10/19~11/24 날짜 블록 검증, 정원 35·50, 시드 3개)에서 켜면 녹십자 출발 첫 관측의 틀린 '여유'는
+#   세 시드 모두 줄었지만(시드 0 1.46%→0.96%), 시드 0 의 oof MAE 가 2.5002→2.5411(+1.6%)로 미리 정한 지킴선(+1% 이내)을
+#   넘었다(시드 1·2 는 +0.5%·+0.1%). 한 시드라도 넘으면 넣지 않는다는 규칙대로 지금은 끈다.
+#   -1 = 정차 중일 때만 더함(11-25 전과 같은 값). run_sec 열과 train.pending_stop 분기는 남겨 둔다. 다시 켜려면 20 으로 바꾸고 같은 비교를 다시 한다.
+REFLECT_SEC = -1
+FEATURE_VERSION = 2  # 피처 식이 바뀌면 올린다 → 하루 캐시를 원본에서 다시 만든다(1: 11-25 전)
 
 
 _request = ContextVar('snapshot_request', default=None)
@@ -242,16 +253,20 @@ def build(route, days=None, open_=False, hist_all=None, tab=None):
         pos[dt.datetime.strptime(day + hms, "%Y%m%d%H%M%S")] = vs
     # 11-10: 지금 정류장에 몇 초째 서 있나(같은 구간·정차가 이어진 시간). 오래 서 있으면 많이 타는 중 — 재차는 출발해야 갱신되므로
     #   2번출구→녹십자처럼 가까우면 이 신호가 유일하다(2번출구 90초+ 정차 시 10명+ 탑승 25%, 30초 미만 1%).
-    dwell = {}
-    state = {}  # 차량 → (구간, 정차, 시작 시각, 마지막 시각)
+    dwell, run = {}, {}
+    state = {}  # 차량 → (구간, 정차, 시작 시각, 마지막 시각, 시작을 봤나)
     for t in sorted(pos):
         for pl, (p_, f_, _) in pos[t].items():
             st = state.get(pl)
-            if st is None or (st[0], st[1]) != (p_, f_) or (t - st[3]).total_seconds() > MAX_GAP:
-                st = (p_, f_, t, t)
-            st = (st[0], st[1], max(st[2], t - dt.timedelta(seconds=DWELL_CAP)), t)
+            if st is None or (t - st[3]).total_seconds() > MAX_GAP:
+                st = (p_, f_, t, t, False)  # 처음 보거나 공백 뒤: 이 상태가 언제 시작됐는지 모름
+            elif (st[0], st[1]) != (p_, f_):
+                st = (p_, f_, t, t, True)
+            st = (st[0], st[1], max(st[2], t - dt.timedelta(seconds=DWELL_CAP)), t, st[4])
             state[pl] = st
             dwell[(t, pl)] = min((t - st[2]).total_seconds(), DWELL_CAP) if f_ == 1 else 0.0
+            if f_ == 0 and st[4]:  # 11-25: 정류장을 떠나 달린 지 몇 초째(처음 달리는 것으로 본 위치 시각부터)
+                run[(t, pl)] = min((t - st[2]).total_seconds(), DWELL_CAP)
     # 위치 기반 정밀 순승차 사건: pev[j] = [(출발시각, 차량, net, 배차간격초, 알 수 있게 된 시각)]
     #   net 은 구간 j 를 달리는 동안의 마지막 재차로 계산 → 알 수 있는 시각 = 그 구간을 마지막으로 본 시각(출발 시각 아님, 09-24 누설 수정)
     rr, rbt = {}, {}  # (t, 차량) → 재차·차종 (도착정보 어느 항목에서든)
@@ -391,7 +406,10 @@ def build(route, days=None, open_=False, hist_all=None, tab=None):
                 q_live2, q_today2, q_rate, gap_sum = round(q_live2, 2), round(q_today2, 2), round(q_rate, 2), round(gap_sum, 1)
             elif ps is not None:
                 q_live2 = q_today2 = q_rate = gap_sum = 0.0
-            q_pending = round(tab.get((ps, h), (0, 0))[0], 2) if pdw == 1 and ps is not None and ps < s else 0.0
+            run_sec = None if ps is None else run.get((t, plate))
+            # p 의 승하차가 아직 재차에 없는 동안(정차 중, 떠난 뒤 REFLECT_SEC 초 안) p 의 평균 순승차를 더한다
+            unreflected = pdw == 1 or (pdw == 0 and run_sec is not None and run_sec <= REFLECT_SEC)
+            q_pending = round(tab.get((ps, h), (0, 0))[0], 2) if unreflected and ps is not None and ps < s else 0.0
             # 오늘 최근 60분 / 이전 수집일 같은 시간대의 정류장별 실측 순증감
             q_today = q_hist = q_eb = None
             if k > 0:
@@ -438,7 +456,7 @@ def build(route, days=None, open_=False, hist_all=None, tab=None):
                 q_live=round(q_live, 2), q_cover=round(used / len(J), 2) if len(J) else 1.0, q_prev=q_prev, q_today=q_today, q_eb=q_eb, q_hist=q_hist, q_bias3=q_bias3, since_prev=since_prev, hw_ratio=hw_ratio,
                 eta_gap=(num(it.get("traTime2")) - eta) if num(it.get("traTime2")) else None, route_load=route_load.get(t),
                 pos_sect=ps, pos_dwell=pdw, pos_frac=None if pfr is None else round(pfr, 3), q_pending=q_pending,
-                dwell_sec=None if ps is None else dwell.get((t, plate)),
+                dwell_sec=None if ps is None else dwell.get((t, plate)), run_sec=run_sec,
                 ahead_dist=ahead_dist, ahead_load=ahead_load, ahead_bt=ahead_bt,
                 q_live2=q_live2, q_today2=q_today2, q_rate=q_rate, gap_sum=gap_sum,
                 q_csv=round(sum(tab.get((j, h), (0, 0))[0] for j in J), 2),
@@ -500,12 +518,12 @@ def main(full=False, out=None):
         cache.mkdir(exist_ok=True)
         # 원본 폴더가 압축·삭제된 날(daily.py ⑥ 정리)도 캐시가 있으면 그대로 이어 붙임
         folders = sorted({p.name for p in day_folders(LOG)} | {f.name[:8] for f in day_caches(cache)})
-        # 검증 규칙이 바뀐 캐시는 원본 전체를 복구하기 전에는 손대지 않는다.
-        outdated = any(json.loads(f.read_text()).get("source_schema") != DQ.SCHEMA_VERSION
-                       for f in day_caches(cache))
+        # 검증 규칙·피처 식이 바뀐 캐시는 원본 전체를 복구하기 전에는 손대지 않는다(옛 식과 새 식 행이 섞이지 않게).
+        stale = lambda m: m.get("source_schema") != DQ.SCHEMA_VERSION or m.get("feature_version", 1) != FEATURE_VERSION
+        outdated = any(stale(json.loads(f.read_text())) for f in day_caches(cache))
         missing = [d for d in folders if not (LOG / d).is_dir()]
         if outdated and missing:
-            raise RuntimeError(f"데이터 검증 규칙 변경: 원본 archive 복구 후 재빌드 필요 ({', '.join(missing)}). 기존 캐시 보존.")
+            raise RuntimeError(f"데이터 검증 규칙·피처 식 변경: 원본 archive 복구 후 재빌드 필요 ({', '.join(missing)}). 기존 캐시 보존.")
         redo = 0
         for route in STOPS:
             acc, dirty = defaultdict(lambda: [0.0, 0]), False
@@ -519,7 +537,7 @@ def main(full=False, out=None):
                 mf, rf = cache / f"{day}_{route}.json", cache / f"{day}_{route}.csv"
                 files = n[max(i - 1, 0):i + 2]
                 meta = json.loads(mf.read_text()) if mf.exists() else None
-                dirty = dirty or meta is None or meta.get("source_schema") != DQ.SCHEMA_VERSION or meta["files"] != files
+                dirty = dirty or meta is None or stale(meta) or meta["files"] != files
                 if dirty and not (LOG / day).is_dir():
                     raise RuntimeError(f"{day} 원본이 압축돼 있어 다시 계산 불가 → tar xzf archive/{day}.tar.gz -C api_logs 후 재실행")
                 if meta and "n" not in meta and (LOG / day).is_dir():  # 압축 전에 그날 파일 수를 캐시에 남겨 둠
@@ -532,7 +550,7 @@ def main(full=False, out=None):
                             w = csv.DictWriter(f, fieldnames=list(got[0]))
                             w.writeheader()
                             w.writerows(got)
-                    meta = dict(files=files, n=n[i], ev=ev, source_schema=DQ.SCHEMA_VERSION)
+                    meta = dict(files=files, n=n[i], ev=ev, source_schema=DQ.SCHEMA_VERSION, feature_version=FEATURE_VERSION)
                     mf.write_text(json.dumps(meta))
                     redo += 1
                 else:
