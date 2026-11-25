@@ -14,4 +14,5 @@
 .verdict { flex: none; display: inline-flex; align-items: center; padding: 5px 10px; border-radius: 999px; background: #fff; color: var(--lv-fg); border: 1px solid var(--lv-line); font-size: min(clamp(15px, 2.2dvh, 18px), 3.7vw); font-weight: 700; letter-spacing: -0.02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .sub { font-size: 14px; color: var(--c-text-2); }
 .next { min-height: 18px; font-size: 13px; line-height: 18px; color: var(--c-text-3); }
-@media (max-height: 600px) { .arrival { gap: 4px; } .timeRow { min-height: 44px; gap: 4px; } .verdict { padding: 3px 8px; } }
+@media (max-height: 740px) { .arrival { gap: 6px; } .away { padding-block: 3px; } }
+@media (max-height: 620px) { .arrival { gap: 4px; } .timeRow { min-height: 44px; gap: 4px; } .verdict { padding: 3px 8px; } }

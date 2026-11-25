@@ -3,4 +3,7 @@
 .track { display: flex; width: 200%; height: 100%; transition: transform .32s cubic-bezier(.2, .8, .2, 1); will-change: transform; }
 .drag { transition: none; }
 .pane { width: 50%; height: 100%; overflow-y: auto; overscroll-behavior: contain; padding: 4px 1px 8px; display: flex; flex-direction: column; gap: 12px; }
+/* 폰 브라우저 높이: 첫 화면이 스크롤 없이 들어가도록 (App.module.css 의 같은 조건 참고) */
+@media (max-height: 740px) { .pane { padding: 2px 1px; gap: 8px; } }
+@media (max-height: 620px) { .pane { gap: 6px; } }
 @media (prefers-reduced-motion: reduce) { .track { transition: none; } }

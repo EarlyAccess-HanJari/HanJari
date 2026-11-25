@@ -5,3 +5,5 @@
 .row:first-child { border-top: 0; }
 .name { min-width: 0; font-size: 14px; font-weight: 600; letter-spacing: -0.02em; color: var(--c-text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .eta { flex: none; font-size: 13px; font-weight: 500; color: var(--c-text-2); white-space: nowrap; }
+/* 폰 브라우저 높이: 첫 화면이 스크롤 없이 들어가도록 줄 높이를 조금 줄임 (화면 폭 전체가 눌리는 줄이라 낮아도 누르기 쉬움) */
+@media (max-height: 740px) { .wrap { gap: 2px; } .title { padding-top: 0; } .row { min-height: 38px; } }

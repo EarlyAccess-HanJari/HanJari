@@ -6,3 +6,5 @@
 .v { font-size: 15px; line-height: 22px; font-weight: 600; color: var(--c-text-2); font-variant-numeric: tabular-nums; }
 .em { font-weight: 700; color: var(--c-text-1); }
 @media (max-width: 340px) { .col { padding: 0 10px; } }
+/* 폰 브라우저 높이(세로 740px 이하): 첫 화면이 스크롤 없이 들어가도록 아래 여백만 줄임 */
+@media (max-height: 740px) { .wrap { padding-bottom: 8px; } }

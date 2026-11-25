@@ -12,6 +12,8 @@
 .refresh[disabled] svg { animation: spin .9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .status { margin: 0; font-size: 12px; min-height: 18px; }
+/* 폰 브라우저 높이: 첫 화면이 스크롤 없이 들어가도록 위아래 여백과 줄 높이를 조금 줄임 */
+@media (max-height: 740px) { .header { padding-top: 4px; padding-bottom: 4px; } .stopBtn { min-height: 40px; } .status { min-height: 16px; line-height: 16px; } }
 .normal { color: var(--muted); font-weight: 500; }
 .warn { color: var(--warn); font-weight: 600; }
 .bad { color: var(--bad); font-weight: 600; }

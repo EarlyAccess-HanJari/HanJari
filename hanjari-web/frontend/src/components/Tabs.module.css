@@ -4,3 +4,5 @@
 .on { color: var(--c-text-1); font-weight: 700; }
 @media (prefers-reduced-motion: reduce) { .thumb { transition: none; } }
 .tab:disabled { opacity: 1; cursor: default; }
+/* 폰 브라우저 높이(세로 740px 이하): 첫 화면이 스크롤 없이 들어가도록 조금 낮춤 (App.module.css 의 같은 조건 참고) */
+@media (max-height: 740px) { .tab { height: 34px; } }

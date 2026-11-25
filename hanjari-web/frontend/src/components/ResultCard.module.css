@@ -6,4 +6,5 @@
 .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .row .guide { margin: 0; }
 .retry { flex: none; height: 36px; padding: 0 14px; border-radius: 999px; border: 0; background: var(--c-text-1); color: #fff; font-size: 14px; font-weight: 600; }
-@media (max-height: 600px) { .card { gap: 4px; } .guide { margin-top: 2px; line-height: 1.4; } }
+@media (max-height: 740px) { .card { gap: 6px; } .guide { margin-top: 2px; } .why { line-height: 1.45; } .retry { height: 32px; } }
+@media (max-height: 620px) { .card { gap: 4px; } .guide { margin-top: 2px; line-height: 1.4; } }

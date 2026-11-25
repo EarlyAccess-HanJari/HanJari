@@ -109,7 +109,7 @@ test.describe("지금 입력한 인원과 다른 확률을 보이지 않는다",
   });
 
   // 누르던 버튼이 손 밑에서 밀리지 않게
-  for (const [width, height] of [[320, 568], [360, 640], [360, 780], [375, 812], [412, 915]] as [number, number][]) {
+  for (const [width, height] of [[320, 568], [360, 600], [360, 640], [393, 659], [360, 780], [375, 812], [412, 915]] as [number, number][]) {
     test(`${width}x${height}: 계산 중·실패에도 대기 인원 버튼 위치가 같다`, async ({ page }) => {
       await page.setViewportSize({ width, height });
       await start(page);
@@ -166,7 +166,7 @@ test.describe("응답이 오래 걸릴 때", () => {
     await expect(notice).not.toContainText("네트워크");
   });
 
-  for (const [width, height] of [[320, 568], [360, 640], [412, 915]] as [number, number][]) {
+  for (const [width, height] of [[320, 568], [360, 600], [360, 640], [393, 659], [412, 915]] as [number, number][]) {
     test(`${width}x${height}: 오래 걸린다는 안내가 나와도 대기 인원 버튼 위치가 같다`, async ({ page }) => {
       await page.setViewportSize({ width, height });
       await start(page);

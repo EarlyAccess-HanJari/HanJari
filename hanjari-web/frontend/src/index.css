@@ -30,10 +30,19 @@
   --font: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   --shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
   --mono: ui-monospace, monospace;
+  /* 대기 인원 입력 상자 크기. 첫 불러오기 자리표시(Offline.tsx)도 같은 값을 써서 데이터가 들어와도 높이가 같다 */
+  --in-pad: clamp(12px, 2dvh, 20px);
+  --in-gap: clamp(8px, 1.6dvh, 16px);
+  --chip-h: clamp(36px, 5dvh, 46px);
 }
+/* 아주 작은 화면(세로 620px 이하): 입력 상자 여백도 줄임 (App.module.css 의 같은 조건 참고) */
+@media (max-height: 620px) { :root { --in-pad: 10px; --in-gap: 8px; } }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
+/* 페이지 자체는 스크롤하지 않는 앱 화면: 끌어도 화면 전체가 고무줄처럼 위아래로 튕기지(iOS)·당겨서 새로고침되지(Android) 않게.
+   넘치는 내용은 각 장(pane) 안에서만 스크롤한다 */
+html, body { overscroll-behavior: none; }
 body {
   font-family: var(--font);
   color: var(--ink);

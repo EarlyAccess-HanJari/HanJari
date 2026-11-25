@@ -26,7 +26,7 @@ export function HeroSkeleton({ slow = false }: { slow?: boolean }) {
       </div>
       <div className={app.sk} style={{ width: "100%", height: 53, marginTop: "auto" }} />
       <div className={app.sk} style={{ width: "100%", borderRadius: 16,
-        height: "calc(2 * clamp(12px, 2dvh, 20px) + 40px + clamp(8px, 1.6dvh, 16px) + clamp(36px, 5dvh, 46px))" }} />
+        height: "calc(2 * var(--in-pad) + 40px + var(--in-gap) + var(--chip-h))" }} />
     </section>
   );
 }
