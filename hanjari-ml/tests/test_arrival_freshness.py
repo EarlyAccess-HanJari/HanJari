@@ -159,7 +159,9 @@ class ArrivalFreshness(unittest.TestCase):
                     f.unlink()
                 self.write("arr", "174039", [dict(self.first, traTime2=eta2)])
                 self.write("pos", "174039", positions)
-                got = S.predict_live(3, log_dir=self.folder, reference_now=now)[0]
+                # 확률 계산을 본다: 레포 모델의 정원표가 코드와 달라도(정원 변경 뒤) '확률 보류'로 새지 않게 모델 것에 맞춤
+                with patch.object(T, "capacity_policy", return_value=S.load(True)[1]["capacity_policy"]):
+                    got = S.predict_live(3, log_dir=self.folder, reference_now=now)[0]
                 self.assertEqual((got["plate"], got["r_now"]), ("서울70사5508", 53))
                 if bunched:
                     second = got["second"]
