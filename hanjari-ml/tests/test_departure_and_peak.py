@@ -41,19 +41,28 @@ class DepartedPending(unittest.TestCase):
         rows = B.build("sb02", [str(self.folder)], open_=True, tab=self.tab)
         return next(r for r in rows if int(r["stop"]) == 32 and r["plate"] == PLATE)
 
+    def test_departure_share_is_off_by_default(self):
+        # 11-25 전후 비교에서 oof MAE 지킴선(+1%)을 넘어 끔. train 도 build_dataset 값을 그대로 쓴다
+        self.assertEqual((B.REFLECT_SEC, T.REFLECT_SEC), (-1, -1))
+
     def test_dwelling_adds_previous_stop_share(self):
         r = self.row32()
         self.assertEqual((r["pos_sect"], r["pos_dwell"], r["run_sec"]), (31, 1, None))
         self.assertGreater(r["q_pending"], 0)
 
-    def test_first_sighting_after_departure_keeps_share_until_reflected(self):
+    def test_first_sighting_after_departure(self):
         dwelling = self.row32()["q_pending"]
         earlier = self.set_flag(json.loads(self.pos.read_text()), 1, "20260930131100")
         (self.folder / "sb02_pos_131106.json").write_text(json.dumps(earlier))
         self.pos.write_text(json.dumps(self.set_flag(self.body, 0)))
         r = self.row32()
         self.assertEqual((r["pos_dwell"], r["run_sec"]), (0, 0.0))
-        self.assertEqual(r["q_pending"], dwelling)  # 출발 첫 관측: 정차 때와 같은 몫을 그대로 더한다
+        self.assertGreater(dwelling, 0)
+        self.assertEqual(r["q_pending"], 0.0)  # 기본(끔): 떠나면 예전처럼 0
+        old = B.REFLECT_SEC
+        B.REFLECT_SEC = 20
+        self.addCleanup(setattr, B, "REFLECT_SEC", old)
+        self.assertEqual(self.row32()["q_pending"], dwelling)  # 켜면(20초) 출발 첫 관측까지 정차 때 몫을 그대로 더한다
 
     def test_reflected_or_unknown_departure_adds_nothing(self):
         self.pos.write_text(json.dumps(self.set_flag(self.body, 0)))
@@ -71,7 +80,12 @@ class DepartedPending(unittest.TestCase):
         m["res0"] = {True: np.linspace(-20, 20, 41), False: np.zeros(41)}
         p = lambda **kw: T.predict(m, pd.DataFrame([dict(row, pos_dwell=0, pos_sect=int(row["stop"]) - 1, **kw)]))[1][0, 0]
         dwelling = T.predict(m, pd.DataFrame([dict(row, pos_dwell=1, pos_sect=int(row["stop"]) - 1)]))[1][0, 0]
-        self.assertEqual(p(run_sec=0.0), dwelling)
+        self.assertNotEqual(dwelling, 1)
+        self.assertEqual(p(run_sec=0.0), 1)  # 기본(끔): 떠났으면 주행 분포(11-25 전과 같음)
+        old = T.REFLECT_SEC
+        T.REFLECT_SEC = 20
+        self.addCleanup(setattr, T, "REFLECT_SEC", old)
+        self.assertEqual(p(run_sec=0.0), dwelling)  # 켜면 출발 첫 관측은 정차 분포
         self.assertEqual(p(run_sec=27.0), 1)   # 둘째 관측(27초)은 이미 반영 → 주행 분포
         self.assertEqual(p(run_sec=np.nan), 1)
 
