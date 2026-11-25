@@ -7,3 +7,5 @@
 .retry { flex: none; height: 36px; padding: 0 16px; border-radius: 999px; border: 0; background: var(--c-text-1); color: #fff; font-size: 14px; font-weight: 600; }
 .body { margin: 0; font-size: 13px; line-height: 1.55; color: var(--c-text-2); }
 .dash { flex: none; font-size: 15px; font-weight: 700; color: var(--c-text-3); padding: 0 6px; }
+/* 폰 브라우저 높이: 오류 카드가 정상 카드보다 많이 길어지지 않게 (길면 이 상태만 스크롤됨) */
+@media (max-height: 740px) { .noinfo { margin-top: 4px; line-height: 1.25; } .box { padding: 10px 14px; gap: 6px; } }

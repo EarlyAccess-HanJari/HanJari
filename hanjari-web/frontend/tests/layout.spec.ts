@@ -43,8 +43,25 @@ test("재계산 중 카드는 그대로 두고 흐리게만 하며 입력 위치
   expect((await input.boundingBox())!.y).toBe(before);
 });
 
+// 폰 브라우저 높이(주소창·도구 막대를 뺀 높이): 아이폰 사파리 659·미니 635, 갤럭시 크롬 약 650~700.
+// 첫 화면(카드 + 다른 정류장)이 장(pane) 안에서도 세로로 스크롤되지 않는다 — 스크롤하면 위아래로 출렁이던 문제
+for (const [width, height] of [[375, 635], [360, 640], [393, 659], [384, 720], [412, 732]] as [number, number][]) {
+  test(`${width}x${height}: 첫 화면이 안쪽 세로 스크롤 없이 한 화면에 들어간다`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    for (const [scenario, stop] of [["", "30"], ["", "32"], ["stale", "30"], ["wide", "32"], ["down", "30"]]) {
+      await page.goto(`/?scenario=${scenario}`);
+      await page.evaluate((s) => localStorage.setItem("hanjari.sel", JSON.stringify({ route: "sb02", stop: s })), stop);
+      await page.reload();
+      await expect(page.getByTestId("n-minus")).toBeVisible();
+      await expect(page.getByTestId("hero-skeleton")).toHaveCount(0);
+      const over = await page.locator("#pane-0").evaluate((p) => p.scrollHeight - p.clientHeight);
+      expect(over, `${scenario || "normal"} · ${stop}`).toBeLessThanOrEqual(0);
+    }
+  });
+}
+
 // 상태·문구 길이가 달라져도 대기 인원 버튼은 같은 자리 (누르던 버튼이 손 밑에서 밀리지 않게)
-for (const [width, height] of [[375, 812], [360, 780], [412, 915]] as [number, number][]) {
+for (const [width, height] of [[360, 640], [393, 659], [375, 812], [360, 780], [412, 915]] as [number, number][]) {
   test(`${width}x${height}: 상태가 바뀌어도 대기 인원 버튼 위치가 같다`, async ({ page }) => {
     await page.setViewportSize({ width, height });
     const ys: Record<string, number> = {};
