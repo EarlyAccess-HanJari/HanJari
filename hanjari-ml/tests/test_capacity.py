@@ -327,3 +327,17 @@ class SubwayRush(unittest.TestCase):
         self.assertGreater(expected, 0)
         self.assertEqual((eve[0], eve[1]), (expected, 0))
         self.assertEqual((cls[2], cls[3] > 0), (0, True))
+
+
+class ClassTimePolicy(unittest.TestCase):
+    def test_upper_tail_lets_far_buses_pass_0975(self):
+        # 11-26: 분위수 위 꼬리(0.98·0.99)로 1정류장+ 확률 상한이 0.975 → 0.995. 수업 직전 기준 0.97~0.99 를 고를 수 있어야 함
+        q = np.linspace(10, 30, len(T.QS))[None, :]
+        self.assertGreater(T.quantile_p(q, np.array([[100]]), T.QS)[0, 0], 0.99)
+        old = np.round(np.linspace(0.05, 0.95, 9), 3)
+        self.assertAlmostEqual(T.quantile_p(q[:, :9], np.array([[100]]), old)[0, 0], 0.975)
+
+    def test_tuesday_class_rush_counts_as_class_time(self):
+        # 11-26: 화요일은 가장 많은 시각도 37개라 기준 40에선 하루 종일 '수업 직전'이 없었다
+        self.assertLessEqual(T.PEAK_CLASSES, 37)
+        self.assertGreaterEqual(T.TARGET["수업 직전"], 0.99)
